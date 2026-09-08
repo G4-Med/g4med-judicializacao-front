@@ -199,13 +199,8 @@ export function ResultadosFinanceirosPage() {
 
   return (
     <div className="resultados-financeiros-page">
-      <div className="page-header">
-        <div>
-          <h1>Resultados Financeiros</h1>
-          <p>Acompanhe cirurgias realizadas, pagamentos e perdas.</p>
-        </div>
-      </div>
-
+      {/* Sem cabeçalho próprio (08/09): esta página não tem mais rota — é a aba
+          "Nosso dinheiro" do Painel de Resultados, que já traz o título. */}
       <PainelKpis titulo="Cirurgias">
       <div className="kpi-grid kpi-grid-3">
         <div className="kpi-card kpi-card--ok">

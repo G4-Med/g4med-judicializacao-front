@@ -1,0 +1,124 @@
+/* PAINEL DE RESULTADOS — 4 abas na ordem do fluxo (protocolo → desfecho → cirurgia → comissão) */
+
+.painel-resultados {
+  padding: 1.25rem 1.5rem 2rem;
+}
+
+.painel-resultados__cabecalho {
+  margin-bottom: 1rem;
+}
+
+.painel-resultados__cabecalho h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--mc-navy-700, #0a3d62);
+}
+
+.painel-resultados__cabecalho p {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--text-color-secondary, #64748b);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+/* NÃO esconder `.page-header` por CSS aqui — foi o que a v1 fazia, e escondia junto
+   o botão "Exportar Excel" da aba Aguardando Cirurgia, que mora DENTRO daquele bloco.
+   Regra que apaga por classe apaga tudo que a classe carrega, inclusive o que você
+   não viu. A cura correta foi remover os <h1> duplicados nas próprias páginas
+   (elas não têm mais rota própria, então o título delas era código morto) e manter
+   o `.page-header` onde ele ainda segura uma ação. */
+
+.painel-resultados .p-tabview-panels {
+  padding: 1rem 0 0;
+  background: transparent;
+}
+
+.painel-resultados .p-tabview-nav {
+  border-bottom: 2px solid var(--surface-border, #e2e8f0);
+}
+
+/* ── Aba ② A verificar ─────────────────────────────────────────────── */
+
+.aba-verificar__vao {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.1rem;
+}
+
+.vao-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.85rem 1rem;
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--surface-border, #e2e8f0);
+  border-left: 4px solid var(--mc-navy-700, #0a3d62);
+  border-radius: 8px;
+}
+
+/* O número que não existia em tela nenhuma antes de 08/09 merece o vermelho:
+   é dinheiro ganho que a tela do dinheiro não mostrava. */
+.vao-card--alerta {
+  border-left-color: #dc2626;
+}
+
+.vao-card__rotulo {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-color-secondary, #64748b);
+}
+
+.vao-card__valor {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--mc-navy-700, #0a3d62);
+}
+
+.vao-card--alerta .vao-card__valor {
+  color: #dc2626;
+}
+
+.vao-card__nota {
+  font-size: 0.78rem;
+  color: var(--text-color-secondary, #64748b);
+}
+
+/* Ausência ≠ zero: "—" cinza diz "não sabemos", nunca "não pagou". */
+.aba-verificar .sem-dado {
+  color: var(--text-color-secondary, #94a3b8);
+}
+
+/* Valor pago idêntico ao orçado — o indício mais forte de que o pagamento é do
+   nosso orçamento. Verde chama o olho; o ✓ e o title dizem por quê. */
+.aba-verificar .valor-bate {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.aba-verificar .p-datatable td {
+  font-variant-numeric: tabular-nums;
+}
+
+.aba-verificar__barra {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.aba-verificar__erro {
+  padding: 1rem;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+/* Tabelas largas rolam DENTRO do próprio container — a página nunca rola de lado. */
+.aba-verificar .p-datatable-wrapper {
+  overflow-x: auto;
+}

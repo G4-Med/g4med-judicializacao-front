@@ -70,7 +70,28 @@ export interface ResultadoFinanceiroPendente {
   orderId: number;
   paciente: string;
   valorProcedimento: number;
+  /** Comissao LANCADA. Sem ficha financeira vale 0 por definicao — nao e "nao ha o que
+   *  receber", e "ninguem lancou ainda". Para o quanto DEVERIA vir, use comissaoEstimada. */
   valorComissao: number;
+  /** Comissao ESTIMADA pelo takeRate do medico (08/09). So GANHO tem valor; perda e
+   *  fonte `estado_pagou` vem 0.0 de proposito — comissao e % do fechamento da cirurgia,
+   *  e sem ganho nao ha cirurgia. Opcional: backend antigo nao envia. */
+  comissaoEstimada?: number;
+  /** Nome do medico do pedido — a quem perguntar "te pagaram?". Opcional: backend antigo nao envia. */
+  nomeMedico?: string;
+  /** Quanto NOS pedimos (orcamento). Comparar com empenho548.pago responde "o valor bate?". */
+  valorOrcamento?: number;
+  /** O que o ESTADO pagou neste processo. `null` = sem registro (nao e "pagou zero"). */
+  empenho548?: {
+    pago: number;
+    empenhado: number;
+    /** Data do ultimo pagamento — ou do EMPENHO, quando o portal nao expoe a do pagamento. */
+    ultimoPagamento: string | null;
+    ultimoPagamentoTipo: 'pagamento' | 'empenho' | null;
+    /** Regua de ATRIBUICAO: pagamento no CNJ nao significa ESTE pedido pago. */
+    sinal: 'PAGO_APOS_O_PEDIDO' | 'REVISAR_VALOR_BATE' | 'PROVAVEL_OUTRO_ITEM' | 'EMPENHADO' | 'DEPOSITO_NO_PROCESSO';
+    classe: 'EXATO' | 'NAO_EXATO' | 'EMPENHADO' | 'SEM_REGISTRO';
+  } | null;
   statusCirurgia: null;
   dataConfirmacao: null;
   origemLinha: 'ganho_sem_financeiro' | 'estado_pagou';

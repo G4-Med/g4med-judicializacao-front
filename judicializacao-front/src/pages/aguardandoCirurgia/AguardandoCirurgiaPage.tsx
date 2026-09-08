@@ -487,11 +487,10 @@ export function AguardandoCirurgiaPage() {
 
   return (
     <div className="aguardando-cirurgia-page">
+      {/* O <h1> saiu (08/09) — a página é a aba "Aguardando cirurgia" do Painel de
+          Resultados, que já traz o título. O `.page-header` FICA: é ele que posiciona
+          o botão de exportar. */}
       <div className="page-header">
-        <div>
-          <h1>Aguardando Cirurgia</h1>
-          <p>Pedidos com ganho confirmado aguardando realização da cirurgia.</p>
-        </div>
         <Button
           label="Exportar Excel"
           icon="pi pi-file-excel"
@@ -580,14 +579,11 @@ export function AguardandoCirurgiaPage() {
             body={renderValor}
             style={{ minWidth: '10rem' }}
           />
-          <Column
-            field="nprocesso"
-            header="Processo"
-            sortable
-            filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
-            style={{ minWidth: '12rem' }}
-          />
+          {/* A coluna "Processo" saiu (08/09): ela tinha field="nprocesso", o MESMO da
+              `colunaCnj()` logo abaixo — duas colunas do mesmo campo na mesma tabela.
+              O React avisava "two children with the same key, col-nprocesso" e podia
+              duplicar/omitir células em silêncio. Ficou a canônica (`colunaCnj`), que
+              já traz o rótulo "Nº CNJ", o hint explicativo e o botão de copiar. */}
           <Column
             field="dias"
             header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')}

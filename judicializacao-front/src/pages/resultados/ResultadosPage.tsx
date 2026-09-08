@@ -494,13 +494,8 @@ const kpis = useMemo(() => {
 
   return (
     <div className="resultados-page">
-      <div className="page-header">
-        <div>
-          <h1>Resultados</h1>
-          <p>Visão consolidada dos processos finalizados</p>
-        </div>
-      </div>
-
+      {/* Sem cabeçalho próprio (08/09): esta página não tem mais rota — é a aba
+          "Desfechos" do Painel de Resultados, que já traz o título. */}
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid kpi-grid-5">
         <div className="kpi-card">

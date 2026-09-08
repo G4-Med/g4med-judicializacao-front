@@ -12,10 +12,10 @@ import { ParaProtocolarPage } from '../../pages/paraProtocolar/ParaProtocolarPag
 import { ProtocoladosPage } from '../../pages/protocolados/ProtocoladosPage';
 import { EnviadoSesPage } from '../../pages/enviadoSes/EnviadoSesPage';
 import { SegredoJusticaPage } from '../../pages/segredoJustica/SegredoJusticaPage';
-import { ResultadosPage } from '../../pages/resultados/ResultadosPage';
-import { AguardandoCirurgiaPage } from '../../pages/aguardandoCirurgia/AguardandoCirurgiaPage';
-import { ResultadosFinanceirosPage } from '../../pages/resultadosFinanceiros/ResultadosFinanceirosPage';
-import { PerdasPage } from '../../pages/perdas/PerdasPage';
+// As 4 páginas de Resultados não são mais importadas aqui: quem as monta agora é o
+// PainelResultadosPage (cada uma vira uma aba). Os ARQUIVOS continuam no disco e em uso —
+// só deixaram de ter rota própria. A poda deles é a F5, condicionada a 7 dias de uso.
+import { PainelResultadosPage } from '../../pages/painelResultados/PainelResultadosPage';
 import { UsuariosPage } from '../../pages/usuarios/UsuariosPage';
 import { ConfiguracoesPage } from '../../pages/configuracoes/ConfiguracoesPage';
 import { LogsPage } from '../../pages/logs/LogsPage';
@@ -72,10 +72,15 @@ export function AppRoutes() {
         <Route path="/selecionar-medico" element={<ProtectedScreen screen="selecionarMedico"><SelecionarMedicoPage /></ProtectedScreen>} />
         <Route path="/orcamento-medico" element={<ProtectedScreen screen="orcamentoMedico"><OrcamentoMedicoPage /></ProtectedScreen>} />
 
-        <Route path="/resultados" element={<ProtectedScreen screen="resultados"><ResultadosPage /></ProtectedScreen>} />
-        <Route path="/aguardando-cirurgia" element={<ProtectedScreen screen="aguardandoCirurgia"><AguardandoCirurgiaPage /></ProtectedScreen>} />
-        <Route path="/resultados-financeiros" element={<ProtectedScreen screen="resultadosFinanceiros"><ResultadosFinanceirosPage /></ProtectedScreen>} />
-        <Route path="/perdas" element={<ProtectedScreen screen="perdas"><PerdasPage /></ProtectedScreen>} />
+        {/* PAINEL DE RESULTADOS (@R 08/09) — 1 rota, 5 abas na ordem do funil.
+            As 4 rotas antigas (/resultados, /aguardando-cirurgia, /resultados-financeiros,
+            /perdas) foram REMOVIDAS, não redirecionadas: o @R confirmou que ninguém tem
+            atalho salvo, e redirect que ninguém usa é código morto se explicando.
+            As páginas continuam existindo — cada uma é uma aba deste painel.
+            ⚠ Escopo de acesso conferido antes de unificar: nenhum grupo tinha permissão
+            PARCIAL (ADMIN/GERENTE/JURIDICO/MEDICO/SUPERVISOR viam as 4; SECRETARIA
+            nenhuma). Logo `screen="resultados"` não abre nem fecha porta para ninguém. */}
+        <Route path="/painel-resultados" element={<ProtectedScreen screen="resultados"><PainelResultadosPage /></ProtectedScreen>} />
         <Route path="/emails" element={<ProtectedScreen screen="emails"><EmailsPage /></ProtectedScreen>} />
 
         <Route path="/relatorios/resumido" element={<ProtectedScreen screen="relatorioResumido"><RelatorioResumidoPage /></ProtectedScreen>} />
