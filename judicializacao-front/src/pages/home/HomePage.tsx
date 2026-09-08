@@ -94,14 +94,43 @@ interface CardMesVida {
   valorVida: number;
 }
 
-interface CardValorQuantidade {
+interface CardBaseValorQuantidade {
   titulo: string;
   icone: string;
   valorPrincipal: number;
   quantidade: number;
   tipo?: 'success' | 'danger' | 'warning' | 'info';
-  percentual?: boolean;
+  // ── A RÉGUA DE CADA PERCENTUAL, declarada pelo CARD (08/09) ──────────────────
+  // Medição da eliza-financeiro: circulam 4 números de conversão nas telas e nenhum
+  // diz seu denominador — 30,2% (19/63, só quem teve orçamento decidido) e 5,1%
+  // (19/372, todo desfecho) são os DOIS verdadeiros e parecem contradizer-se.
+  // Sublinha e não tooltip: tooltip esconde a régua atrás de um gesto, e quem lê o
+  // número rápido é exatamente quem precisa dela.
+  // Por que a régua é do CARD e não do render: o render antes assumia que
+  // `percentual: true` significava "conversão por valor", e imprimia a régua da
+  // conversão em QUALQUER card percentual — o Segredo de Justiça herdava a legenda
+  // "por valor (R$ ganho ÷ ...)" sendo % de pedidos, e imprimia a CONTAGEM com "%".
 }
+
+// O TIPO é o assert (sugestão da eliza-financeiro, 08/09): card `percentual` SEM régua
+// declarada não compila — `npm run build` falha em vez de herdar a legenda do vizinho.
+// Sem isto, o terceiro card a usar a flag repete o bug: a garantia seria "lembrar", e
+// lembrar não é garantia. O custo do assert é zero em runtime (some no build).
+type CardValorQuantidade =
+  | (CardBaseValorQuantidade & {
+      percentual?: false;
+      reguaPrincipal?: never;
+      reguaSecundaria?: never;
+      secundariaEhPercentual?: never;
+    })
+  | (CardBaseValorQuantidade & {
+      percentual: true;
+      reguaPrincipal: string;      // o denominador do número GRANDE, em palavras
+      reguaSecundaria: string;     // o que o número de baixo significa
+      // false = `quantidade` é contagem (imprime "N"), true = é percentual ("N%").
+      // Este campo É o bug do "123%": sem ele, o render imprimia "%" numa CONTAGEM.
+      secundariaEhPercentual: boolean;
+    });
 
 interface GraficoPerdaProcedimento {
   procedimento: string;
@@ -114,6 +143,26 @@ const STATUS_AGUARDANDO_ORCAMENTO = 'Aguardando Orçamento';
 const STATUS_ORCAMENTO_ENVIADO = 'Orçamento Enviado';
 const STATUS_PROCESSO_GANHO = 'Ganho';
 const STATUS_PROCESSO_PERDA = 'Perda';
+// Espelho de `STATUS_HISTORICOS` (backend/models.py). São 566 dos 1133 pedidos —
+// METADE da base é carga histórica, e ela nunca foi pedido vivo. Qualquer taxa cujo
+// numerador só possa vir de pedido vivo precisa deste denominador, não do total.
+const STATUS_PROCESSO_HISTORICOS = ['Histórico - Base Antiga', 'Histórico - Sem Rastro'];
+
+// ── POR QUE A COMPARAÇÃO IGNORA ACENTO (08/09, achado da eliza-financeiro) ──────
+// O SQL Server aqui tem collation ACCENT-INSENSITIVE: no Django, filtrar por
+// 'Historico' (sem acento) casa os mesmos 566 que 'Histórico'. O ORM PERDOA — e por
+// isso um filtro escrito errado funciona por sorte de banco, sem nunca acusar.
+// O JavaScript não perdoa: compara byte a byte. Um espelho manual com o acento
+// errado (ou em NFD, que é IDÊNTICO na tela e diferente na memória) faria
+// `pedidosVivos` filtrar ZERO, o denominador voltar a 1133 e a sublinha mentir de
+// novo — muda, sem erro, exatamente o engano que acabamos de curar.
+// Medido nos dois lados HOJE: front e API estão em NFC (U+00F3), então funciona.
+// Isto aqui não é o conserto de um defeito vivo — é tirar a classe do caminho, para
+// que a próxima pessoa a editar a lista não precise saber de nada disso.
+const semAcento = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+const STATUS_HISTORICOS_NORM = STATUS_PROCESSO_HISTORICOS.map(semAcento);
+const ehCargaHistorica = (status?: string | null) =>
+  STATUS_HISTORICOS_NORM.includes(semAcento(status ?? ''));
 
 function parseApiDate(value?: string | null): Date | null {
   if (!value) return null;
@@ -326,7 +375,16 @@ export function HomePage() {
     // por igualdade de string é o que o resto do sistema já faz com este campo).
     const segredoJusticaOrders = orders.filter((item) => item.statusJuridico === 'Segredo de Justiça');
     const segredoJusticaQtd = segredoJusticaOrders.length;
-    const segredoJusticaTaxa = pedidosVida > 0 ? (segredoJusticaQtd / pedidosVida) * 100 : 0;
+    // ── O DENOMINADOR TEM QUE SER DA MESMA POPULAÇÃO DO NUMERADOR (08/09) ────────
+    // Media em produção: 123 pedidos em segredo de justiça, e ZERO deles é carga
+    // histórica. Mas `pedidosVida` (= orders.length, 1133) tem 566 históricos dentro
+    // — metade da base. Dividir um numerador 100% vivo por um denominador vivo+morto
+    // dilui a taxa pela metade: dava 10,9% quando a régua honesta é 21,7% (123/567).
+    // Não é arredondamento: é a taxa errada, e para baixo — some justamente o sinal.
+    // Filtrar aqui é seguro nos dois mundos: se a API um dia já mandar `orders` sem
+    // histórico, `pedidosVivos` passa a ser igual a `orders.length` e nada muda.
+    const pedidosVivos = orders.filter((item) => !ehCargaHistorica(item.statusProcesso)).length;
+    const segredoJusticaTaxa = pedidosVivos > 0 ? (segredoJusticaQtd / pedidosVivos) * 100 : 0;
 
     const cardsValorQuantidade: CardValorQuantidade[] = [
       {
@@ -357,6 +415,9 @@ export function HomePage() {
         quantidade: conversaoQuantidade,
         tipo: 'info',
         percentual: true,
+        reguaPrincipal: `do VALOR: ${formatCurrency(valorGanho)} de ${formatCurrency(conversaoValorBase)} decididos`,
+        reguaSecundaria: `${ganhosQuantidade} de ${conversaoQuantidadeBase} pedidos com desfecho`,
+        secundariaEhPercentual: true,
       },
       {
         titulo: 'Taxa Segredo de Justiça',
@@ -365,6 +426,9 @@ export function HomePage() {
         quantidade: segredoJusticaQtd,
         tipo: 'info',
         percentual: true,
+        reguaPrincipal: `${segredoJusticaQtd} de ${pedidosVivos} pedidos vivos (fora carga histórica)`,
+        reguaSecundaria: 'pedidos em segredo de justiça',
+        secundariaEhPercentual: false,
       },
     ];
 
@@ -666,14 +730,20 @@ export function HomePage() {
                     ? formatPercent(card.valorPrincipal)
                     : formatCurrency(card.valorPrincipal)}
               </div>
-              {card.percentual && (
-                <div className="home-card__submeta">por valor (R$ ganho ÷ R$ ganho+perdido)</div>
+              {card.percentual && card.reguaPrincipal && (
+                <div className="home-card__submeta">{card.reguaPrincipal}</div>
               )}
               <div className="home-card__meta">
                 {card.percentual ? (
                   <>
-                    <span>por quantidade de processos</span>
-                    <strong>{loading ? '--' : `${card.quantidade}%`}</strong>
+                    <span>{card.reguaSecundaria ?? 'processos'}</span>
+                    <strong>
+                      {loading
+                        ? '--'
+                        : card.secundariaEhPercentual
+                          ? `${card.quantidade}%`
+                          : card.quantidade}
+                    </strong>
                   </>
                 ) : (
                   <>

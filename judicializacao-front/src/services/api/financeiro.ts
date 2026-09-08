@@ -15,6 +15,10 @@ export interface AguardandoCirurgiaItem {
   statusProcesso: string;
   takeRate: number;
   comissaoEstimada: number;
+  // A base real da comissão e a dedução (08/09). Sem os dois, a tela só pode dividir
+  // pelo orçamento — e no ord#381 isso mostra 2,23% para uma taxa de 10%.
+  baseCalculoComissao?: number | null;
+  deducaoPercentual?: number | null;
 }
 
 export interface AguardandoCirurgiaKpis {
@@ -29,6 +33,14 @@ export interface AguardandoCirurgiaResposta {
 }
 
 export interface ResultadoFinanceiroItem {
+  /** O que JA ENTROU (08/09). Distinto de valorComissao (o DEVIDO/lancado):
+   *  devido e recebido sao perguntas diferentes e nunca devem virar 1 campo. */
+  valorRecebido?: number;
+  statusPagamento?: string | null;
+  dataPagamento?: string | null;
+  /** Base sobre a qual a comissao foi calculada — sem ela a taxa so pode ser
+   *  adivinhada dividindo pelo orcamento (o defeito do ord#381: 10% virava 2,23%). */
+  baseCalculoComissao?: number | null;
   id: number;
   orderId: number;
   paciente: string;
@@ -79,6 +91,10 @@ export interface ResultadoFinanceiroPendente {
   comissaoEstimada?: number;
   /** Nome do medico do pedido — a quem perguntar "te pagaram?". Opcional: backend antigo nao envia. */
   nomeMedico?: string;
+  /** A palavra da ADVOGADA sobre este desfecho. `null`/ausente = ela ainda nao olhou. */
+  confirmacaoJuridica?: ConfirmacaoJuridica | null;
+  confirmacaoJuridicaObs?: string | null;
+  confirmacaoJuridicaEm?: string | null;
   /** Quanto NOS pedimos (orcamento). Comparar com empenho548.pago responde "o valor bate?". */
   valorOrcamento?: number;
   /** O que o ESTADO pagou neste processo. `null` = sem registro (nao e "pagou zero"). */
@@ -132,6 +148,25 @@ export const registrarPerdaCirurgia = (
   orderId: number,
   payload: { descCirurgiaPerda: string; dataConfirmacao: string; linkAnexo?: string | null },
 ) => api.post(`/financeiro/${orderId}/perda/`, payload);
+
+/** Os 4 estados que a advogada pode confirmar — o vocabulario que separa o que
+ *  "Ganho" misturava: processo procedente ≠ orcamento nosso ≠ medico ja pagou. */
+export type ConfirmacaoJuridica = 'PENDENTE' | 'NOSSO' | 'NAO_NOSSO' | 'EM_ANDAMENTO';
+
+export const ROTULO_CONFIRMACAO: Record<ConfirmacaoJuridica, string> = {
+  PENDENTE: 'Aguardando a advogada',
+  NOSSO: 'Confirmado: ganho é nosso',
+  NAO_NOSSO: 'Ganhou, mas o pagamento não foi nosso',
+  EM_ANDAMENTO: 'Ainda em curso — sem desfecho final',
+};
+
+/** A ADVOGADA confirma o desfecho REAL (@R 08/09: "sempre fará").
+ *  O banco guarda o que foi escrito ATÉ AQUELE DIA; só ela sabe o estado de HOJE.
+ *  NAO_NOSSO exige observação com no mínimo 10 caracteres — o backend recusa sem ela. */
+export const confirmarDesfechoJuridico = (
+  orderId: number,
+  payload: { confirmacao: ConfirmacaoJuridica; observacao?: string },
+) => api.post(`/orders/${orderId}/confirmar-desfecho-juridico/`, payload);
 
 export const getResultadosFinanceiros = () =>
   api.get<ResultadosFinanceirosResposta>('/financeiro/resultados/');
