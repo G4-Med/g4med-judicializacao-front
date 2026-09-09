@@ -7,6 +7,7 @@ import { AguardandoCirurgiaPage } from '../aguardandoCirurgia/AguardandoCirurgia
 import { ResultadosFinanceirosPage } from '../resultadosFinanceiros/ResultadosFinanceirosPage';
 import { PerdasPage } from '../perdas/PerdasPage';
 import { AbaVerificar } from './AbaVerificar';
+import { AbaPerdaComPagamento } from './AbaPerdaComPagamento';
 import './PainelResultadosPage.css';
 
 /**
@@ -39,7 +40,10 @@ import './PainelResultadosPage.css';
  */
 
 // Ordem = ordem do funil real: desfecho → o vão → cirurgia → comissão → perdas.
-const ABAS = ['desfechos', 'verificar', 'cirurgia', 'dinheiro', 'perdas'] as const;
+// 'perda-paga' entra ANTES de 'perdas' (@R 09/09): 192 pedidos marcados como perda em que o
+// Estado pagou alguem no mesmo CNJ nao tinham lugar em aba nenhuma. A ordem importa — a aba
+// nasce ao lado do dinheiro, ¬enterrada depois das perdas.
+const ABAS = ['desfechos', 'verificar', 'cirurgia', 'dinheiro', 'perda-paga', 'perdas'] as const;
 
 export function PainelResultadosPage() {
   const [params, setParams] = useSearchParams();
@@ -98,8 +102,11 @@ export function PainelResultadosPage() {
         <TabPanel header="Nosso dinheiro" leftIcon="pi pi-wallet mr-2">
           {seVisitada(3, <ResultadosFinanceirosPage />)}
         </TabPanel>
+        <TabPanel header="Perda com pagamento" leftIcon="pi pi-search-dollar mr-2">
+          {seVisitada(4, <AbaPerdaComPagamento />)}
+        </TabPanel>
         <TabPanel header="Perdas" leftIcon="pi pi-times-circle mr-2">
-          {seVisitada(4, <PerdasPage />)}
+          {seVisitada(5, <PerdasPage />)}
         </TabPanel>
       </TabView>
     </div>
