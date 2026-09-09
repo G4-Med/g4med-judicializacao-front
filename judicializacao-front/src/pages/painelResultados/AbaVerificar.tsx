@@ -107,7 +107,10 @@ export function AbaVerificar() {
     // dizendo que não há nada a apurar. Achado na prova de 08/09: 7 ganhos, R$ 827.885,67,
     // `valorComissao` zerado nos 7.
     const comissao = ganhos.reduce((s, l) => s + Number(l.comissaoEstimada || 0), 0);
-    return { total: filtradas.length, ganhos: ganhos.length, valor, comissao };
+    // Fonte C (o Estado pagou, ninguém decidiu) não é "decidido" — contar junto sem
+    // dizer daria um "total" verdadeiro e enganoso na nota do card.
+    const naoClassificados = filtradas.filter((l) => l.resultado === 'Em aberto').length;
+    return { total: filtradas.length, ganhos: ganhos.length, valor, comissao, naoClassificados };
   }, [filtradas]);
 
   // ── REGISTRAR O QUE ACONTECEU (@R 08/09: ⟦não esqueça dos botões para atualizar as
@@ -216,7 +219,11 @@ export function AbaVerificar() {
         <div className="vao-card">
           <span className="vao-card__rotulo">Total na fila</span>
           <strong className="vao-card__valor">{resumo.total}</strong>
-          <span className="vao-card__nota">decididos aguardando conferência</span>
+          <span className="vao-card__nota">
+            {resumo.naoClassificados > 0
+              ? `${resumo.total - resumo.naoClassificados} decididos · ${resumo.naoClassificados} não classificados (o Estado pagou, ninguém decidiu)`
+              : 'decididos aguardando conferência'}
+          </span>
         </div>
       </div>
 
@@ -273,12 +280,22 @@ export function AbaVerificar() {
           header="Desfecho"
           sortable
           style={{ width: '8rem' }}
-          body={(l: ResultadoFinanceiroPendente) => (
-            <Tag
-              value={l.resultado}
-              severity={l.resultado === 'Ganho' ? 'success' : l.resultado === 'Perda' ? 'danger' : 'info'}
-            />
-          )}
+          body={(l: ResultadoFinanceiroPendente) =>
+            // "Em aberto" é o que o backend manda para quem não tem Ganho nem Perda — mas
+            // aqui isso não quer dizer "o processo ainda corre": quer dizer que o Estado
+            // já pagou e NINGUÉM classificou (@R 08/09: "o que está sem ganho ou perda
+            // deveria vir como não classificado"). O rótulo diz o que falta fazer.
+            l.resultado === 'Em aberto' ? (
+              <Tag
+                value="Não classificado"
+                severity="warning"
+                icon="pi pi-question-circle"
+                title="O Estado pagou depois do pedido e o desfecho (Ganho/Perda) nunca foi registrado — classificar"
+              />
+            ) : (
+              <Tag value={l.resultado} severity={l.resultado === 'Ganho' ? 'success' : 'danger'} />
+            )
+          }
         />
         <Column
           field="nomeMedico"
