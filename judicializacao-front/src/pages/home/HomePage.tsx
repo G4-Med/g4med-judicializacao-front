@@ -1,5 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { getOrders, getPerdas, getResultados } from '../../services/api/orders';
+import { getOrders, getPerdas, getResultados, getSaudeDados, type SaudeDados } from '../../services/api/orders';
 import { Button } from 'primereact/button'
 import { Chart } from 'primereact/chart';
 import { InputText } from 'primereact/inputtext';
@@ -264,6 +264,15 @@ export function HomePage() {
     'home-card--rose',
     'home-card--navy home-card--count',
   ];
+
+  // Frescor dos dados do ESTADO (@R 09/09: "saber que a atualização está rodando"). Busca
+  // separada e fail-soft: se este endpoint cair, a Home continua; o card mostra "—".
+  const [saudeDados, setSaudeDados] = useState<SaudeDados | null>(null);
+  useEffect(() => {
+    getSaudeDados()
+      .then((r) => setSaudeDados(r.data))
+      .catch(() => setSaudeDados(null));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -669,6 +678,28 @@ export function HomePage() {
           <div className="home-hero__metric">
             <strong>Pedidos em aberto</strong>
             <span>{loading ? '--' : indicadores.pedidosAbertosQtd}</span>
+          </div>
+          {/* A cadeia do dinheiro do Estado (portal MG → 331 → 548 → aqui) chegou hoje?
+              Verde = empenhos tocados há <30h E régua há <3h. Vermelho diz QUAL elo parou.
+              O dado é medido no banco, não em log — dado velho aqui é elo parado, sem exceção. */}
+          <div
+            className="home-hero__metric"
+            title={
+              saudeDados
+                ? `Empenhos: ${saudeDados.empenhos.n} registros · pagamentos até ${saudeDados.empenhos.maxPagamento ?? '?'} · empenhos até ${saudeDados.empenhos.maxEmpenho ?? '?'} · atualizado há ${saudeDados.empenhos.idadeHoras ?? '?'}h\nRégua 548: ${saudeDados.regua.n} · atualizada há ${saudeDados.regua.idadeHoras ?? '?'}h`
+                : 'Não foi possível medir o frescor dos dados do Estado'
+            }
+          >
+            <strong>Dados do Estado</strong>
+            <span>
+              {!saudeDados
+                ? '—'
+                : saudeDados.empenhos.ok && saudeDados.regua.ok
+                  ? `✓ atualizados · pagos até ${saudeDados.empenhos.maxPagamento ?? '?'}`
+                  : !saudeDados.empenhos.ok
+                    ? `⚠ empenhos parados há ${Math.round(saudeDados.empenhos.idadeHoras ?? 0)}h`
+                    : `⚠ régua 548 parada há ${Math.round(saudeDados.regua.idadeHoras ?? 0)}h`}
+            </span>
           </div>
           <div className="home-hero__metric">
             <strong>Ganhos x perdas</strong>
