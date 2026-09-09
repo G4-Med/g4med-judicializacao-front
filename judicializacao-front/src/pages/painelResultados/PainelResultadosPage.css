@@ -122,3 +122,93 @@
 .aba-verificar .p-datatable-wrapper {
   overflow-x: auto;
 }
+
+/* Chips do Orç × Pago — o filtro por onde a investigação começa fica VISÍVEL,
+   não escondido num menu de coluna. */
+.aba-verificar__barra {
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.aba-verificar__chips {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-right: auto;
+}
+
+.chip-bate {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--surface-border, #e2e8f0);
+  background: var(--surface-card, #fff);
+  color: var(--text-color-secondary, #64748b);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.chip-bate:hover { border-color: var(--mc-navy-700, #0a3d62); }
+
+.chip-bate__n {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--mc-navy-700, #0a3d62);
+}
+
+.chip-bate--ativo {
+  background: #eff6ff;
+  border-color: var(--mc-navy-700, #0a3d62);
+  color: #1e3a5f;
+}
+
+/* "Bate exato" é o indício mais forte — o chip carrega essa hierarquia. */
+.chip-bate--forte .chip-bate__n { color: #15803d; }
+.chip-bate--forte.chip-bate--ativo { background: #f0fdf4; border-color: #15803d; color: #14532d; }
+
+/* Diálogo de registro do desfecho */
+.reg-desfecho { display: flex; flex-direction: column; gap: 0.9rem; }
+.reg-desfecho__paciente { margin: 0; font-size: 1rem; }
+.reg-desfecho__fatos {
+  display: flex; flex-wrap: wrap; gap: 1.1rem;
+  padding: 0.6rem 0.85rem; border-radius: 8px;
+  background: var(--surface-ground, #f8fafc);
+  border: 1px solid var(--surface-border, #e2e8f0);
+  font-size: 0.86rem;
+}
+.reg-desfecho__campo { display: flex; flex-direction: column; gap: 0.28rem; font-size: 0.84rem; }
+.reg-desfecho__campo > span { color: var(--text-color-secondary, #64748b); }
+.reg-desfecho__caminho {
+  display: flex; flex-direction: column; gap: 0.6rem;
+  padding: 0.85rem; border-radius: 8px;
+  border: 1px solid var(--surface-border, #e2e8f0);
+  border-left: 4px solid #15803d;
+}
+.reg-desfecho__caminho h4 { margin: 0; font-size: 0.92rem; }
+.reg-desfecho__caminho--perda { border-left-color: #dc2626; }
+.reg-desfecho__erro { margin: 0; color: #b91c1c; font-size: 0.86rem; }
+
+/* Área da advogada — a confirmação do desfecho real */
+.reg-desfecho__nota {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-color-secondary, #64748b);
+  line-height: 1.45;
+}
+.reg-desfecho__opcoes { display: flex; flex-direction: column; gap: 0.4rem; }
+.opcao-juridica {
+  text-align: left;
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--surface-border, #e2e8f0);
+  background: var(--surface-card, #fff);
+  cursor: pointer;
+  font-size: 0.88rem;
+  border-left-width: 4px;
+}
+.opcao-juridica--nosso { border-left-color: #15803d; }
+.opcao-juridica--nao_nosso { border-left-color: #dc2626; }
+.opcao-juridica--em_andamento { border-left-color: #d08a1c; }
+.opcao-juridica--ativa { background: #eff6ff; border-color: var(--mc-navy-700, #0a3d62); font-weight: 600; }

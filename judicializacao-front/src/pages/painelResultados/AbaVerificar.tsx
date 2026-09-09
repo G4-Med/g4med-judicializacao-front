@@ -1,10 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
-import { getResultadosFinanceiros } from '../../services/api/financeiro';
-import type { ResultadoFinanceiroPendente } from '../../services/api/financeiro';
+import { InputNumber } from 'primereact/inputnumber';
+import { InputTextarea } from 'primereact/inputtextarea';
+import { Button } from 'primereact/button';
+import { Dialog } from 'primereact/dialog';
+import {
+  getResultadosFinanceiros,
+  confirmarCirurgia,
+  registrarPerdaCirurgia,
+  confirmarDesfechoJuridico,
+  ROTULO_CONFIRMACAO,
+} from '../../services/api/financeiro';
+import type { ResultadoFinanceiroPendente, ConfirmacaoJuridica } from '../../services/api/financeiro';
 
 /**
  * ABA ② — A VERIFICAR: o dinheiro que é nosso e ninguém conferiu.
@@ -38,26 +48,46 @@ function severidadeConferencia(status: string): 'danger' | 'warning' | 'info' | 
   return 'info';
 }
 
+/** A linha da fila + o veredito Orç × Pago achatado (ver `carregar`). */
+type LinhaVerificar = ResultadoFinanceiroPendente & {
+  orcXpago: 'EXATO' | 'NAO_EXATO' | 'SEM_PAGAMENTO';
+};
+
 export function AbaVerificar() {
-  const [linhas, setLinhas] = useState<ResultadoFinanceiroPendente[]>([]);
+  const [linhas, setLinhas] = useState<LinhaVerificar[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
+  const [filtroBate, setFiltroBate] = useState<'' | 'EXATO' | 'NAO_EXATO' | 'SEM_PAGAMENTO'>('');
 
-  useEffect(() => {
-    let vivo = true;
-    getResultadosFinanceiros()
-      .then((r) => {
-        if (!vivo) return;
-        // `?? []` de propósito: o campo é OPCIONAL no contrato ("telas antigas seguem
-        // sem conhecê-lo"). Backend mais velho que este front devolve a tela vazia,
-        // nunca um crash.
-        setLinhas(r.data.itensPendentes ?? []);
-      })
-      .catch(() => { if (vivo) setErro('Não foi possível carregar a fila de verificação.'); })
-      .finally(() => { if (vivo) setCarregando(false); });
-    return () => { vivo = false; };
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const r = await getResultadosFinanceiros();
+      // `?? []` de propósito: o campo é OPCIONAL no contrato ("telas antigas seguem
+      // sem conhecê-lo"). Backend mais velho que este front devolve a tela vazia,
+      // nunca um crash.
+      // `orcXpago` é ACHATADO aqui de propósito: filtro sobre campo aninhado
+      // (`empenho548.classe`) devolve undefined quando não há empenho, e a opção
+      // "sem pagamento" nunca casaria — o filtro pareceria funcionar e esconderia
+      // justamente as linhas que ninguém olhou ainda.
+      setLinhas(
+        (r.data.itensPendentes ?? []).map((l) => ({
+          ...l,
+          orcXpago: !l.empenho548?.pago
+            ? 'SEM_PAGAMENTO'
+            : l.empenho548.classe === 'EXATO' ? 'EXATO' : 'NAO_EXATO',
+        })),
+      );
+      setErro(null);
+    } catch {
+      setErro('Não foi possível carregar a fila de verificação.');
+    } finally {
+      setCarregando(false);
+    }
   }, []);
+
+  useEffect(() => { void carregar(); }, [carregar]);
 
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -79,6 +109,94 @@ export function AbaVerificar() {
     const comissao = ganhos.reduce((s, l) => s + Number(l.comissaoEstimada || 0), 0);
     return { total: filtradas.length, ganhos: ganhos.length, valor, comissao };
   }, [filtradas]);
+
+  // ── REGISTRAR O QUE ACONTECEU (@R 08/09: ⟦não esqueça dos botões para atualizar as
+  // informações em cada área de resultados⟧) ────────────────────────────────────────
+  // Sem isto a aba é um relatório: mostra o problema e não deixa resolvê-lo. Com o
+  // botão, ela é uma FILA DE TRABALHO — registrar tira o item da lista, e a lista
+  // encolhendo é a prova de que o dinheiro está sendo apurado.
+  // Reusa as DUAS ações que já existem (`/financeiro/<id>/confirmar/` e `/perda/`) —
+  // nenhum endpoint novo. É o mesmo registro que a aba "Aguardando cirurgia" grava.
+  const [emRegistro, setEmRegistro] = useState<ResultadoFinanceiroPendente | null>(null);
+  const [comissao, setComissao] = useState<number | null>(null);
+  const [dataConf, setDataConf] = useState('');
+  const [motivoPerda, setMotivoPerda] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null);
+
+  const abrirRegistro = (l: ResultadoFinanceiroPendente) => {
+    setEmRegistro(l);
+    // Pré-preenche com a comissão ESTIMADA — é uma sugestão para conferir, não um
+    // valor confirmado; por isso o campo é editável e o rótulo diz "estimada".
+    setComissao(Number(l.comissaoEstimada || 0) || null);
+    setDataConf(new Date().toISOString().slice(0, 10));
+    setMotivoPerda('');
+    setErroSalvar(null);
+  };
+
+  const gravar = async (tipo: 'realizada' | 'nao-houve') => {
+    if (!emRegistro) return;
+    setSalvando(true);
+    setErroSalvar(null);
+    try {
+      if (tipo === 'realizada') {
+        await confirmarCirurgia(emRegistro.orderId, {
+          valorComissao: Number(comissao || 0),
+          dataConfirmacao: dataConf,
+        });
+      } else {
+        await registrarPerdaCirurgia(emRegistro.orderId, {
+          descCirurgiaPerda: motivoPerda.trim(),
+          dataConfirmacao: dataConf,
+        });
+      }
+      setEmRegistro(null);
+      await carregar();   // a lista encolhe: a prova de que o registro entrou
+    } catch {
+      setErroSalvar('Não foi possível gravar. Nada foi alterado — tente de novo.');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  // ── A ÁREA DA ADVOGADA ────────────────────────────────────────────────────────────
+  // Diálogo separado do financeiro de propósito: são DUAS perguntas diferentes, feitas
+  // por pessoas diferentes. Ela responde "o desfecho é nosso?"; o @R responde "a cirurgia
+  // aconteceu e o médico pagou?". Misturar os dois num formulário só faria cada um
+  // preencher o campo do outro no chute.
+  const [emJuridico, setEmJuridico] = useState<ResultadoFinanceiroPendente | null>(null);
+  const [confEscolha, setConfEscolha] = useState<ConfirmacaoJuridica>('NOSSO');
+  const [confObs, setConfObs] = useState('');
+
+  const abrirJuridico = (l: ResultadoFinanceiroPendente) => {
+    setEmJuridico(l);
+    setConfEscolha((l.confirmacaoJuridica as ConfirmacaoJuridica) || 'NOSSO');
+    setConfObs(l.confirmacaoJuridicaObs || '');
+    setErroSalvar(null);
+  };
+
+  const gravarJuridico = async () => {
+    if (!emJuridico) return;
+    setSalvando(true);
+    setErroSalvar(null);
+    try {
+      await confirmarDesfechoJuridico(emJuridico.orderId, {
+        confirmacao: confEscolha,
+        observacao: confObs.trim() || undefined,
+      });
+      setEmJuridico(null);
+      await carregar();
+    } catch {
+      // O backend recusa NAO_NOSSO sem explicação — a mensagem diz por quê.
+      setErroSalvar(
+        confEscolha === 'NAO_NOSSO' && confObs.trim().length < 10
+          ? 'Para marcar que o pagamento não foi nosso, escreva o que aconteceu (mín. 10 caracteres).'
+          : 'Não foi possível gravar. Nada foi alterado — tente de novo.',
+      );
+    } finally {
+      setSalvando(false);
+    }
+  };
 
   if (erro) return <div className="aba-verificar__erro">{erro}</div>;
 
@@ -103,6 +221,29 @@ export function AbaVerificar() {
       </div>
 
       <div className="aba-verificar__barra">
+        {/* Filtro do Orç × Pago como CHIPS, não como dropdown escondido no cabeçalho:
+            é por onde a investigação começa (bate exato = indício mais forte), então
+            precisa estar visível sem procurar. Cada chip traz a contagem. */}
+        <div className="aba-verificar__chips">
+          {([
+            ['', 'Todos'],
+            ['EXATO', 'Bate exato'],
+            ['NAO_EXATO', 'Não bate'],
+            ['SEM_PAGAMENTO', 'Sem pagamento'],
+          ] as const).map(([valor, rotulo]) => {
+            const qtd = valor ? linhas.filter((l) => l.orcXpago === valor).length : linhas.length;
+            return (
+              <button
+                type="button"
+                key={valor || 'todos'}
+                className={`chip-bate ${filtroBate === valor ? 'chip-bate--ativo' : ''} ${valor === 'EXATO' ? 'chip-bate--forte' : ''}`}
+                onClick={() => setFiltroBate(valor)}
+              >
+                {rotulo} <span className="chip-bate__n">{qtd}</span>
+              </button>
+            );
+          })}
+        </div>
         <span className="p-input-icon-left">
           <i className="pi pi-search" />
           <InputText
@@ -146,6 +287,46 @@ export function AbaVerificar() {
           style={{ minWidth: '11rem' }}
           body={(l: ResultadoFinanceiroPendente) => l.nomeMedico || '—'}
         />
+        {/* A PALAVRA DA ADVOGADA (@R 08/09: "sempre fará") — a coluna que diz se alguém
+            que sabe o estado de HOJE já olhou este caso. O banco guarda o que foi escrito
+            até aquele dia; o processo continua depois, e essa continuação não está em
+            campo nenhum. Foi o que quase custou o ord#182: eu li um acompanhamento antigo
+            e ia reclassificar R$ 584.501 como não-nosso — o @R sabia que o nosso médico
+            tinha pedido readequação do orçamento, e isso não estava escrito em lugar
+            nenhum do sistema. Agora está, com nome e data. */}
+        <Column
+          field="confirmacaoJuridica"
+          header="Jurídico"
+          sortable
+          style={{ width: '10rem' }}
+          body={(l: ResultadoFinanceiroPendente) => {
+            const c = l.confirmacaoJuridica;
+            if (!c) {
+              return (
+                <Button
+                  label="Confirmar"
+                  icon="pi pi-gavel"
+                  size="small"
+                  text
+                  onClick={() => abrirJuridico(l)}
+                  tooltip="A advogada ainda não olhou este desfecho"
+                />
+              );
+            }
+            const cor = c === 'NOSSO' ? 'success' : c === 'NAO_NOSSO' ? 'danger' : 'warning';
+            return (
+              <Tag
+                value={c === 'NOSSO' ? 'é nosso' : c === 'NAO_NOSSO' ? 'não é nosso' : 'em curso'}
+                severity={cor}
+                // A observação é o dado que realmente importa — fica no hover para não
+                // ocupar coluna, mas nunca some.
+                title={`${ROTULO_CONFIRMACAO[c]}${l.confirmacaoJuridicaObs ? ' — ' + l.confirmacaoJuridicaObs : ''}`}
+                onClick={() => abrirJuridico(l)}
+                style={{ cursor: 'pointer' }}
+              />
+            );
+          }}
+        />
         <Column
           field="valorOrcamento"
           header="Orçamos"
@@ -177,6 +358,23 @@ export function AbaVerificar() {
               </span>
             );
           }}
+        />
+        {/* ORÇ × PAGO — binário e filtrável (@R 08/09: ⟦quem bate exato tem que ter uma
+            coluna com valor binário para sabermos, e podemos filtrar ao lado do valor
+            pago⟧). O "bate ao centavo" já vinha como cor no valor; cor não se filtra
+            nem se ordena. Como COLUNA, permite isolar em 1 clique os casos em que o
+            Estado pagou exatamente o que orçamos — o indício mais forte de que o
+            pagamento é do nosso orçamento, e por onde a investigação deve começar. */}
+        <Column
+          field="orcXpago"
+          header="Orç × Pago"
+          sortable
+          style={{ width: '8.5rem' }}
+          body={(l: LinhaVerificar) =>
+            l.orcXpago === 'SEM_PAGAMENTO' ? <Tag value="sem pagto" severity="secondary" />
+            : l.orcXpago === 'EXATO' ? <Tag value="BATE" severity="success" icon="pi pi-check" />
+            : <Tag value="não bate" severity="warning" />
+          }
         />
         <Column
           field="empenho548.ultimoPagamento"
@@ -223,7 +421,162 @@ export function AbaVerificar() {
           )}
         />
         <Column field="nprocesso" header="Processo" style={{ width: '13rem' }} body={(l) => l.nprocesso || '—'} />
+        <Column
+          header="Registrar"
+          frozen
+          alignFrozen="right"
+          style={{ width: '9rem' }}
+          body={(l: ResultadoFinanceiroPendente) => (
+            <Button
+              label="Registrar"
+              icon="pi pi-check-square"
+              size="small"
+              outlined
+              onClick={() => abrirRegistro(l)}
+            />
+          )}
+        />
       </DataTable>
+
+      <Dialog
+        header={emJuridico ? `Confirmação jurídica — pedido #${emJuridico.orderId}` : ''}
+        visible={!!emJuridico}
+        style={{ width: 'min(560px, 94vw)' }}
+        modal
+        onHide={() => setEmJuridico(null)}
+      >
+        {emJuridico && (
+          <div className="reg-desfecho">
+            <p className="reg-desfecho__paciente">
+              <strong>{emJuridico.paciente}</strong>
+              {emJuridico.nomeMedico ? ` · ${emJuridico.nomeMedico}` : ''}
+            </p>
+            <p className="reg-desfecho__nota">
+              O sistema guarda o que foi escrito <em>até aquele dia</em>. O processo continua
+              depois — e só quem acompanha sabe o estado de hoje.
+            </p>
+
+            <div className="reg-desfecho__opcoes">
+              {(['NOSSO', 'NAO_NOSSO', 'EM_ANDAMENTO'] as ConfirmacaoJuridica[]).map((op) => (
+                <button
+                  type="button"
+                  key={op}
+                  className={`opcao-juridica ${confEscolha === op ? 'opcao-juridica--ativa' : ''} opcao-juridica--${op.toLowerCase()}`}
+                  onClick={() => setConfEscolha(op)}
+                >
+                  {ROTULO_CONFIRMACAO[op]}
+                </button>
+              ))}
+            </div>
+
+            <label className="reg-desfecho__campo">
+              <span>
+                O que aconteceu no processo
+                {confEscolha === 'NAO_NOSSO' && <strong> (obrigatório)</strong>}
+              </span>
+              <InputTextarea
+                rows={3}
+                value={confObs}
+                onChange={(e) => setConfObs(e.target.value)}
+                placeholder="ex.: o juiz negou o médico indicado pela paciente e mandou seguir pelo nosso orçamento"
+              />
+            </label>
+
+            <Button
+              label="Registrar confirmação"
+              icon="pi pi-check"
+              loading={salvando}
+              disabled={confEscolha === 'NAO_NOSSO' && confObs.trim().length < 10}
+              onClick={gravarJuridico}
+            />
+            {erroSalvar && <p className="reg-desfecho__erro">{erroSalvar}</p>}
+          </div>
+        )}
+      </Dialog>
+
+      <Dialog
+        header={emRegistro ? `Registrar desfecho — pedido #${emRegistro.orderId}` : ''}
+        visible={!!emRegistro}
+        style={{ width: 'min(560px, 94vw)' }}
+        modal
+        onHide={() => setEmRegistro(null)}
+      >
+        {emRegistro && (
+          <div className="reg-desfecho">
+            <p className="reg-desfecho__paciente">
+              <strong>{emRegistro.paciente}</strong>
+              {emRegistro.nomeMedico ? ` · ${emRegistro.nomeMedico}` : ''}
+            </p>
+
+            {/* Os números na frente de quem decide — para não precisar voltar à
+                tabela e decorar. */}
+            <div className="reg-desfecho__fatos">
+              <span>Orçamos <strong>{MOEDA.format(Number(emRegistro.valorOrcamento || 0))}</strong></span>
+              <span>
+                Estado pagou{' '}
+                <strong>
+                  {emRegistro.empenho548?.pago
+                    ? MOEDA.format(Number(emRegistro.empenho548.pago))
+                    : '—'}
+                </strong>
+                {emRegistro.empenho548?.ultimoPagamento
+                  ? ` em ${emRegistro.empenho548.ultimoPagamento.split('-').reverse().join('/')}`
+                  : ''}
+              </span>
+            </div>
+
+            <label className="reg-desfecho__campo">
+              <span>Data</span>
+              <InputText type="date" value={dataConf} onChange={(e) => setDataConf(e.target.value)} />
+            </label>
+
+            <div className="reg-desfecho__caminho">
+              <h4>A cirurgia foi realizada</h4>
+              <label className="reg-desfecho__campo">
+                <span>Comissão (estimada — confira antes de gravar)</span>
+                <InputNumber
+                  value={comissao}
+                  onValueChange={(e) => setComissao(e.value ?? null)}
+                  mode="currency" currency="BRL" locale="pt-BR"
+                />
+              </label>
+              <Button
+                label="Confirmar cirurgia e lançar comissão"
+                icon="pi pi-check"
+                loading={salvando}
+                disabled={!dataConf}
+                onClick={() => gravar('realizada')}
+              />
+            </div>
+
+            <div className="reg-desfecho__caminho reg-desfecho__caminho--perda">
+              <h4>Não houve cirurgia</h4>
+              <label className="reg-desfecho__campo">
+                <span>O que aconteceu (obrigatório)</span>
+                <InputTextarea
+                  rows={2}
+                  value={motivoPerda}
+                  onChange={(e) => setMotivoPerda(e.target.value)}
+                  placeholder="ex.: paciente desistiu · operou com outro prestador · pagamento era de outra demanda"
+                />
+              </label>
+              <Button
+                label="Registrar que não houve cirurgia"
+                icon="pi pi-times"
+                severity="danger"
+                outlined
+                loading={salvando}
+                /* Motivo é obrigatório de propósito: perda sem razão registrada é
+                   exatamente o buraco que nos fez perder o histórico das outras. */
+                disabled={!motivoPerda.trim() || !dataConf}
+                onClick={() => gravar('nao-houve')}
+              />
+            </div>
+
+            {erroSalvar && <p className="reg-desfecho__erro">{erroSalvar}</p>}
+          </div>
+        )}
+      </Dialog>
     </div>
   );
 }

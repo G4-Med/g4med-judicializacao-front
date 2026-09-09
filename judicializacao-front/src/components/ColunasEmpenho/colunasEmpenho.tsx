@@ -73,11 +73,22 @@ export function colunaEmpenhoEstado() {
             // ALGO nesse processo antes de nós entrarmos — alerta estratégico, não desfecho.
             ? <Tag value={`Depósito no processo ${fmtBRL(r.empenho548.pago)}`} severity="warning" icon="pi pi-exclamation-circle"
                 title="ATENÇÃO: o Estado JÁ depositou em juízo neste CNJ e nós ainda NEM protocolamos — provavelmente outro orçamento venceu ou é outro item. Conferir se ainda vale protocolar. NÃO significa que este pedido foi pago." />
+            : r.empenho548.sinal === 'PAGAMENTO_SEM_DATA'
+            // ── "SEM DATA" ¬É "DE OUTRA COISA" (08/09, GO do @R pelo cartão) ────────
+            // Até hoje estes 61 caíam no rótulo cinza "Histórico" abaixo, com o tooltip
+            // dizendo "ANTERIOR ao pedido... não é sinal de baixa" — e saíam da fila.
+            // Medido: a API do 548 os marca PAGO_ANTES_DO_PEDIDO, mas 61 de 61 têm data
+            // NULA e o texto da própria API diz "0 pagamento(s) anteriores (último em
+            // None)". Nunca soubemos quando pagaram; o rótulo é que afirmava.
+            // Âmbar e não cinza porque a ação é CONFERIR, ¬arquivar: 12 destes têm valor
+            // idêntico ao orçado. Cinza é a cor de quem já foi resolvido.
+            ? <Tag value={`Sem data ${fmtBRL(r.empenho548.pago)}`} severity="warning" icon="pi pi-question-circle"
+                title="O Estado PAGOU neste CNJ, mas a base do 548 não traz a DATA do pagamento — então não dá para saber se foi antes ou depois do nosso pedido. Não é histórico nem baixa: é indeterminado, e continua na fila até a data aparecer. Favorecido = tribunal, não o prestador." />
             : r.empenho548.sinal === 'PROVAVEL_OUTRO_ITEM'
-            // Régua da 548: pagamento ANTERIOR ao pedido com valor distante = o
+            // Régua da 548: pagamento ANTERIOR ao pedido (COM data) e valor distante = o
             // mesmo processo pagou OUTRO item — não conta como "este pedido pago".
             ? <Tag value={`Histórico ${fmtBRL(r.empenho548.pago)}`} severity="secondary" icon="pi pi-history"
-                title="Este CNJ tem pagamento no Estado, mas ANTERIOR ao pedido e com valor distante do orçado — provavelmente OUTRO item do mesmo processo. Não é sinal de baixa." />
+                title="Este CNJ tem pagamento no Estado com data ANTERIOR ao pedido e valor distante do orçado — provavelmente OUTRO item do mesmo processo. Não é sinal de baixa." />
             : <Tag value={`PAGO ${fmtBRL(r.empenho548.pago)}`} severity="success" icon="pi pi-check-circle"
                 title={`O Estado PAGOU ${r.empenho548.nEmpenhos} empenho(s) neste CNJ (${r.empenho548.sinal === 'PAGO_APOS_O_PEDIDO' ? 'depois do pedido — candidato a baixa' : 'valor compatível com o orçado — conferir'}). Valor do EMPENHO, não do prestador.`} />)
           : <Tag value="Empenhado" severity="info" icon="pi pi-wallet"

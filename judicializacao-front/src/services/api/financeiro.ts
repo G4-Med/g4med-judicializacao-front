@@ -105,7 +105,7 @@ export interface ResultadoFinanceiroPendente {
     ultimoPagamento: string | null;
     ultimoPagamentoTipo: 'pagamento' | 'empenho' | null;
     /** Regua de ATRIBUICAO: pagamento no CNJ nao significa ESTE pedido pago. */
-    sinal: 'PAGO_APOS_O_PEDIDO' | 'REVISAR_VALOR_BATE' | 'PROVAVEL_OUTRO_ITEM' | 'EMPENHADO' | 'DEPOSITO_NO_PROCESSO';
+    sinal: 'PAGO_APOS_O_PEDIDO' | 'REVISAR_VALOR_BATE' | 'PROVAVEL_OUTRO_ITEM' | 'PAGAMENTO_SEM_DATA' | 'EMPENHADO' | 'DEPOSITO_NO_PROCESSO';
     classe: 'EXATO' | 'NAO_EXATO' | 'EMPENHADO' | 'SEM_REGISTRO';
   } | null;
   statusCirurgia: null;

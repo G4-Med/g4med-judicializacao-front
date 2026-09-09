@@ -307,6 +307,33 @@ export function ResultadosFinanceirosPage() {
             body={renderComissao}
             style={{ minWidth: '10rem' }}
           />
+          {/* O QUE JÁ ENTROU (@R 08/09: "tudo que a gente já teve recebimento, para
+              pararmos de perder dinheiro"). A aba mostrava só a comissão DEVIDA e
+              parava aí — as 6 fichas com R$ 32.679,70 recebidos existiam no banco e
+              não chegavam à tela porque o campo não era serializado.
+              DEVIDO e RECEBIDO ficam em colunas SEPARADAS de propósito: são duas
+              perguntas ("quanto é nosso?" × "quanto entrou?") e juntá-las apagaria
+              exatamente a diferença que interessa cobrar. */}
+          <Column
+            field="valorRecebido"
+            header={cabecalhoComHint('Recebido', 'Quanto de fato ENTROU. Compare com a Comissão ao lado: a diferença é o que ainda falta receber.')}
+            sortable
+            style={{ minWidth: '9rem', textAlign: 'right' }}
+            body={(r: ResultadoFinanceiroItem) =>
+              Number(r.valorRecebido)
+                ? <span className="rf-recebido">{formatarMoeda(Number(r.valorRecebido))}</span>
+                : <span className="rf-sem-recebimento">—</span>
+            }
+          />
+          <Column
+            field="dataPagamento"
+            header="Pago em"
+            sortable
+            style={{ minWidth: '8rem' }}
+            body={(r: ResultadoFinanceiroItem) =>
+              r.dataPagamento ? r.dataPagamento.split('-').reverse().join('/') : '—'
+            }
+          />
           <Column
             field="statusCirurgia"
             header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}

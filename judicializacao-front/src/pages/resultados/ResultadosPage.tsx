@@ -13,6 +13,7 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dialog } from 'primereact/dialog';
+import { Dropdown } from 'primereact/dropdown';
 import { Timeline } from 'primereact/timeline';
 import { FilterMatchMode } from 'primereact/api';
 import {
@@ -80,6 +81,8 @@ interface ResultadoProcesso {
   dataProtocolo: string;
   status: string;
   resultado: string;
+  confirmacaoJuridica?: string | null;
+  confirmacaoJuridicaObs?: string | null;
   documentos: DocumentoProcesso[];
 }
 
@@ -161,7 +164,17 @@ const carregarDados = async (): Promise<ResultadoProcesso[]> => {
           numeroProcesso: o.nprocesso ?? '',
           dataProtocolo: o.dataProtocolo ?? o.dataResultado ?? '',
           status: o.statusProcesso ?? '',
-          resultado: o.statusProcesso === 'Ganho' ? 'Ganho' : 'Perda',
+          // 3 ESTADOS, não 2 (@R 08/09). `statusProcesso='Ganho'` responde "o processo
+          // foi procedente?" — não "o dinheiro é nosso?". Dá para ganhar a causa e o
+          // pagamento ir para outro prestador: isso é PERDA COMERCIAL contada hoje como
+          // vitória. Só a advogada preenche `confirmacaoJuridica`, porque só ela sabe o
+          // estado de HOJE — o banco guarda o que foi escrito até aquele dia.
+          resultado:
+            o.confirmacaoJuridica === 'NAO_NOSSO'
+              ? 'Ganhou, não é nosso'
+              : o.statusProcesso === 'Ganho' ? 'Ganho' : 'Perda',
+          confirmacaoJuridica: o.confirmacaoJuridica ?? null,
+          confirmacaoJuridicaObs: o.confirmacaoJuridicaObs ?? null,
           documentos: [] as DocumentoProcesso[],
         };
       });
@@ -440,14 +453,36 @@ const kpis = useMemo(() => {
     <span className="dias-cell">{rowData.dias}</span>
   );
 
-  const resultadoBodyTemplate = (rowData: ResultadoProcessoTableRow) => (
-    <Tag
-      value={rowData.resultado}
-      severity={getStatusSeverity(rowData.resultado)}
-      style={getStatusTagStyle(rowData.resultado)}
-      className="status-tag-custom"
-    />
-  );
+  const resultadoBodyTemplate = (rowData: ResultadoProcessoTableRow) => {
+    // O 3º estado tem cor PRÓPRIA (âmbar), ¬a do ganho nem a da perda: ele não é
+    // nenhum dos dois. Pintá-lo de verde repetiria o erro que ele existe p/ corrigir
+    // (ganho jurídico contado como ganho comercial); de vermelho apagaria que a causa
+    // FOI ganha — informação que o jurídico precisa. O title carrega a explicação da
+    // advogada, que é o dado que de fato justifica a classificação.
+    if (rowData.confirmacaoJuridica === 'NAO_NOSSO') {
+      return (
+        <Tag
+          value="Ganhou, não é nosso"
+          className="status-tag-custom"
+          style={{ backgroundColor: '#fef3c7', color: '#92400e', border: '1px solid #d08a1c', fontWeight: 600 }}
+          title={rowData.confirmacaoJuridicaObs || 'Confirmado pelo jurídico: o pagamento não foi nosso'}
+        />
+      );
+    }
+    return (
+      <Tag
+        value={rowData.resultado}
+        severity={getStatusSeverity(rowData.resultado)}
+        style={getStatusTagStyle(rowData.resultado)}
+        className="status-tag-custom"
+        // Ganho JÁ confirmado pela advogada ganha o ✓ — separa "procedente" de
+        // "procedente E conferido por quem sabe o estado de hoje".
+        title={rowData.confirmacaoJuridica === 'NOSSO'
+          ? `Confirmado pelo jurídico${rowData.confirmacaoJuridicaObs ? ': ' + rowData.confirmacaoJuridicaObs : ''}`
+          : undefined}
+      />
+    );
+  };
 
   const atualizarBodyTemplate = (rowData: ResultadoProcessoTableRow) => (
     <Button
@@ -595,7 +630,36 @@ const kpis = useMemo(() => {
             body={(rowData: ResultadoProcessoTableRow) => rowData.sequencial}
            frozen alignFrozen="left" />
           {/* Ações da fase ao lado do paciente (@R 29/08) — mesmos botões, agora fixos à esquerda. */}
-{colunaAcoesFase({ corpo: (r: any) => <>{atualizarBodyTemplate(r)}{resultadoBodyTemplate(r)}</>, excluir: carregarDados })}
+{/* A etiqueta Ganho/Perda SAIU daqui (@R 08/09: ⟦ou você tira de ações os status e
+    passa para uma coluna para fazer o filtro, ou dá a ela o cabeçalho para filtrar⟧).
+    Dentro de "Ações" ela não tinha cabeçalho próprio — logo não tinha filtro nem
+    ordenação, e a informação mais importante da tela (ganhou ou perdeu?) só podia ser
+    lida linha a linha. Virou a coluna "Resultado" logo abaixo, com filtro de seleção. */}
+{colunaAcoesFase({ corpo: (r: any) => atualizarBodyTemplate(r), excluir: carregarDados })}
+          <Column
+            field="resultado"
+            header={cabecalhoComHint('Resultado', 'Ganho ou Perda do processo. Use o filtro para ver só um dos dois.')}
+            sortable
+            filter
+            showFilterMenu={false}
+            filterElement={(options) => (
+              <Dropdown
+                value={options.value}
+                options={[
+                  { label: 'Todos', value: '' },
+                  { label: 'Ganho', value: 'Ganho' },
+                  { label: 'Ganhou, não é nosso', value: 'Ganhou, não é nosso' },
+                  { label: 'Perda', value: 'Perda' },
+                ]}
+                onChange={(e) => options.filterApplyCallback(e.value)}
+                placeholder="Todos"
+                className="p-column-filter"
+                showClear={false}
+              />
+            )}
+            style={{ minWidth: '8.5rem' }}
+            body={(r: any) => resultadoBodyTemplate(r)}
+          />
           <Column
             field="paciente" body={(r: any) => nomeComCopiar(r.paciente)}
             header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')}
