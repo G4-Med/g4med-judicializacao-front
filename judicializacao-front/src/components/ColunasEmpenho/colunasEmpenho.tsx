@@ -73,11 +73,28 @@ export function colunaEmpenhoEstado() {
             // ALGO nesse processo antes de nós entrarmos — alerta estratégico, não desfecho.
             ? <Tag value={`Depósito no processo ${fmtBRL(r.empenho548.pago)}`} severity="warning" icon="pi pi-exclamation-circle"
                 title="ATENÇÃO: o Estado JÁ depositou em juízo neste CNJ e nós ainda NEM protocolamos — provavelmente outro orçamento venceu ou é outro item. Conferir se ainda vale protocolar. NÃO significa que este pedido foi pago." />
+            : r.empenho548.sinal === 'PAGAMENTO_SEM_DATA'
+            // ── "SEM DATA" ¬É "DE OUTRA COISA" (08/09, GO do @R pelo cartão) ────────
+            // Até hoje estes 61 caíam no rótulo cinza "Histórico" abaixo, com o tooltip
+            // dizendo "ANTERIOR ao pedido... não é sinal de baixa" — e saíam da fila.
+            // Medido: a API do 548 os marca PAGO_ANTES_DO_PEDIDO, mas 61 de 61 têm data
+            // NULA e o texto da própria API diz "0 pagamento(s) anteriores (último em
+            // None)". Nunca soubemos quando pagaram; o rótulo é que afirmava.
+            // Âmbar e não cinza porque a ação é CONFERIR, ¬arquivar: 12 destes têm valor
+            // idêntico ao orçado. Cinza é a cor de quem já foi resolvido.
+            // ⚠ CORREÇÃO 09/09 (lacuna da aliança): o texto anterior dizia "a base do 548
+            // não traz a DATA" — e isso é FALSO. Medido: dos 90 rastros sem data em produção,
+            // 84 foram achados no 331 sem `pag_data_registro`, e 84 de 84 têm valor E MÊS
+            // (dt_anomes) no dataset oficial do Estado. A data existe na fonte; o nosso
+            // coletor é que não a busca (ele só varre empenho nunca-visto, nunca revisita).
+            // Enquanto isso não é curado, o rótulo diz a verdade sobre o INSTRUMENTO.
+            ? <Tag value={`Data não coletada ${fmtBRL(r.empenho548.pago)}`} severity="warning" icon="pi pi-question-circle"
+                title="O Estado PAGOU neste CNJ, mas NÓS não trouxemos a data: o nosso coletor só busca empenho novo e não revisita os já conhecidos. O dado existe na fonte oficial (com precisão de MÊS) — medido em 09/09: 84 de 84 casos. Sem a data não dá para dizer se o pagamento foi antes ou depois do nosso pedido, então continua na fila. Favorecido = tribunal, não o prestador." />
             : r.empenho548.sinal === 'PROVAVEL_OUTRO_ITEM'
-            // Régua da 548: pagamento ANTERIOR ao pedido com valor distante = o
+            // Régua da 548: pagamento ANTERIOR ao pedido (COM data) e valor distante = o
             // mesmo processo pagou OUTRO item — não conta como "este pedido pago".
             ? <Tag value={`Histórico ${fmtBRL(r.empenho548.pago)}`} severity="secondary" icon="pi pi-history"
-                title="Este CNJ tem pagamento no Estado, mas ANTERIOR ao pedido e com valor distante do orçado — provavelmente OUTRO item do mesmo processo. Não é sinal de baixa." />
+                title="Este CNJ tem pagamento no Estado com data ANTERIOR ao pedido e valor distante do orçado — provavelmente OUTRO item do mesmo processo. Não é sinal de baixa." />
             : <Tag value={`PAGO ${fmtBRL(r.empenho548.pago)}`} severity="success" icon="pi pi-check-circle"
                 title={`O Estado PAGOU ${r.empenho548.nEmpenhos} empenho(s) neste CNJ (${r.empenho548.sinal === 'PAGO_APOS_O_PEDIDO' ? 'depois do pedido — candidato a baixa' : 'valor compatível com o orçado — conferir'}). Valor do EMPENHO, não do prestador.`} />)
           : <Tag value="Empenhado" severity="info" icon="pi pi-wallet"
@@ -97,7 +114,9 @@ export function colunaPagoEm() {
         const dt = r.empenho548?.ultimoPagamento;
         if (!dt) {
           return (r.empenho548?.pago ?? 0) > 0
-            ? <span style={{ opacity: 0.6 }} title="O portal registra o valor pago mas não expõe a data deste pagamento">sem data na fonte</span>
+            // "na fonte" era a palavra errada (09/09): o portal EXPÕE a data (mês) — quem não
+            // a trouxe fomos nós. Dizer "na fonte" jogava a culpa no Estado e encerrava a busca.
+            ? <span style={{ opacity: 0.6 }} title="O portal registra o valor pago E o mês; o nosso coletor não trouxe essa data (só busca empenho novo, não revisita os conhecidos)">data não coletada</span>
             : <span style={{ opacity: 0.5 }}>—</span>;
         }
         const dias = Math.floor((Date.now() - new Date(`${dt}T00:00:00`).getTime()) / 86400000);

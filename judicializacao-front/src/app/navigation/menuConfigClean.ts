@@ -58,16 +58,13 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
       { label: 'Env. à SES S/Prot', icon: 'pi pi-angle-right', path: '/enviado-ses', screen: 'protocolados' },
     ],
   },
-  {
-    label: 'Resultados',
-    icon: 'pi pi-chart-line',
-    children: [
-      { label: 'Resultados', icon: 'pi pi-angle-right', path: '/resultados', screen: 'resultados' },
-      { label: 'Aguardando Cirurgia', icon: 'pi pi-angle-right', path: '/aguardando-cirurgia', screen: 'aguardandoCirurgia' },
-      { label: 'Resultados Financeiros', icon: 'pi pi-angle-right', path: '/resultados-financeiros', screen: 'resultadosFinanceiros' },
-      { label: 'Perdas', icon: 'pi pi-angle-right', path: '/perdas', screen: 'perdas' },
-    ],
-  },
+  // RESULTADOS — 1 entrada, 5 abas (@R 08/09, olhando a tela: ⟦não era melhor tirar
+  // resultados, aguardando cirurgia, resultados financeiros e perdas e ter tudo ali uma
+  // coisa só⟧). Eram 4 sub-itens para UM assunto; quem procurava "quanto é nosso" tinha
+  // que adivinhar em qual dos 4 olhar — e a resposta não estava em nenhum deles.
+  // As rotas antigas continuam existindo como redirect (AppRoutes.tsx), então link velho
+  // salvo no navegador de alguém ainda abre a aba certa.
+  { label: 'Resultados', icon: 'pi pi-chart-line', path: '/painel-resultados', screen: 'resultados' },
   { label: 'Emails', icon: 'pi pi-envelope', path: '/emails', screen: 'emails' },
   {
     label: 'Relatórios',

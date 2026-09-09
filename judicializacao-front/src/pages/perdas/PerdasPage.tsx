@@ -143,6 +143,54 @@ export function PerdasPage() {
     });
   }, [registros]);
 
+  // ── MOTIVO COMO FILTRO (@R 08/09) ─────────────────────────────────────────────
+  // A perda não acontece num lugar só: acontece em ETAPAS diferentes do funil, e o
+  // motivo diz em qual. Sem o motivo, "353 perdas" é um número que não gera nenhuma
+  // ação; com ele, cada grupo tem um dono e uma pergunta diferente:
+  //   Perda Pelo Jurídico            → triagem funcionando (¬é falha, é filtro)
+  //   Perda por falta de especialista→ não tínhamos quem operasse (rede de médicos)
+  //   Perda pelo Médico              → tínhamos e ele recusou (relação com o médico)
+  //   Perda pelo Orçamento           → perdemos no preço (competitividade)
+  //   Perda (encontro de contas)     → reconciliação, ¬perda operacional
+  // Somar tudo em "perdas" mistura triagem que funcionou com capacidade que faltou —
+  // duas coisas que pedem decisões opostas.
+  const ICONES: Record<string, string> = {
+    'Perda Pelo Juridico': 'pi pi-briefcase',
+    'Perda pelo Medico': 'pi pi-user-minus',
+    'Perda por falta de especialista': 'pi pi-ban',
+    'Perda pelo Orçamento': 'pi pi-dollar',
+    'Perda sem resposta da SES': 'pi pi-clock',
+    'Perda de prazo de protocolação': 'pi pi-calendar-times',
+    'Perda por segredo de justiça': 'pi pi-lock',
+  };
+  const [motivoSelecionado, setMotivoSelecionado] = useState<string | null>(null);
+
+  const motivos = useMemo(() => {
+    const mapa = new Map<string, { qtd: number; valor: number }>();
+    for (const item of dataComCamposCalculados) {
+      // Perda sem motivo registrado é informação, não sujeira — ela ganha o próprio
+      // grupo para que se veja QUANTAS não sabemos explicar.
+      const chave = (item.statusPerda || '').trim() || 'Sem motivo registrado';
+      const atual = mapa.get(chave) ?? { qtd: 0, valor: 0 };
+      atual.qtd += 1;
+      atual.valor += item.valorOrcamento || item.refPreco || 0;
+      mapa.set(chave, atual);
+    }
+    return [...mapa.entries()]
+      .map(([motivo, v]) => ({ motivo, ...v, icone: ICONES[motivo] ?? 'pi pi-question-circle' }))
+      .sort((a, b) => b.qtd - a.qtd);
+  }, [dataComCamposCalculados]);
+
+  /** Linhas da tabela respeitando o motivo escolhido nos cards. */
+  const linhasVisiveis = useMemo(
+    () => (motivoSelecionado
+      ? dataComCamposCalculados.filter(
+          (i) => ((i.statusPerda || '').trim() || 'Sem motivo registrado') === motivoSelecionado,
+        )
+      : dataComCamposCalculados),
+    [dataComCamposCalculados, motivoSelecionado],
+  );
+
   const kpis = useMemo(() => {
     const totalProcessos = dataComCamposCalculados.length;
     const valorTotal = dataComCamposCalculados.reduce(
@@ -233,13 +281,8 @@ export function PerdasPage() {
 
   return (
     <div className="perdas-page">
-      <div className="page-header">
-        <div>
-          <h1>Perdas</h1>
-          <p>Visão consolidada dos processos improcedentes</p>
-        </div>
-      </div>
-
+      {/* Sem cabeçalho próprio (08/09): esta página não tem mais rota — é a aba
+          "Perdas" do Painel de Resultados, que já traz o título. */}
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid kpi-grid-5">
         <div className="kpi-card">
@@ -250,53 +293,31 @@ export function PerdasPage() {
           <div className="kpi-value">{kpis.totalProcessos}</div>
         </div>
 
-        <div className="kpi-card">
-          <div className="kpi-header">
-            <span>Perda Pelo Jurídico</span>
-            <i className="pi pi-briefcase"></i>
-          </div>
-          <div className="kpi-value">{kpis.perdaJuridico}</div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-header">
-            <span>Perda pelo Médico</span>
-            <i className="pi pi-user-minus"></i>
-          </div>
-          <div className="kpi-value">{kpis.perdaMedico}</div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-header">
-            <span>Perda por falta de especialista</span>
-            <i className="pi pi-ban"></i>
-          </div>
-          <div className="kpi-value">{kpis.perdaSemEspecialista}</div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-header">
-            <span>SES sem resposta</span>
-            <i className="pi pi-clock"></i>
-          </div>
-          <div className="kpi-value">{kpis.perdaSesSemResposta}</div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-header">
-            <span>Prazo de protocolação</span>
-            <i className="pi pi-calendar-times"></i>
-          </div>
-          <div className="kpi-value">{kpis.perdaPrazoProtocolo}</div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-header">
-            <span>Segredo de justiça</span>
-            <i className="pi pi-lock"></i>
-          </div>
-          <div className="kpi-value">{kpis.perdaSegredo}</div>
-        </div>
+        {/* MOTIVOS DERIVADOS DOS DADOS, ¬fixos no código (@R 08/09: ⟦perda tem motivos…
+            filtrar o motivo nos ajuda a entender o que está acontecendo⟧).
+            POR QUE MUDOU: os cards eram 6 constantes escritas à mão. Dois motivos com
+            volume real ficavam INVISÍVEIS por não terem card — "Perda pelo Orçamento"
+            (44 pedidos) e "Perda (encontro de contas Wesley)" (39), medidos no banco em
+            08/09. Card fixo transforma motivo novo em motivo que não existe: quem lê a
+            tela conclui que a perda tem 6 causas quando ela tem 8.
+            Agora a lista vem do próprio dado — motivo novo aparece sozinho, e clicar
+            FILTRA a tabela (clicar de novo tira o filtro). */}
+        {motivos.map((m) => (
+          <button
+            type="button"
+            key={m.motivo}
+            className={`kpi-card kpi-card--clicavel ${motivoSelecionado === m.motivo ? 'kpi-card--ativo' : ''}`}
+            onClick={() => setMotivoSelecionado((atual) => (atual === m.motivo ? null : m.motivo))}
+            title={`${m.motivo} — clique para filtrar a tabela`}
+          >
+            <div className="kpi-header">
+              <span>{m.motivo}</span>
+              <i className={m.icone}></i>
+            </div>
+            <div className="kpi-value">{m.qtd}</div>
+            <div className="kpi-subvalue">{formatarMoeda(m.valor)}</div>
+          </button>
+        ))}
 
         <div className="kpi-card">
           <div className="kpi-header">
@@ -323,11 +344,22 @@ export function PerdasPage() {
             <BotaoExportarExcel todos={dataComCamposCalculados} nome="perdas" />
             {colunasCfg.botao}
           </AcoesTabela>
+        {/* Filtro ativo SEMPRE visível e com saída de 1 clique. Tabela que encolheu sem
+            dizer por quê faz o usuário achar que perdeu dado. */}
+        {motivoSelecionado && (
+          <div className="perdas-filtro-ativo">
+            Mostrando só <strong>{motivoSelecionado}</strong> — {linhasVisiveis.length} de{' '}
+            {dataComCamposCalculados.length} perdas
+            <button type="button" onClick={() => setMotivoSelecionado(null)}>
+              <i className="pi pi-times" /> ver todas
+            </button>
+          </div>
+        )}
         <DataTable rowClassName={rowClassRepedido}
           expandedRows={expandidas} onRowToggle={(e) => setExpandidas(e.data)}
           rowExpansionTemplate={(r: any) => <ExpansorPedido linha={r} />}
           aria-label="Pedidos perdidos — motivo e fase em que a perda ocorreu"
-          value={dataComCamposCalculados}
+          value={linhasVisiveis}
           dataKey="id"
           paginator
           rowsPerPageOptions={[10, 20, 50, 100, 200]}

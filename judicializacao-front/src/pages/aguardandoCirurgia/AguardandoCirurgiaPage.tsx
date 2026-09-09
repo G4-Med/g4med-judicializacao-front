@@ -253,6 +253,13 @@ export function AguardandoCirurgiaPage() {
   const [anexosRelatorio, setAnexosRelatorio] = useState<Anexo[]>([]);
   const [anexosOrcamento, setAnexosOrcamento] = useState<Anexo[]>([]);
   const [anexosProtocolo, setAnexosProtocolo] = useState<Anexo[]>([]);
+  // DOSSIÊ DO MÉDICO (@R 08/09): o que ELE devolve DEPOIS da cirurgia — nota fiscal e
+  // relatório. Guardados com TIPO próprio (NOTA_FISCAL / RELATORIO_CIRURGIA, migration
+  // 0070) e não como 'Outro': são a prova de que o serviço foi prestado, e é com eles
+  // que se cobra a comissão e se responde a uma auditoria. Como 'Outro' virariam mais
+  // um hash sem resposta para "esse médico já mandou a nota?".
+  const [anexosMedico, setAnexosMedico] = useState<Array<Anexo & { _tipo?: string }>>([]);
+  const [enviandoDossie, setEnviandoDossie] = useState<string | null>(null);
   const [carregandoAnexos, setCarregandoAnexos] = useState(false);
   const [sortField, setSortField] = useState<string | undefined>('dias');
   const [sortOrder, setSortOrder] = useState<1 | 0 | -1 | null | undefined>(1);
@@ -342,18 +349,28 @@ export function AguardandoCirurgiaPage() {
     setAnexosRelatorio([]);
     setAnexosOrcamento([]);
     setAnexosProtocolo([]);
+    setAnexosMedico([]);
     setDialogVisible(true);
 
     setCarregandoAnexos(true);
     try {
-      const [rel, orc, prot] = await Promise.all([
+      // Os 2 últimos são o DOSSIÊ DO MÉDICO (@R 08/09): o que ELE devolve DEPOIS da
+      // cirurgia — a nota fiscal e o relatório. São a prova de que o serviço foi
+      // prestado; é com eles que se cobra a comissão e se responde a uma auditoria.
+      const [rel, orc, prot, nf, relCir] = await Promise.all([
         getAnexosOrder(rowData.id, 'RELATORIO').catch(() => ({ data: { anexos: [] } })),
         getAnexosOrder(rowData.id, 'ORCAMENTO').catch(() => ({ data: { anexos: [] } })),
         getAnexosOrder(rowData.id, 'PROTOCOLO').catch(() => ({ data: { anexos: [] } })),
+        getAnexosOrder(rowData.id, 'NOTA_FISCAL').catch(() => ({ data: { anexos: [] } })),
+        getAnexosOrder(rowData.id, 'RELATORIO_CIRURGIA').catch(() => ({ data: { anexos: [] } })),
       ]);
       setAnexosRelatorio((rel.data as any)?.anexos ?? []);
       setAnexosOrcamento((orc.data as any)?.anexos ?? []);
       setAnexosProtocolo((prot.data as any)?.anexos ?? []);
+      setAnexosMedico([
+        ...(((nf.data as any)?.anexos ?? []) as any[]).map((a) => ({ ...a, _tipo: 'NOTA_FISCAL' })),
+        ...(((relCir.data as any)?.anexos ?? []) as any[]).map((a) => ({ ...a, _tipo: 'RELATORIO_CIRURGIA' })),
+      ]);
     } finally {
       setCarregandoAnexos(false);
     }
@@ -487,11 +504,10 @@ export function AguardandoCirurgiaPage() {
 
   return (
     <div className="aguardando-cirurgia-page">
+      {/* O <h1> saiu (08/09) — a página é a aba "Aguardando cirurgia" do Painel de
+          Resultados, que já traz o título. O `.page-header` FICA: é ele que posiciona
+          o botão de exportar. */}
       <div className="page-header">
-        <div>
-          <h1>Aguardando Cirurgia</h1>
-          <p>Pedidos com ganho confirmado aguardando realização da cirurgia.</p>
-        </div>
         <Button
           label="Exportar Excel"
           icon="pi pi-file-excel"
@@ -580,14 +596,34 @@ export function AguardandoCirurgiaPage() {
             body={renderValor}
             style={{ minWidth: '10rem' }}
           />
+          {/* COMISSÃO ESTIMADA — o número que diz quanto ESTA cirurgia vale para nós
+              (@R 08/09: ⟦a comissão aqui deve ter também, para sabermos tecnicamente⟧).
+              Já era calculada pelo backend e usada no Excel e no diálogo de confirmar,
+              mas não aparecia na tabela: quem olhava a fila via o valor do PROCESSO
+              (o que o Estado paga ao médico) e não o nosso.
+              ⚠ "estimada" é literal: sai do `takeRate` do cadastro, e os 26 médicos
+              cadastrados têm todos exatamente 10,00 — que é o default, não a taxa
+              negociada caso a caso. O hint diz isso para ninguém tratar como fechado. */}
           <Column
-            field="nprocesso"
-            header="Processo"
+            field="comissaoEstimada"
+            header={cabecalhoComHint(
+              'Nossa comissão (est.)',
+              'Estimativa = valor do ganho × take rate cadastrado do médico. A taxa real é negociada caso a caso — confira antes de cobrar.',
+            )}
             sortable
-            filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
-            style={{ minWidth: '12rem' }}
+            style={{ minWidth: '11rem', textAlign: 'right' }}
+            body={(r: any) =>
+              Number(r.comissaoEstimada)
+                ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+                    .format(Number(r.comissaoEstimada))
+                : '—'
+            }
           />
+          {/* A coluna "Processo" saiu (08/09): ela tinha field="nprocesso", o MESMO da
+              `colunaCnj()` logo abaixo — duas colunas do mesmo campo na mesma tabela.
+              O React avisava "two children with the same key, col-nprocesso" e podia
+              duplicar/omitir células em silêncio. Ficou a canônica (`colunaCnj`), que
+              já traz o rótulo "Nº CNJ", o hint explicativo e o botão de copiar. */}
           <Column
             field="dias"
             header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')}
@@ -663,16 +699,49 @@ export function AguardandoCirurgiaPage() {
                   disabled={perdaModo}
                 />
               </div>
+              {/* A TAXA SAI DA BASE REGISTRADA — e só cai no orçamento se não houver base.
+                  CASO REAL (ord#381, achado pela eliza-financeiro em 08/09): orçamento
+                  R$ 233.000, comissão R$ 5.199,70 → dividindo pelo orçamento dava "2,23%",
+                  um número que PARECE taxa negociada e não é. A taxa é 10%, sobre o
+                  honorário da NF (R$ 62.647,00), com 17% de imposto retido DA COMISSÃO:
+                      62.647,00 × 10% = 6.264,70 − 17% = 5.199,70
+                  ⚠ A ORDEM IMPORTA e é invisível no resultado: descontar 17% da BASE
+                  (62.647 − 17% = 51.997,01, e 10% disso) dá o MESMO 5.199,70, porque
+                  multiplicação é comutativa — mas guarda outro significado. O desempate é
+                  documental: 62.647,00 está na NF; 51.997,01 não existe em papel nenhum.
+                  (Este comentário afirmou 51.997,01 até 08/09 — estava errado.)
+                  Nas outras 7 fichas não há dedução e todas dão 10,00% redondo: o padrão é
+                  tão limpo que o único fora da curva parecia negociação. Por isso passou.
+                  Backfill aplicado em produção 08/09: as 8 fichas com comissão têm base. */}
               <div className="ag-cir-field ag-cir-field--span-1">
-                <label>% sobre o valor da cirurgia</label>
-                <InputText
-                  value={
-                    valorComissao !== null && registroAtual.valor > 0
-                      ? `${((valorComissao / registroAtual.valor) * 100).toFixed(2)}%`
-                      : '-'
-                  }
-                  disabled
-                />
+                {(() => {
+                  const base = registroAtual.baseCalculoComissao ?? null;
+                  const ded = registroAtual.deducaoPercentual ?? 0;
+                  const temBase = base !== null && base > 0;
+                  const divisor = temBase ? base : registroAtual.valor;
+                  // comissão = base × taxa × (1 − dedução) ⇒ taxa = comissão ÷ base ÷ (1 − dedução)
+                  const fator = temBase ? 1 - ded / 100 : 1;
+                  const taxa =
+                    valorComissao !== null && divisor > 0 && fator > 0
+                      ? (valorComissao / divisor / fator) * 100
+                      : null;
+                  return (
+                    <>
+                      <label
+                        title={
+                          temBase
+                            ? `Taxa sobre a base registrada (R$ ${base!.toLocaleString('pt-BR', {
+                                minimumFractionDigits: 2,
+                              })})${ded ? `, com ${ded}% retido da comissão` : ''}.`
+                            : 'Sem base registrada: calculado sobre o ORÇAMENTO. Se a comissão foi combinada sobre outra base (ex.: honorário do médico menos imposto), este número NÃO é a taxa acordada.'
+                        }
+                      >
+                        {temBase ? '% sobre a base ✓' : '% sobre o orçamento ⓘ'}
+                      </label>
+                      <InputText value={taxa !== null ? `${taxa.toFixed(2)}%` : '-'} disabled />
+                    </>
+                  );
+                })()}
               </div>
               <div className="ag-cir-field ag-cir-field--span-1">
                 <label>Data {perdaModo ? 'da Perda' : 'da Cirurgia'} *</label>
@@ -724,6 +793,56 @@ export function AguardandoCirurgiaPage() {
               <div className="ag-cir-anexos__bloco">
                 <h3>Protocolos Anexados</h3>
                 {carregandoAnexos ? <div>Carregando...</div> : renderListaAnexos(anexosProtocolo)}
+              </div>
+              {/* DOSSIÊ DO MÉDICO (@R 08/09) — o que ELE devolve DEPOIS da cirurgia.
+                  Fica junto dos outros anexos de propósito: quem confirma a cirurgia é
+                  quem recebe a nota, e separar em outra tela faria o documento chegar
+                  por um caminho que ninguém abre. O bloco mostra o que FALTA, não só o
+                  que existe — a pergunta útil é "esse médico já mandou a nota?". */}
+              <div className="ag-cir-anexos__bloco ag-cir-anexos__bloco--medico">
+                <h3>Dossiê do médico</h3>
+                {(['NOTA_FISCAL', 'RELATORIO_CIRURGIA'] as const).map((tipo) => {
+                  const rotulo = tipo === 'NOTA_FISCAL' ? 'Nota fiscal' : 'Relatório pós-cirurgia';
+                  const doTipo = anexosMedico.filter((a) => a._tipo === tipo);
+                  return (
+                    <div className="dossie-linha" key={tipo}>
+                      <div className="dossie-linha__topo">
+                        <span className={doTipo.length ? 'dossie-ok' : 'dossie-falta'}>
+                          {doTipo.length ? '✓' : '○'} {rotulo}
+                          {doTipo.length ? ` (${doTipo.length})` : ' — não recebido'}
+                        </span>
+                        <label className="dossie-upload">
+                          <input
+                            type="file"
+                            style={{ display: 'none' }}
+                            disabled={!!enviandoDossie}
+                            onChange={async (e) => {
+                              const f = e.target.files?.[0];
+                              if (!f || !registroAtual) return;
+                              setEnviandoDossie(tipo);
+                              try {
+                                await uploadAnexoOrder(registroAtual.id, f, tipo);
+                                const r: any = await getAnexosOrder(registroAtual.id, tipo)
+                                  .catch(() => ({ data: { anexos: [] } }));
+                                setAnexosMedico((atual) => [
+                                  ...atual.filter((a) => a._tipo !== tipo),
+                                  ...((r.data?.anexos ?? []) as any[]).map((a) => ({ ...a, _tipo: tipo })),
+                                ]);
+                              } finally {
+                                setEnviandoDossie(null);
+                                e.target.value = '';
+                              }
+                            }}
+                          />
+                          <span className="dossie-upload__btn">
+                            {enviandoDossie === tipo ? 'enviando…' : 'anexar'}
+                          </span>
+                        </label>
+                      </div>
+                      {doTipo.length > 0 && renderListaAnexos(doTipo)}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

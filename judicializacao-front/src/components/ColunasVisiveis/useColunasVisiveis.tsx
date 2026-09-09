@@ -115,6 +115,8 @@ export function useColunasVisiveis(tela: string) {
     const els = achatar(children);
     const achadas: ColunaInfo[] = [];
     let sistema = 0;
+    // Conta quantas vezes cada chave já saiu NESTA passada (ver DESEMPATE abaixo).
+    const usadas = new Map<string, number>();
     const resultado = els
       .filter((el) => {
         const field = el?.props?.field;
@@ -138,13 +140,33 @@ export function useColunasVisiveis(tela: string) {
         // faria o React casar a célula do cabeçalho com a coluna ERRADA. Foi essa
         // troca de par que fazia o PrimeReact disparar setState em cadeia
         // ("Maximum update depth exceeded") ao trocar de tela.
-        const chaveCol =
+        const base =
           typeof pr?.field === 'string' && pr.field ? `col-${pr.field}`
           : pr?.expander ? 'sys-expander'
           : pr?.selectionMode ? 'sys-selecao'
           : pr?.rowEditor ? 'sys-editor'
           : typeof pr?.header === 'string' && pr.header ? `sys-h-${pr.header}`
           : `sys-${sistema++}`;
+        // ── DESEMPATE (08/09) — duas colunas com o MESMO `field` na mesma tabela geravam
+        // a mesma key e o React reclamava ("Encountered two children with the same key,
+        // col-nprocesso"), podendo duplicar/omitir células em silêncio. Acontece de forma
+        // legítima: um `field` pode ser exibido duas vezes com recortes diferentes (ex.
+        // o número do processo como texto e como link). A chave precisa ser estável POR
+        // COLUNA, não por campo — então o 2º repetido vira `col-x#2`, e a estabilidade
+        // (que é o que curou o "Maximum update depth" acima) se mantém: a mesma coluna,
+        // na mesma posição da lista, recebe sempre o mesmo sufixo.
+        const n = (usadas.get(base) ?? 0) + 1;
+        usadas.set(base, n);
+        const chaveCol = n === 1 ? base : `${base}#${n}`;
+        if (n > 1 && import.meta.env.DEV) {
+          // Só em desenvolvimento: nomeia o culpado para quem for arrumar a origem.
+          // Em produção seria ruído para o usuário, e a key já está correta de qualquer forma.
+          console.warn(
+            `[colunas] "${tela}": ${n} colunas com field="${pr?.field}" (header: ${
+              typeof pr?.header === 'string' ? pr.header : '—'
+            }). Key desempatada para "${chaveCol}" — confira se a repetição é intencional.`,
+          );
+        }
         return React.cloneElement(el as any, { key: chaveCol });
       });
     // registra o cardápio de colunas p/ o painel de "Colunas" — comparando só os IDs

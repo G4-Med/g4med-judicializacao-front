@@ -45,6 +45,13 @@ export const getProtocolados = () => api.get('/orders/protocolados/');
 export const salvarResultadoProtocolado = (id: number, data: any) => api.post(`/orders/protocolados/${id}/salvar/`, data);
 export const adicionarAcompanhamento = (id: number, data: any) => api.post(`/orders/protocolados/${id}/acompanhamento/`, data);
 export const getResultados = () => api.get('/orders/resultados/');
+/** Frescor dos dados do Estado no MedCheck (cadeia 331→548→aqui). Card da Home, 09/09. */
+export type SaudeDados = {
+  empenhos: { n: number; maxPagamento: string | null; maxEmpenho: string | null; atualizadoEm: string | null; idadeHoras: number | null; ok: boolean };
+  regua: { n: number; atualizadoEm: string | null; idadeHoras: number | null; ok: boolean };
+  medidoEm: string;
+};
+export const getSaudeDados = () => api.get<SaudeDados>('/kpis/saude-dados/');
 export const getPerdas = () => api.get('/orders/perdas/');
 export const getEnviadoSes = () => api.get('/orders/enviado-ses/');
 export const getMedicosCompleto = () => api.get('client/medico-completo/lista/');
