@@ -640,7 +640,7 @@ export function ProtocoladosPage() {
           />
           <Column
             field="status"
-            header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}
+            header={cabecalhoComHint('Status', 'Nesta tela o status é sempre "Protocolado" — é a própria definição da fila, não um campo que varia. O andamento depois do protocolo aparece nas telas de resultado.')}
             sortable
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}

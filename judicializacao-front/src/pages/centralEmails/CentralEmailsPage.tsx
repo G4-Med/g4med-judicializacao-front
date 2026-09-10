@@ -96,9 +96,29 @@ function montarIndicadores(s: any): Indicador[] {
       mede: 'E-mails de paciente que já tinha pedido: somam no contador "!" do pedido em vez de criar outro.',
       regua: 'Informativo. Re-pedido alto num mesmo pedido = urgência — a linha fica escura nas telas.',
       situacao: 'info', statusFiltro: 'DUPLICADO_PACIENTE', abrir: 'processados' },
+    // TRIAGEM DE ORIGEM JURÍDICA (GO @R 10/09/2026, cartão perguntas_medcheck_5decisoes, decisão
+    // MONITOR-ALLOWLIST = "TRIAGEM: crie uma fila de olhar humano para remetentes de Defensoria,
+    // TJMG e tribunais. Não cria pedido automático, só deixa de sumir em silêncio").
+    //
+    // A FILA JÁ ERA ESTE CARD — não criei outra (censo P118: a Central de E-mails, o filtro por
+    // REMETENTE_INVALIDO, a busca por remetente e a régua "se um remetente legítimo aparece aqui"
+    // existem desde 28/08, por mandato do próprio @R). O que faltava era o operador SABER O QUE
+    // PROCURAR: são 257 recusados no histórico contra 167 pedidos criados, e ler 257 remetentes um
+    // a um não é triagem, é sorte.
+    //
+    // MEDIDO em 10/09 no banco de produção: dos 257, três eram andamento processual REAL — um
+    // ofício da Defensoria pedindo agendamento de procedimento e dois do TJMG (dados bancários e
+    // marcação de cirurgia), todos do MESMO processo, autos 0038560-47.2016.8.13.0446. Chegaram,
+    // foram recusados, ninguém viu. Os outros 254 a recusa acertou: 107 são pedido de NOTA FISCAL
+    // e relatório de REPASSE de hospitais (outro fluxo de negócio, ¬judicialização) e o resto é
+    // propaganda, bounce e notificação automática.
     { categoria: 'Captura', nome: 'Ignorado (remetente)', valor: st('REMETENTE_INVALIDO'),
       mede: 'E-mails de quem não está na lista de remetentes válidos (propaganda, respostas automáticas).',
-      regua: 'Normal ter alguns. Se um remetente legítimo aparece aqui, é a lista que precisa de ajuste.',
+      regua: 'Normal ter alguns — a maioria é propaganda, bounce e pedido de nota fiscal de hospital. '
+           + 'O que NÃO é normal passar batido: andamento de processo. Busque na lista por '
+           + '"defensoria", "jus.br", "tjmg" e "1doc" — medido em 10/09, 3 dos 257 recusados eram '
+           + 'ofício judicial, dados bancários e marcação de cirurgia do mesmo processo. Achou um? '
+           + 'É a lista de remetentes que precisa de ajuste, e a decisão é do @R.',
       situacao: 'info', statusFiltro: 'REMETENTE_INVALIDO', abrir: 'processados' },
     { categoria: 'Captura', nome: 'Resposta a e-mail', valor: st('RESPOSTA'),
       mede: 'E-mails que são resposta a algo nosso ("Re:") — não geram pedido.',

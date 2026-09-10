@@ -14,7 +14,7 @@ import { getPerdas, getOrders, getMedicosCompleto, reabrirPerda } from '../../se
 import { getStatusTagStyle } from '../../utils/statusTag';
 import './PerdasPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
-import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint} from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, EXPLICA_STATUS} from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -459,7 +459,7 @@ export function PerdasPage() {
           />
           <Column
             field="statusPerda"
-            header="Status Perda"
+            header={cabecalhoComHint('Motivo da perda', EXPLICA_STATUS.statusPerda)}
             sortable
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}

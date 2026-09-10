@@ -307,6 +307,77 @@ const EXPLICA = {
     <p>Passe o mouse no chip para ver, item a item, a fonte de cada dado e a próxima ação
     com o responsável. Nenhuma falta fica sem rota.</p>
   </>,
+  statusProcesso: <>
+    <p>O <strong>status do processo</strong> diz onde o pedido está no funil — é o campo
+    principal, e o único que <em>todo</em> pedido tem.</p>
+    <p>Metade da base é histórica: <strong>Histórico - Base Antiga</strong> (371) e{' '}
+    <strong>Histórico - Sem Rastro</strong> (195) são 566 dos 1.134 pedidos. São lançamentos
+    anteriores ao sistema; não têm funil para percorrer.</p>
+    <p>Os vivos: <strong>Perda</strong> (360) · <strong>Aguardando Resposta</strong> (91) ·{' '}
+    <strong>Enviado à SES - Sem Protocolo</strong> (56) · <strong>Aguardando Orçamento</strong> (23) ·
+    e Ganho.</p>
+    <p><strong>⚠ Não confunda com o Motivo da perda.</strong> Este campo diz <em>se</em> perdeu;
+    o outro diz <em>por quê</em>. Eles descrevem populações diferentes — veja o aviso no
+    Motivo da perda.</p>
+  </>,
+  statusPerda: <>
+    <p>O <strong>motivo da perda</strong> responde <em>por que</em> perdemos, não <em>se</em>
+    perdemos. Quem responde "se" é o status do processo.</p>
+    <p>Os 5 motivos: <strong>Perda Pelo Juridico</strong> (129) ·{' '}
+    <strong>Perda por falta de especialista</strong> (90) — não tínhamos quem operasse ·{' '}
+    <strong>Perda pelo Medico</strong> (59) — o médico recusou ·{' '}
+    <strong>Perda pelo Orçamento</strong> (44) — preço ·{' '}
+    <strong>Perda (encontro de contas Wesley)</strong> (39).</p>
+    <p><strong>⚠ A armadilha que já custou caro:</strong> "status do processo = Perda" dá{' '}
+    <strong>360</strong> pedidos, e "motivo da perda preenchido" dá <strong>361</strong>. As duas
+    colunas parecem dizer a mesma coisa e não dizem — a sobra existe e é real. Se for contar
+    perdas, decida ANTES qual dos dois campos é a sua régua, e diga qual usou.</p>
+    <p><strong>⚠ Rótulo repetido em outro campo:</strong> "Perda pelo Medico" aparece TAMBÉM no
+    status do orçamento, com o mesmo texto e a mesma contagem (59). Mesmo nome, campos
+    diferentes — confira de qual coluna você está lendo.</p>
+  </>,
+  statusJuridico: <>
+    <p>O <strong>status jurídico</strong> é a decisão da análise jurídica sobre cotar ou não.
+    Só 558 dos 1.134 pedidos têm este campo — os outros nunca chegaram nesta fase.</p>
+    <p><strong>Cotar</strong> (338) = segue para orçamento ·{' '}
+    <strong>Não Cotar</strong> (97) = o jurídico barrou ·{' '}
+    <strong>Segredo de Justiça</strong> (123) = processo sigiloso, tratamento restrito.</p>
+  </>,
+  statusOrcamento: <>
+    <p>O <strong>status do orçamento</strong> é o andamento da cotação com o médico. 462 dos
+    1.134 pedidos têm este campo.</p>
+    <p><strong>Orçamento Enviado</strong> (290) · <strong>Sem Proficional</strong> (90) —{' '}
+    a grafia está errada no banco desde a origem, é "profissional"; significa que não havia
+    médico para o procedimento · <strong>Perda pelo Medico</strong> (59) ·{' '}
+    <strong>Solicitado ao Medico</strong> (22) · <strong>Solicitar Exames</strong> (1).</p>
+    <p><strong>⚠ Este campo não é o status do processo.</strong> São coisas diferentes: aqui é a
+    cotação; lá é o funil inteiro. E "Perda pelo Medico" existe nos dois lugares com o mesmo
+    texto — veja o aviso no Motivo da perda.</p>
+  </>,
+};
+
+/** Explicações dos 4 campos de STATUS (GO @R 10/09/2026, cartão perguntas_medcheck_5decisoes,
+ *  opção "HINT NA TELA: use o padrão cabecalhoComHint que já existe no projeto e explique cada
+ *  status no lugar onde o operador olha. Sem documento novo").
+ *
+ *  POR QUE existe: o manual operacional da G4MED tem 178 linhas e ZERO menção a statusProcesso,
+ *  statusPerda, 548 ou podeDarBaixa (medido 10/09). O operador decide todo dia olhando 4 campos
+ *  com 22 valores, e DOIS deles usam o mesmo texto ("Perda pelo Medico", 59 em statusPerda e 59
+ *  em statusOrcamento).
+ *
+ *  Os números vieram do banco de PRODUÇÃO em 10/09/2026 (1.134 pedidos). Eles envelhecem: se
+ *  divergirem muito do que a tela mostra, re-meça antes de confiar — número em hint que mente é
+ *  pior que hint nenhum. Contagens por campo: statusProcesso 9 valores/1134 · statusPerda
+ *  5/361 · statusJuridico 3/558 · statusOrcamento 5/462.
+ *
+ *  A armadilha central (360 × 361) é a mesma que produziu o pedido 344 e o filtro errado no
+ *  endpoint de perdas com pagamento — está escrita no hint de propósito, para o operador não
+ *  repetir a conta. */
+export const EXPLICA_STATUS = {
+  statusProcesso: EXPLICA.statusProcesso,
+  statusPerda: EXPLICA.statusPerda,
+  statusJuridico: EXPLICA.statusJuridico,
+  statusOrcamento: EXPLICA.statusOrcamento,
 };
 
 const ROTULO_PONTO: Record<string, string> = { cnj: 'CNJ', sei: 'SEI', comarca: 'Comarca', anexo: 'Anexo' };

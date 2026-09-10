@@ -555,7 +555,7 @@ export function UsuariosPage() {
 
           <Column
             field="isActive"
-            header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}
+            header={cabecalhoComHint('Status', 'Se este USUÁRIO pode entrar no sistema (ativo) ou está bloqueado (inativo). Nada a ver com pedidos: é conta de acesso.')}
             sortable
             body={statusBody}
             style={{ minWidth: '8rem' }}

@@ -1,0 +1,42 @@
+/* Faixa de aviso de ambiente — âmbar, no topo, sem botão de fechar (ver docstring do .tsx).
+   Âmbar e não vermelho de propósito: vermelho é a cor de erro, e não há erro nenhum aqui — o
+   estado é legítimo, só precisa ser SABIDO. Vermelho gastaria o sinal de alarme numa condição
+   normal, e quando um erro real aparecesse a tela já teria ensinado a ignorar a cor. */
+.aviso-ambiente {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  padding: .55rem .9rem;
+  background: #fff4e0;
+  border-bottom: 2px solid #f59e0b;
+  color: #7a4b00;
+  font-size: .86rem;
+  line-height: 1.35;
+  /* sticky para sobreviver ao scroll das tabelas longas — o operador que rolou 200 linhas
+     continua vendo onde está. z-index alto porque o PrimeReact usa 1000+ nos overlays. */
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+}
+
+.aviso-ambiente .pi {
+  font-size: 1.05rem;
+  flex: 0 0 auto;
+}
+
+.aviso-ambiente__alvo {
+  margin-left: auto;
+  flex: 0 0 auto;
+  background: rgba(122, 75, 0, .1);
+  padding: .12rem .4rem;
+  border-radius: 3px;
+  font-size: .78rem;
+  white-space: nowrap;
+}
+
+/* Em tela estreita o alvo desce para a linha de baixo em vez de espremer o texto do aviso —
+   a frase é o que protege, o endereço é detalhe. */
+@media (max-width: 720px) {
+  .aviso-ambiente { flex-wrap: wrap; }
+  .aviso-ambiente__alvo { margin-left: 0; }
+}

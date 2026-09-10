@@ -31,7 +31,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import './ProcessosPage.css';
-import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaOrigem } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, EXPLICA_STATUS, colunaOrigem } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -2162,7 +2162,7 @@ ${linhasAnexos}
           />
           <Column
             field="status"
-            header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}
+            header={cabecalhoComHint('Status do processo', EXPLICA_STATUS.statusProcesso)}
             sortable
             filter
             filterElement={(options) => dropdownFilterElement(options, 'Selecione', statusProcessoOpts)}
@@ -2171,7 +2171,7 @@ ${linhasAnexos}
           />
           <Column
             field="statusJuridico"
-            header="Status Jurídico"
+            header={cabecalhoComHint('Status jurídico', EXPLICA_STATUS.statusJuridico)}
             sortable
             filter
             filterElement={(options) => dropdownFilterElement(options, 'Selecione', statusJuridicoOpts)}

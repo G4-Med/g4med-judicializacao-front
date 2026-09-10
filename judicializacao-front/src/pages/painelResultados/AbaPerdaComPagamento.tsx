@@ -5,6 +5,7 @@ import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { getPerdasComPagamento } from '../../services/api/perdasComPagamento';
 import type { PerdaComPagamentoItem } from '../../services/api/perdasComPagamento';
+import { cabecalhoComHint, EXPLICA_STATUS } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 
 /**
  * ABA ⑤ — PERDA COM PAGAMENTO: o pedido está marcado como perda e o Estado pagou no mesmo CNJ.
@@ -197,7 +198,8 @@ export function AbaPerdaComPagamento() {
                  value={ROTULO_REGUA[i.procedenciaRegua]} />
           )}
         />
-        <Column field="statusPerda" header="Motivo da perda" sortable style={{ minWidth: '13rem' }} />
+        <Column field="statusPerda" header={cabecalhoComHint('Motivo da perda', EXPLICA_STATUS.statusPerda)}
+          sortable style={{ minWidth: '13rem' }} />
         <Column
           header="CNJ"
           style={{ minWidth: '13rem' }}

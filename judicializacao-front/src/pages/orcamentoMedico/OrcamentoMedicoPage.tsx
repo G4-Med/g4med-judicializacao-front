@@ -24,7 +24,7 @@ import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { ContadorRegistros, contarPorCampo } from '../../components/ContadorRegistros/ContadorRegistros';
 import { CabecalhoFase } from '../../components/CabecalhoFase/CabecalhoFase';
-import { colunaSolicitante, tagTipoPaciente, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaOrigem } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, tagTipoPaciente, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, EXPLICA_STATUS, colunaOrigem } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -650,7 +650,12 @@ ${blocos}
             filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '12rem' }} />
           <Column field="dias" header="Dias em Aberto" sortable filter
             filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '10rem' }} />
-          <Column field="statusOrcamento" header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}
+          {/* CORREÇÃO 10/09/2026: o hint anterior dizia "Onde o pedido está no funil
+              (statusProcesso)" numa coluna cujo field é statusOrcamento — descrevia o CAMPO
+              ERRADO. É exatamente a confusão que o @R mandou curar (cartão
+              perguntas_medcheck_5decisoes): 4 campos de status, 22 valores, dois deles com o
+              mesmo rótulo "Perda pelo Medico". Um hint que aponta o campo errado ensina o erro. */}
+          <Column field="statusOrcamento" header={cabecalhoComHint('Status do orçamento', EXPLICA_STATUS.statusOrcamento)}
             body={(r) => <Tag value={r.statusOrcamento} style={getStatusTagStyle(r.statusOrcamento)} className="status-tag-custom" />}
             filter
             showFilterMenu={false}

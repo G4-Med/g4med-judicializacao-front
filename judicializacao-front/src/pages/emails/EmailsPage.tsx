@@ -691,9 +691,14 @@ export function EmailsPage() {
             style={{ minWidth: '7rem' }}
           />
 
+          {/* CORREÇÃO 10/09/2026 — achado pelo gate scripts/gate_hints_campo_errado.py, ¬por
+              revisão humana: este hint dizia "Pediátrico (<18) · Adulto · Idoso (60+)", que é a
+              explicação de `tipoPaciente` em 4 OUTRAS telas. Aqui a coluna é `tipoEmail` e o body
+              é tipoEmailBodyTemplate — nada a ver com idade. Copy-paste de hint, a mesma classe
+              dos 9 do "Onde o pedido está no funil". */}
           <Column
             field="tipoEmail"
-            header={cabecalhoComHint('Tipo', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')}
+            header={cabecalhoComHint('Tipo', 'QUAL e-mail automático está na fila para este pedido: confirmação de recebimento, envio de orçamento, pedido de exames ou aviso de perda. É o tipo da MENSAGEM, não do paciente.')}
             sortable
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}
@@ -703,7 +708,7 @@ export function EmailsPage() {
 
           <Column
             field="status"
-            header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}
+            header={cabecalhoComHint('Status', 'O que aconteceu com ESTE E-MAIL no monitor: CRIADO virou pedido · RESPOSTA foi anexada a um pedido existente · DUPLICADO_PACIENTE já havia pedido para o mesmo paciente · REMETENTE_INVALIDO não é do domínio saude.mg.gov.br e por isso não virou nada. Não é o status do pedido.')}
             sortable
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}

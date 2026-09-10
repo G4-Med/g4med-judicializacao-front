@@ -305,7 +305,7 @@ export function MonitorIntegracaoPage() {
         >
           <Column field="id" header="Id" style={{ width: '6rem' }} />
           <Column field="nome" header="Processo" />
-          <Column header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')} body={renderStatus} style={{ width: '12rem' }} />
+          <Column header={cabecalhoComHint('Status', 'Se ESTA INTEGRAÇÃO está saudável, com base na última execução dela. É status de rotina automática — não de pedido.')} body={renderStatus} style={{ width: '12rem' }} />
           <Column header="Executar" body={renderExecutar} style={{ width: '8rem', textAlign: 'center' }} />
           <Column header="Modificado" body={renderModificado} style={{ width: '12rem' }} />
           <Column header="Log" body={renderLog} style={{ width: '6rem', textAlign: 'center' }} />
@@ -332,7 +332,7 @@ export function MonitorIntegracaoPage() {
           <Column field="id" header="Id" style={{ width: '6rem' }} />
           <Column header="Início" body={renderExecInicio} style={{ width: '12rem' }} />
           <Column header="Fim" body={renderExecFim} style={{ width: '12rem' }} />
-          <Column header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')} body={renderExecStatus} style={{ width: '11rem' }} />
+          <Column header={cabecalhoComHint('Status', 'Como terminou ESTA EXECUÇÃO da integração (sucesso, erro, em andamento). Uma linha por rodada — não é pedido.')} body={renderExecStatus} style={{ width: '11rem' }} />
           <Column header={cabecalhoComHint('Origem', 'Por que está nesta fila: segredo de justiça ou sem protocolo (prazo perdido).')} body={renderExecTrigger} style={{ width: '10rem' }} />
           <Column field="pedidosCriados" header="Pedidos Criados" style={{ width: '9rem', textAlign: 'right' }} />
           <Column field="totalProcessados" header="Total Processados" style={{ width: '10rem', textAlign: 'right' }} />

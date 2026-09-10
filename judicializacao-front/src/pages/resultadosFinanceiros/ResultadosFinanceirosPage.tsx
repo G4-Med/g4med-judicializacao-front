@@ -336,7 +336,7 @@ export function ResultadosFinanceirosPage() {
           />
           <Column
             field="statusCirurgia"
-            header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}
+            header={cabecalhoComHint('Status da cirurgia', 'Em que ponto está o PROCEDIMENTO em si (agendada, realizada, cancelada) — é outro campo, não o funil do pedido nem o status do orçamento.')}
             sortable
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}

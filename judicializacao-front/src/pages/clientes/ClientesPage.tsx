@@ -1613,7 +1613,7 @@ const handleSalvarEdicao = async () => {
 
           <Column
             field="status"
-            header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}
+            header={cabecalhoComHint('Status', 'Se este CLIENTE está ativo ou inativo no cadastro. É um sim/não do cadastro — não tem relação com o andamento de nenhum pedido.')}
             sortable
             filter
             showFilterMenu={false}
