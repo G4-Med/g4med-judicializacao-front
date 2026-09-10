@@ -212,3 +212,50 @@
 .opcao-juridica--nao_nosso { border-left-color: #dc2626; }
 .opcao-juridica--em_andamento { border-left-color: #d08a1c; }
 .opcao-juridica--ativa { background: #eff6ff; border-color: var(--mc-navy-700, #0a3d62); font-weight: 600; }
+
+/* ─── Aba "Perda com pagamento" (@R 09/09) ─────────────────────────────────
+   Cores semânticas, ¬decorativas: cinza = ausência de informação (a régua não
+   olhou / o dado não foi coletado), âmbar = precisa de conferência humana.
+   Nenhuma cor de "receita" aqui de propósito — a aba é fila de investigação. */
+.aba-perda-pagamento .mc-explicacao {
+  margin: 0 0 1rem;
+  max-width: 68ch;
+  line-height: 1.55;
+  color: var(--text-color-secondary, #64748b);
+}
+
+.aba-perda-pagamento .mc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+
+.aba-perda-pagamento .mc-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem;
+  margin-bottom: 1rem;
+}
+
+.aba-perda-pagamento .mc-filtros input[type='text'] { min-width: 20rem; }
+
+.aba-perda-pagamento .mc-check {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* "sem profissional" e "não coletada" são AUSÊNCIAS, e a tela precisa que o leitor
+   as leia como tal — nunca como um nome próprio ou como "não pagaram". */
+.aba-perda-pagamento .mc-sem-profissional,
+.aba-perda-pagamento .mc-nao-coletado {
+  font-style: italic;
+  color: var(--text-color-secondary, #94a3b8);
+  cursor: help;
+}
+
+.aba-perda-pagamento .mc-vazio { color: var(--text-color-secondary, #64748b); }
