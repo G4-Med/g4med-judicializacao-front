@@ -360,3 +360,19 @@
   font-size: 0.7rem;
 }
 .acompanhamento-anexo-remove:hover { color: #dc2626; }
+
+/* ── DOSSIÊ DO MÉDICO (08/09) ─────────────────────────────────────────────
+   Mostra o que FALTA, não só o que existe: a pergunta útil é "esse médico já
+   mandou a nota?", e uma lista vazia não responde isso — um "○ não recebido"
+   responde. */
+.ag-cir-anexos__bloco--medico { border-left: 3px solid var(--mc-amber, #d08a1c); padding-left: 0.75rem; }
+.dossie-linha { margin-bottom: 0.6rem; }
+.dossie-linha__topo { display: flex; align-items: center; gap: 0.6rem; justify-content: space-between; }
+.dossie-ok { color: #15803d; font-weight: 600; font-size: 0.86rem; }
+.dossie-falta { color: var(--text-color-secondary, #94a3b8); font-size: 0.86rem; }
+.dossie-upload { cursor: pointer; }
+.dossie-upload__btn {
+  font-size: 0.78rem; padding: 0.2rem 0.6rem; border-radius: 6px;
+  border: 1px solid var(--surface-border, #e2e8f0); background: #fff; color: var(--mc-navy-700, #0a3d62);
+}
+.dossie-upload__btn:hover { background: #eff6ff; }
