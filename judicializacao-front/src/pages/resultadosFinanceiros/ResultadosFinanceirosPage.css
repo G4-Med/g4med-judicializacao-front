@@ -300,3 +300,9 @@
   .rf-form__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rf-field--span-3, .rf-field--span-4 { grid-column: span 2; }
 }
+
+/* O QUE JÁ ENTROU (08/09) — verde é dinheiro na conta; o traço cinza é ausência
+   de recebimento, ¬recebimento de zero. */
+.rf-recebido { color: #15803d; font-weight: 600; }
+.rf-sem-recebimento { color: var(--text-color-secondary, #94a3b8); }
+.resultados-financeiros-page .p-datatable td { font-variant-numeric: tabular-nums; }
