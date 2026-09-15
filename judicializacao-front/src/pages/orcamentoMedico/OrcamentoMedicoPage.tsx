@@ -609,7 +609,7 @@ ${blocos}
           filterDisplay="row" loading={loading}
           emptyMessage="Nenhum processo aguardando orçamento."
           className="orcamento-table"
-        >          {colunasCfg.filtrar(<>
+        >{colunasCfg.filtrar(<>
 
           <Column expander style={{ width: '3rem' }} frozen alignFrozen="left" />
           <Column field="sequencial" header="#" style={{ minWidth: '4rem' }}  frozen alignFrozen="left" />

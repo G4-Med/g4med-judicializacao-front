@@ -524,7 +524,7 @@ useEffect(() => { carregarDados(); }, [fila]);
           tableStyle={{ minWidth: '95rem' }}
           emptyMessage="Nenhum processo encontrado."
           className="segredo-justica-table"
-        >          {colunasCfg.filtrar(<>
+        >{colunasCfg.filtrar(<>
 
           {!readOnly && <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} frozen alignFrozen="left" />}
           <Column

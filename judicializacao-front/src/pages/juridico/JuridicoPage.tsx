@@ -472,7 +472,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
           loading={loading}
           emptyMessage="Nenhum processo aguardando jurídico."
           className="juridico-table"
-        >          {colunasCfg.filtrar(<>
+        >{colunasCfg.filtrar(<>
 
           {/* Abre o painel de preços do procedimento dentro da própria linha (task #207) */}
 <Column expander style={{ width: '3.5rem' }} headerStyle={{ width: '3.5rem' }}
