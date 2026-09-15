@@ -136,11 +136,24 @@ export function SelecionarMedicoPage() {
         medicos.map((item: any) => [item.id, item.nomeSistema ?? item.nomeCompleto ?? ''])
       );
 
+      // Teste local 15/09: (1) "SEM PROFISSIONAL" (id 1) aparecia como opção — escolher não move o
+      // pedido (a lista desta fase É idMedico=1) e nada avisa; ele fica fora do seletor. Perda por
+      // falta de profissional tem botão próprio. (2) o seletor mostrava só o nome de sistema e o
+      // resto do sistema mostra o nome completo ("LUIZ FELIPE ENDOSCOPIA" × "A DEFINIR - ENDOSCOPIA"):
+      // quando os dois diferem, o seletor mostra os dois.
       setMedicosOptions(
-        medicos.map((item: any) => ({
-          label: item.nomeSistema ?? item.nomeCompleto ?? `Médico ${item.id}`,
-          value: item.id,
-        }))
+        medicos
+          .filter((item: any) => item.id !== 1)
+          .map((item: any) => {
+            const sistema = (item.nomeSistema ?? '').trim();
+            // /client/medico-completo/lista/ devolve o nome completo em `nomeMedico` (medido 15/09),
+            // não em `nomeCompleto` — ler só nomeCompleto deixava o segundo nome sempre vazio.
+            const completo = (item.nomeMedico ?? item.nomeCompleto ?? '').trim();
+            const label = sistema && completo && sistema.toUpperCase() !== completo.toUpperCase()
+              ? `${sistema} — ${completo}`
+              : (sistema || completo || `Médico ${item.id}`);
+            return { label, value: item.id };
+          })
       );
 
       const lista = Array.isArray(processosRes.data) ? processosRes.data : [];

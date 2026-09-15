@@ -924,8 +924,13 @@ ${blocos}
         orderLookup={processoSelecionado ? ordersLookup[processoSelecionado.id] : null}
         onHide={() => setEscolhaVisible(false)}
         onSuccess={async () => {
+          // Teste local 15/09: o orçamento era gravado (201) mas o pedido continuava na lista — o
+          // recarregamento passa por getOrders (/orders/listar/, medido 23 s e 2,9 MB). O pedido que
+          // saiu desta fase some da tabela NA HORA; o recarregamento completo segue em segundo plano.
+          const idEnviado = processoSelecionado?.id;
           setDetalheVisible(false);
-          await carregarDados();
+          if (idEnviado) setProcessos((atual) => atual.filter((p) => p.id !== idEnviado));
+          void carregarDados();
         }}
       />
 

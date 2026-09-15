@@ -24,6 +24,9 @@ export interface Etapa {
   prazo?: string;
   falaDoRapha?: string;
   atencao?: string;
+  /** Exemplos concretos de cada decisão da etapa (@R 15/09: "temos que dar exemplo para parte
+   *  cotar, não cotar e segredo de justiça"). Sem nome de paciente real. */
+  exemplos?: { decisao: string; quando: string[] }[];
 }
 
 export const DONOS = {
@@ -45,9 +48,37 @@ export const ETAPAS: Etapa[] = [
     comoFazer: [
       'Abra o pedido no lápis e leia o e-mail que a Secretaria enviou.',
       'Confira a peça processual pelo anexo e pegue o número do processo (CNJ).',
+      'Chegou SEM CNJ? O pedido ainda pode ser um processo válido. Busque o nome do paciente no PJe (TJMG), no eproc (TJMG) e no eproc da Justiça Federal (TRF6) — os links estão no próprio modal. Achou: preencha o CNJ. Não achou: marque SEGREDO DE JUSTIÇA.',
       'Marque COTAR, NÃO COTAR ou SEGREDO DE JUSTIÇA.',
       'Se já houver orçamentos concorrentes nos autos, registre o nome do local completo e o valor — isso vira inteligência de preço.',
       'Se marcar NÃO COTAR, escreva o motivo. Sem motivo, não salva.',
+      'Sem a peça de inteiro teor ou sem o CNJ, o sistema avisa o que se perde e deixa você decidir: sem peça não dá para extrair exames e orçamentos que vêm dentro dela; sem CNJ não é possível protocolar.',
+    ],
+    exemplos: [
+      {
+        decisao: 'COTAR',
+        quando: [
+          'A decisão judicial manda o Estado fornecer um procedimento (ex.: artroplastia de joelho, cirurgia de hérnia) e o pedido tem CNJ — ou você localizou o processo na consulta pública.',
+          'Os documentos permitem ao médico cotar: ofício ou decisão, relatório médico com a indicação e exames.',
+        ],
+      },
+      {
+        decisao: 'NÃO COTAR',
+        quando: [
+          'O procedimento já foi realizado, ou o mesmo pedido já está no sistema (pedido duplicado).',
+          'O prazo que o juiz deu é impossível de cumprir, ou o processo está mal instruído e sem documentação para cotar.',
+          'Não temos médico da especialidade, ou há risco jurídico ou valor incompatível.',
+          'Escreva com suas palavras qual foi o caso — é esse texto que ensina o sistema a separar o "não cotar" certo do errado.',
+        ],
+      },
+      {
+        decisao: 'SEGREDO DE JUSTIÇA',
+        quando: [
+          'Paciente criança ou recém-nascido: na maioria das vezes o processo corre em segredo.',
+          'O pedido chegou sem CNJ e o nome do paciente não aparece no PJe, no eproc do TJMG nem no eproc da Justiça Federal.',
+          'A peça ou o e-mail dizem que o processo tramita em segredo de justiça.',
+        ],
+      },
     ],
     falaDoRapha:
       'A gente teve vários pedidos que a pessoa do jurídico escreveu não cotar e que era para cotar. ' +

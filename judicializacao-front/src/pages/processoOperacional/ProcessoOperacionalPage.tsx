@@ -157,6 +157,22 @@ export function ProcessoOperacionalPage() {
                     ))}
                   </ol>
 
+                  {etapa.exemplos && etapa.exemplos.length > 0 && (
+                    <>
+                      <h4>Exemplos de cada decisão</h4>
+                      <div style={{ display: 'grid', gap: '.6rem', gridTemplateColumns: 'repeat(auto-fit, minmax(14rem, 1fr))', margin: '0 0 1rem' }}>
+                        {etapa.exemplos.map((ex) => (
+                          <div key={ex.decisao} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '.6rem .75rem' }}>
+                            <strong style={{ display: 'block', marginBottom: '.35rem' }}>{ex.decisao}</strong>
+                            <ul style={{ margin: 0, paddingLeft: '1.1rem', lineHeight: 1.45 }}>
+                              {ex.quando.map((q, i) => <li key={i}>{q}</li>)}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
                   {etapa.falaDoRapha && (
                     <blockquote className="proc-op__fala">
                       <span className="proc-op__fala-rotulo">Rapha, na reunião</span>

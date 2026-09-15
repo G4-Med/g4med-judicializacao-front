@@ -9,7 +9,6 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Dialog } from 'primereact/dialog';
-import { Checkbox } from 'primereact/checkbox';
 import { FilterMatchMode } from 'primereact/api';
 import { getJuridico, salvarJuridico, getStatusOrders, getAnexosOrder, getCnjCandidatos, confirmarCnj, uploadAnexoOrder, getInteligenciaPedido } from '../../services/api/orders';
 import { useAccess } from '../../access/AccessContext';
@@ -85,12 +84,20 @@ function calcularIdade(dataNascimento: string | null): number {
 
 
 
+// Consultas públicas para achar o processo PELO NOME DO PACIENTE quando o pedido chega sem CNJ.
+// @R 15/09: "pedidos na fase 1 sem cnj podem ser processos válidos, e aí o nome do paciente tem que
+// ser buscado em eproc, pje e federal para localizar o processo; se não localizar, marcar como
+// segredo de justiça". Endereços conferidos em 15/09/2026 (HTTP 200): PJe TJMG, eproc TJMG (o
+// endereço antigo eproc1g redireciona para eproc-consulta-publica-1g) e eproc TRF6 (Justiça Federal em MG).
+const CONSULTAS_PROCESSO = [
+  { rotulo: 'PJe (TJMG)', url: 'https://pje-consulta-publica.tjmg.jus.br/pje/ConsultaPublica/listView.seam' },
+  { rotulo: 'eproc (TJMG)', url: 'https://eproc-consulta-publica-1g.tjmg.jus.br/eproc/externo_controlador.php?acao=processo_consulta_publica' },
+  { rotulo: 'eproc da Justiça Federal (TRF6)', url: 'https://eproc1g.trf6.jus.br/eproc/externo_controlador.php?acao=processo_consulta_publica' },
+];
+
 export function JuridicoPage() {
-  const { isReadOnly, profile } = useAccess();
+  const { isReadOnly } = useAccess();
   const readOnly = isReadOnly('juridico');
-  // Equipe g4med (Admin/Gerente) pode decidir SEM a peça de inteiro teor
-  // (@R 27/08 20:27; decisão procurador a4183eff70) — o escritório jurídico não.
-  const equipeG4med = profile.group === 'ADMIN' || profile.group === 'GERENTE';
   const [loading, setLoading] = useState(false);
   const [processos, setProcessos] = useState<ProcessoJuridico[]>([]);
   const [first, setFirst] = useState(0);
@@ -100,7 +107,6 @@ export function JuridicoPage() {
   const [editDialogVisible, setEditDialogVisible] = useState(false);
   const [processoEditando, setProcessoEditando] = useState<ProcessoJuridicoRow | null>(null);
   const [obsObrigatorio, setObsObrigatorio] = useState(false);
-  const [nprocessoObrigatorio, setNprocessoObrigatorio] = useState(false);
   const [nprocesso, setNprocesso] = useState('');
   // SEI (reunião 22/08): o pedido ganha DOIS números — o do processo e o do SEI.
   // O SEI é o que permite achar o pagamento do lado do Estado.
@@ -127,9 +133,9 @@ export function JuridicoPage() {
   // Peça de inteiro teor (@R 27/08): obrigatória ao decidir Cotar OU Não Cotar.
   const [inteiroTeorFile, setInteiroTeorFile] = useState<File | null>(null)
   const [inteiroTeorJaAnexado, setInteiroTeorJaAnexado] = useState(false)
-  const [inteiroTeorObrigatorio, setInteiroTeorObrigatorio] = useState(false)
-  // @R 29/08 00:55: caixa "não teve peça de inteiro teor" — libera o Cotar sem a peça, com registro de quem declarou.
-  const [semPecaInteiroTeor, setSemPecaInteiroTeor] = useState(false)
+  // @R 15/09: a fase 1 NÃO trava mais por falta de peça nem de CNJ — abre um aviso do que se perde e
+  // a pessoa decide. O que falta NESTA decisão; null = aviso fechado.
+  const [avisoAvanco, setAvisoAvanco] = useState<{ semCnj: boolean; semPeca: boolean } | null>(null)
 
   const colunasCfg = useColunasVisiveis('analise-juridica');
 
@@ -205,7 +211,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
   setOrcamentos('');
   setObs('');
   setObsObrigatorio(false);
-  setNprocessoObrigatorio(false);
+  setAvisoAvanco(null);
   setEditDialogVisible(true);
 
   // adiciona isso
@@ -222,9 +228,8 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
     .then((res: any) => setIntel(res.data))
     .catch(() => setIntel(null))
 
-  // inteiro teor: se o pedido JÁ tem a peça, não exigir de novo
+  // inteiro teor: se o pedido JÁ tem a peça, não avisar de novo
   setInteiroTeorFile(null)
-  setInteiroTeorObrigatorio(false)
   setInteiroTeorJaAnexado(false)
   getAnexosOrder(rowData.id, 'DECISAO_INTEIRO_TEOR')
     .then((res: any) => setInteiroTeorJaAnexado((res.data.anexos ?? []).length > 0))
@@ -254,13 +259,16 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
     }
   };
 
-  const handleSalvar = async () => {
+  // @R 15/09 verbatim: "vamos deixar a pessoa avançar de fase sem enviar a peça inteira e na fase 1, se
+  // ela tentar fazer isso vai aparecer um aviso dizendo que sem a peça de inteiro teor não é possível
+  // extrair exames e demais informações como orçamentos já presentes na peça, e o número do cnj é
+  // obrigatório para cotar, o usuário tem a opção de passar sem o número do cnj também e ele deve saber
+  // que sem ele não é possível protocolar; se ele confirmar ele pode avançar".
+  // ANTES: Cotar sem CNJ travava aqui, e a peça travava o escritório (a caixa "não teve peça", de 29/08,
+  // teve 0 usos em produção em 15/09). AGORA: falta de CNJ ou de peça abre o aviso; só confirmar grava.
+  // `confirmado` vem SÓ do botão do aviso — o Salvar chama handleSalvar() sem argumento.
+  const handleSalvar = async (confirmado = false) => {
     if (!processoEditando) return;
-
-    if (statusJuridico === 'Cotar' && !nprocesso.trim()) {
-      setNprocessoObrigatorio(true);
-      return;
-    }
 
     // Recusa exige o motivo com as palavras da pessoa (mín. 20 chars) — é este texto
     // que alimenta a análise de padrões de recusa (regra também aplicada no backend).
@@ -269,19 +277,21 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
       return;
     }
 
-    // Peça de inteiro teor obrigatória nos DOIS caminhos da decisão (@R 27/08).
-    // Refinamento 20:27: a equipe g4med pode seguir sem — anexa depois em outra fase.
     const decidindo = statusJuridico === 'Cotar' || statusJuridico === 'Não Cotar';
-    if (decidindo && !equipeG4med && !inteiroTeorJaAnexado && !inteiroTeorFile && !semPecaInteiroTeor) {
-      setInteiroTeorObrigatorio(true);
+    const semCnj = statusJuridico === 'Cotar' && !nprocesso.trim();
+    const semPeca = decidindo && !inteiroTeorJaAnexado && !inteiroTeorFile;
+    if (!confirmado && (semCnj || semPeca)) {
+      setAvisoAvanco({ semCnj, semPeca });
       return;
     }
+    setAvisoAvanco(null);
 
       const payload = {
         nprocesso: nprocesso || null,
         numeroSei: numeroSei || null,
         statusJuridico: statusJuridico || null,
-        semPecaInteiroTeor: decidindo && !inteiroTeorJaAnexado && !inteiroTeorFile && semPecaInteiroTeor,
+        // Confirmou seguir sem a peça → o backend registra quem declarou e quando (semPecaDeclaracao).
+        semPecaInteiroTeor: semPeca,
         orcamentos: orcamentos || null,
         obs: obs || null,
     };
@@ -668,17 +678,20 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
               <label>Número do Processo</label>
               <InputText
                 value={nprocesso}
-                onChange={(e) => {
-                  setNprocesso(e.target.value);
-                  if (e.target.value.trim()) setNprocessoObrigatorio(false);
-                }}
+                onChange={(e) => setNprocesso(e.target.value)}
                 placeholder="Ex: 0012345-67.2026.8.13.0000"
-                className={nprocessoObrigatorio ? 'p-invalid' : ''}
                 disabled={readOnly}
               />
-              {nprocessoObrigatorio && (
-                <small style={{ color: '#ef4444' }}>
-                  Número do Processo é obrigatório quando o status é "Cotar"
+              {!nprocesso.trim() && (
+                <small style={{ color: '#b45309', display: 'block', lineHeight: 1.45 }}>
+                  Sem CNJ o pedido ainda pode ser um processo válido: busque o nome do paciente em{' '}
+                  {CONSULTAS_PROCESSO.map((c, i) => (
+                    <span key={c.url}>
+                      {i > 0 && (i === CONSULTAS_PROCESSO.length - 1 ? ' e ' : ', ')}
+                      <a href={c.url} target="_blank" rel="noopener noreferrer">{c.rotulo}</a>
+                    </span>
+                  ))}
+                  . Achou → preencha o CNJ. Não achou → marque Segredo de Justiça. Sem CNJ não é possível protocolar.
                 </small>
               )}
             </div>
@@ -773,7 +786,6 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                 options={statusJuridicoOpts}
                 onChange={(e) => {
                   setStatusJuridico(e.value);
-                  if (e.value !== 'Cotar') setNprocessoObrigatorio(false);
                   if (e.value !== 'Não Cotar') setObsObrigatorio(false);
                 }}
                 placeholder="Selecione"
@@ -796,9 +808,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
               <label>
                 Peça de inteiro teor (PDF)
                 {(statusJuridico === 'Cotar' || statusJuridico === 'Não Cotar') && !inteiroTeorJaAnexado && (
-                  equipeG4med
-                    ? <span style={{ color: '#b45309', marginLeft: '4px' }}>equipe g4med pode seguir sem — anexe depois em outra fase</span>
-                    : <span style={{ color: '#ef4444', marginLeft: '4px' }}>*obrigatório na decisão</span>
+                  <span style={{ color: '#b45309', marginLeft: '4px' }}>recomendada — sem ela não dá para extrair os exames</span>
                 )}
               </label>
               {inteiroTeorJaAnexado ? (
@@ -811,24 +821,8 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                     type="file"
                     accept="application/pdf"
                     disabled={readOnly}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0] ?? null;
-                      setInteiroTeorFile(f);
-                      if (f) setInteiroTeorObrigatorio(false);
-                    }}
+                    onChange={(e) => setInteiroTeorFile(e.target.files?.[0] ?? null)}
                   />
-                  {inteiroTeorObrigatorio && (
-                    <small style={{ color: '#ef4444' }}>
-                      Anexe a peça de inteiro teor da decisão — ela é obrigatória para Cotar e Não Cotar. Se o processo não tem a peça, marque a caixa abaixo.
-                    </small>
-                  )}
-                  {(statusJuridico === 'Cotar' || statusJuridico === 'Não Cotar') && !inteiroTeorFile && (
-                    <div className="sem-peca-box" title="Marque só quando o processo realmente não tem peça de inteiro teor. Fica registrado quem declarou e quando; o robô não terá o que ler e o médico recebe só os anexos da SES.">
-                      <Checkbox inputId="semPeca" checked={semPecaInteiroTeor} disabled={readOnly}
-                        onChange={(e) => { setSemPecaInteiroTeor(!!e.checked); if (e.checked) setInteiroTeorObrigatorio(false); }} />
-                      <label htmlFor="semPeca">Não teve peça de inteiro teor neste processo — seguir sem a peça <small>(fica registrado quem declarou)</small></label>
-                    </div>
-                  )}
                 </>
               )}
             </div>
@@ -874,8 +868,52 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
 
         <div className="dialog-footer-actions">
           <Button label="Cancelar" outlined onClick={() => setEditDialogVisible(false)} />
-          {!readOnly && <Button label="Salvar" icon="pi pi-check" onClick={handleSalvar} />}
+          {!readOnly && <Button label="Salvar" icon="pi pi-check" onClick={() => void handleSalvar()} />}
         </div>
+      </Dialog>
+
+      {/* Aviso de avanço sem CNJ / sem peça (@R 15/09): diz o que se perde e deixa a pessoa decidir. */}
+      <Dialog header="Seguir sem todas as informações?" visible={avisoAvanco !== null}
+        style={{ width: '40rem', maxWidth: '96vw' }} modal onHide={() => setAvisoAvanco(null)}>
+        {avisoAvanco && (
+          <div className="aviso-avanco">
+            {avisoAvanco.semPeca && (
+              <p style={{ lineHeight: 1.5, margin: '0 0 .9rem' }}>
+                <i className="pi pi-exclamation-triangle" style={{ color: '#b45309', marginRight: '.4rem' }} />
+                <strong>Sem a peça de inteiro teor</strong> não é possível extrair os exames e as demais
+                informações que vêm dentro dela, como orçamentos já presentes na peça. Fica registrado quem
+                decidiu seguir sem ela, e a peça pode ser anexada depois em qualquer fase.
+              </p>
+            )}
+            {avisoAvanco.semCnj && (
+              <div style={{ lineHeight: 1.5, margin: '0 0 .9rem' }}>
+                <p style={{ margin: '0 0 .5rem' }}>
+                  <i className="pi pi-exclamation-triangle" style={{ color: '#b45309', marginRight: '.4rem' }} />
+                  <strong>Sem o número do CNJ</strong> não é possível protocolar. Mas o pedido ainda pode ser um
+                  processo válido: antes de seguir, busque o nome do paciente nas consultas públicas.
+                </p>
+                <ul style={{ margin: '0 0 .5rem 1.2rem' }}>
+                  {CONSULTAS_PROCESSO.map((c) => (
+                    <li key={c.url}><a href={c.url} target="_blank" rel="noopener noreferrer">{c.rotulo}</a></li>
+                  ))}
+                </ul>
+                <p style={{ margin: 0 }}>
+                  Achou o processo → volte e preencha o CNJ. Não achou → provavelmente é segredo de justiça:
+                  marque <strong>Segredo de Justiça</strong>.
+                </p>
+              </div>
+            )}
+            <div className="dialog-footer-actions">
+              <Button label="Voltar e completar" outlined onClick={() => setAvisoAvanco(null)} />
+              {avisoAvanco.semCnj && (
+                <Button label="Não localizei — marcar Segredo de Justiça" outlined severity="secondary"
+                  onClick={() => { setStatusJuridico('Segredo de Justiça'); setAvisoAvanco(null); }} />
+              )}
+              <Button label="Confirmar e avançar" icon="pi pi-check" severity="warning"
+                onClick={() => void handleSalvar(true)} />
+            </div>
+          </div>
+        )}
       </Dialog>
 
       <Dialog

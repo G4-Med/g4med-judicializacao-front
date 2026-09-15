@@ -281,9 +281,13 @@ export function ProtocoladosPage() {
         analise: parecerJuridico,
         valorGanho,
       });
-      await carregarDados();
+      // Teste local 15/09: a decisão era gravada (201) mas o modal ficava aberto esperando a lista
+      // recarregar. Agora fecha e tira o pedido decidido da tabela NA HORA; recarrega em segundo plano.
+      const idDecidido = registroAtualizando.id;
       setTipoAcao('');
       fecharDialogAtualizacao();
+      setRegistros((atual) => atual.filter((r) => r.id !== idDecidido));
+      void carregarDados();
     } catch (err) {
       alert('Erro ao salvar decisão.');
     } finally {
