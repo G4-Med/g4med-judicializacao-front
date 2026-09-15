@@ -137,7 +137,19 @@ export function JuridicoPage() {
   const [inteiroTeorJaAnexado, setInteiroTeorJaAnexado] = useState(false)
   // @R 15/09: a fase 1 NÃO trava mais por falta de peça nem de CNJ — abre um aviso do que se perde e
   // a pessoa decide. O que falta NESTA decisão; null = aviso fechado.
-  const [avisoAvanco, setAvisoAvanco] = useState<{ semCnj: boolean; semPeca: boolean } | null>(null)
+  const [avisoAvanco, setAvisoAvanco] = useState<{ semCnj: boolean; semPeca: boolean; cnjInvalido?: boolean; motivoBackend?: string } | null>(null)
+  // Seguir sem o CNJ exige marcar que está ciente (@R 15/09 12:17).
+  const [cienteSemCnj, setCienteSemCnj] = useState(false)
+
+  // Mesma conta do backend (validators.py, Res. CNJ 65/2008, mod 97-10): DV = 98 - (NNNNNNN+AAAAJTROOOO+'00') % 97.
+  // Resto calculado dígito a dígito para não depender de BigInt.
+  const cnjDigitoValido = (valor: string) => {
+    const d = valor.replace(/\D/g, '');
+    if (d.length !== 20) return false;
+    let resto = 0;
+    for (const c of d.slice(0, 7) + d.slice(9) + '00') resto = (resto * 10 + Number(c)) % 97;
+    return 98 - resto === Number(d.slice(7, 9));
+  };
 
   const colunasCfg = useColunasVisiveis('analise-juridica');
 
@@ -280,16 +292,23 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
     }
 
     const decidindo = statusJuridico === 'Cotar' || statusJuridico === 'Não Cotar';
-    const semCnj = statusJuridico === 'Cotar' && !nprocesso.trim();
+    // @R 15/09 12:17: número digitado com dígito errado travava num alerta sem saída (3 tentativas no
+    // mesmo pedido às 11:38). Agora vira o mesmo aviso: corrigir, ou seguir SEM o número (nunca gravar
+    // o número errado — ele quebra o cruzamento com o pagamento). Mesma regra do backend: só confere se mudou.
+    const cnjDigitado = nprocesso.trim();
+    const cnjInvalido = cnjDigitado !== '' && cnjDigitado !== (processoEditando.nprocesso ?? '') && !cnjDigitoValido(cnjDigitado);
+    const semCnj = statusJuridico === 'Cotar' && (!cnjDigitado || cnjInvalido);
     const semPeca = decidindo && !inteiroTeorJaAnexado && !inteiroTeorFile;
-    if (!confirmado && (semCnj || semPeca)) {
-      setAvisoAvanco({ semCnj, semPeca });
+    if (!confirmado && (semCnj || semPeca || cnjInvalido)) {
+      setCienteSemCnj(false);
+      setAvisoAvanco({ semCnj, semPeca, cnjInvalido });
       return;
     }
     setAvisoAvanco(null);
+    if (cnjInvalido) setNprocesso('');
 
       const payload = {
-        nprocesso: nprocesso || null,
+        nprocesso: cnjInvalido ? null : (cnjDigitado || null),
         numeroSei: numeroSei || null,
         statusJuridico: statusJuridico || null,
         // Confirmou seguir sem a peça → o backend registra quem declarou e quando (semPecaDeclaracao).
@@ -312,7 +331,14 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
         setEditDialogVisible(false);
     } catch (err: any) {
       console.error('ERRO AO SALVAR JURÍDICO:', err);
-        alert(err?.response?.data?.error ?? 'Erro ao salvar. Tente novamente.');
+      const msg: string = err?.response?.data?.error ?? '';
+      // Rede de segurança: se o backend recusar o CNJ por outra regra, abre o aviso em vez de travar.
+      if (/Número CNJ|Número de processo inválido/i.test(msg)) {
+        setCienteSemCnj(false);
+        setAvisoAvanco({ semCnj: statusJuridico === 'Cotar', semPeca: false, cnjInvalido: true, motivoBackend: msg });
+        return;
+      }
+        alert(msg || 'Erro ao salvar. Tente novamente.');
     }
   };
 
@@ -887,6 +913,15 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                 decidiu seguir sem ela, e a peça pode ser anexada depois em qualquer fase.
               </p>
             )}
+            {avisoAvanco.cnjInvalido && (
+              <p style={{ lineHeight: 1.5, margin: '0 0 .9rem' }}>
+                <i className="pi pi-times-circle" style={{ color: '#b91c1c', marginRight: '.4rem' }} />
+                <strong>O número digitado não é um CNJ válido</strong>
+                {avisoAvanco.motivoBackend ? ` (${avisoAvanco.motivoBackend})` : ' — a conta do dígito verificador não fecha'}.
+                Confira se houve troca ou falta de dígito. Se não tiver o número certo, siga <strong>sem o número</strong>:
+                ele não será gravado.
+              </p>
+            )}
             {avisoAvanco.semCnj && (
               <div style={{ lineHeight: 1.5, margin: '0 0 .9rem' }}>
                 <p style={{ margin: '0 0 .5rem' }}>
@@ -905,13 +940,23 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                 </p>
               </div>
             )}
+            {(avisoAvanco.semCnj || avisoAvanco.cnjInvalido) && (
+              <label style={{ display: 'flex', gap: '.5rem', alignItems: 'flex-start', margin: '0 0 .9rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={cienteSemCnj} onChange={(e) => setCienteSemCnj(e.target.checked)}
+                  style={{ marginTop: '.25rem' }} />
+                <span>Estou ciente de que vou seguir <strong>sem o número do processo (CNJ)</strong> e que, sem ele,
+                  este pedido não poderá ser protocolado até o número ser preenchido.</span>
+              </label>
+            )}
             <div className="dialog-footer-actions">
               <Button label="Voltar e completar" outlined onClick={() => setAvisoAvanco(null)} />
               {avisoAvanco.semCnj && (
                 <Button label="Não localizei — marcar Segredo de Justiça" outlined severity="secondary"
-                  onClick={() => { setStatusJuridico('Segredo de Justiça'); setAvisoAvanco(null); }} />
+                  onClick={() => { if (avisoAvanco.cnjInvalido) setNprocesso(''); setStatusJuridico('Segredo de Justiça'); setAvisoAvanco(null); }} />
               )}
-              <Button label="Confirmar e avançar" icon="pi pi-check" severity="warning"
+              <Button label={avisoAvanco.semCnj || avisoAvanco.cnjInvalido ? 'Seguir sem o CNJ' : 'Confirmar e avançar'}
+                icon="pi pi-check" severity="warning"
+                disabled={(avisoAvanco.semCnj || avisoAvanco.cnjInvalido) && !cienteSemCnj}
                 onClick={() => void handleSalvar(true)} />
             </div>
           </div>
