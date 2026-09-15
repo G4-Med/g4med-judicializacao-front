@@ -96,8 +96,10 @@ const CONSULTAS_PROCESSO = [
 ];
 
 export function JuridicoPage() {
-  const { isReadOnly } = useAccess();
+  const { isReadOnly, profile } = useAccess();
   const readOnly = isReadOnly('juridico');
+  // Gerente só consulta esta tela, mas também recebe pedidos fora do e-mail: pode cadastrar à mão.
+  const podeCadastrarPedido = !readOnly || profile.group === 'GERENTE';
   const [loading, setLoading] = useState(false);
   const [processos, setProcessos] = useState<ProcessoJuridico[]>([]);
   const [first, setFirst] = useState(0);
@@ -404,7 +406,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
           />
         </h2>
           <AcoesTabela>
-            {!readOnly && <NovoPedidoManual aoCriar={() => carregarDados()} />}
+            {podeCadastrarPedido && <NovoPedidoManual aoCriar={() => carregarDados()} />}
             <BotaoExportarExcel todos={dataComSequencial} visiveis={visibleProcessos} nome="analise-juridica" />
             {colunasCfg.botao}
           </AcoesTabela>
