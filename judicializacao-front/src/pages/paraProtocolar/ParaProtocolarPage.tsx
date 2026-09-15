@@ -109,6 +109,8 @@ export function ParaProtocolarPage() {
 
   const [registroEditando, setRegistroEditando] = useState<ParaProtocolarTableRow | null>(null);
   const [registroProtocolando, setRegistroProtocolando] = useState<ParaProtocolarTableRow | null>(null);
+  // O pedido chegou a esta fase SEM CNJ? Só nesse caso o campo do número fica editável no modal.
+  const [registroOriginalSemCnj, setRegistroOriginalSemCnj] = useState(false);
   const [registroNaoProtocolar, setRegistroNaoProtocolar] = useState<ParaProtocolarTableRow | null>(null);
 
   const [naoProtocolarOpcao, setNaoProtocolarOpcao] = useState<NaoProtocolarOpcao>('');
@@ -457,11 +459,14 @@ export function ParaProtocolarPage() {
   const protocolarBodyTemplate = (rowData: ParaProtocolarTableRow) => {
     return (
       <Button
-        label=""
+        label="Protocolar"
         icon="pi pi-send"
         severity="success"
         outlined
+        tooltip="Protocolar: anexar a petição e registrar a data do protocolo"
+        tooltipOptions={{ position: 'top' }}
         onClick={() => {
+          setRegistroOriginalSemCnj(!(rowData.numeroProcesso || '').trim());
           setRegistroProtocolando({ ...rowData });
           setDataProtocolo('');
           setAnexosOrcamento([]);
@@ -479,10 +484,12 @@ export function ParaProtocolarPage() {
   const excluirBodyTemplate = (rowData: ParaProtocolarTableRow) => {
     return (
       <Button
-        label=""
+        label="Não protocolar"
         icon="pi pi-times"
         severity="danger"
         outlined
+        tooltip="Não protocolar: perda, orientação da diretoria, sem protocolo ou segredo de justiça"
+        tooltipOptions={{ position: 'top' }}
         onClick={() => {
           setRegistroNaoProtocolar({ ...rowData });
           setNaoProtocolarOpcao('');
@@ -535,6 +542,12 @@ const handleConfirmarProtocolacao = async () => {
   if (!registroProtocolando) return
 
   // Validações obrigatórias
+  // CNJ ANTES de qualquer upload (@R 15/09 "sem ele não é possível protocolar"): o backend recusa
+  // protocolar sem CNJ, e se a checagem viesse depois do upload a petição ficaria órfã no storage.
+  if (!(registroProtocolando.numeroProcesso || '').trim()) {
+    alert('Preencha o número do processo (CNJ) antes de protocolar — sem ele não é possível protocolar.')
+    return
+  }
   if (!dataProtocolo) {
     alert('A data de protocolação é obrigatória.')
     return
@@ -564,16 +577,22 @@ const handleConfirmarProtocolacao = async () => {
     await salvarProtocolar(registroProtocolando.id, {
       acao: 'protocolar',
       obs: registroProtocolando.observacoes || '',
-      dataProtocolo
+      dataProtocolo,
+      nprocesso: (registroProtocolando.numeroProcesso || '').trim(),
     })
 
     setProtocolarDialogVisible(false)
     setArquivoPeticao(null)
     setArquivoExtra1(null)
     setArquivoExtra2(null)
+    // Teste local 15/09: protocolado (201) mas o pedido continuava na lista — carregarDados passa por
+    // getOrders (/orders/listar/, medido 23 s). Tira o pedido protocolado da tabela NA HORA.
+    const idProtocolado = registroProtocolando.id
+    setRegistros((atual) => atual.filter((r) => r.id !== idProtocolado))
     carregarDados()
-  } catch (err) {
-    alert('Erro ao confirmar protocolação.')
+  } catch (err: any) {
+    // o backend explica o motivo (CNJ ausente ou inválido) — mostrar em vez da mensagem genérica
+    alert(err?.response?.data?.error ?? 'Erro ao confirmar protocolação.')
   } finally {
     setEnviandoProtocolo(false)
   }
@@ -973,8 +992,15 @@ const handleConfirmarProtocolacao = async () => {
             </div>
 
             <div className="field">
-              <label>Número do Processo</label>
-              <InputText value={registroProtocolando.numeroProcesso} disabled />
+              <label>Número do Processo {!(registroProtocolando.numeroProcesso || '').trim() && <span style={{ color: '#ef4444' }}>*obrigatório para protocolar</span>}</label>
+              {/* Editável só quando está vazio: pedido que chegou sem CNJ pode ter o número
+                  completado aqui, na hora do protocolo (@R 15/09). Com CNJ já gravado, continua travado. */}
+              <InputText
+                value={registroProtocolando.numeroProcesso}
+                disabled={!!(registroOriginalSemCnj === false)}
+                placeholder="Ex: 0012345-67.2026.8.13.0000"
+                onChange={(e) => setRegistroProtocolando((atual) => atual ? { ...atual, numeroProcesso: e.target.value } : atual)}
+              />
             </div>
 
             <div className="field">
