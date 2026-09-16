@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { usePrimeiraCarga } from '../usePrimeiraCarga';
 import './PainelKpis.css';
 
 /**
@@ -19,6 +20,9 @@ import './PainelKpis.css';
  */
 export function PainelKpis({ titulo, children }: { titulo: string; children: ReactNode }) {
   const [fixado, setFixado] = useState<boolean | null>(null); // null = segue o hover
+  // Enquanto a API não respondeu, os cards mostram ZERO — e zero é uma afirmação
+  // ("não há nada"), não um "ainda não sei". O esqueleto diz a verdade nesse intervalo.
+  const carregando = usePrimeiraCarga();
 
   const aberto = fixado ?? false;
 
@@ -38,7 +42,14 @@ export function PainelKpis({ titulo, children }: { titulo: string; children: Rea
         </span>
         <i className={`pi ${aberto ? 'pi-chevron-up' : 'pi-chevron-down'} painel-kpis__seta`} />
       </button>
-      <div className="painel-kpis__corpo">{children}</div>
+      <div className="painel-kpis__corpo">
+        {carregando ? (
+          <div className="painel-kpis__esqueleto" role="status" aria-live="polite">
+            <span className="sr-only">Carregando os indicadores…</span>
+            {[0, 1, 2, 3].map((i) => <span key={i} className="mc-esqueleto-card" aria-hidden="true" />)}
+          </div>
+        ) : children}
+      </div>
     </div>
   );
 }

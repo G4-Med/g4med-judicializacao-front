@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { entrou, saiu } from './requisicoesEmVoo';
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -7,6 +8,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  entrou();   // contador de requisições em voo — alimenta o esqueleto de carregamento
   const token = localStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -34,10 +36,12 @@ const upperProcedimento = (data: unknown): unknown => {
 
 api.interceptors.response.use(
   (response) => {
+    saiu();
     upperProcedimento(response.data);
     return response;
   },
   async (error) => {
+    saiu();   // erro também FECHA a requisição — senão o esqueleto ficaria eterno
     const original = error.config;
 
     // Sessão única (26/08): outro login com o mesmo usuário derrubou esta sessão.
