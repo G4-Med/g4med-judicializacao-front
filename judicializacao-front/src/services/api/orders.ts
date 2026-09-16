@@ -282,3 +282,16 @@ export const getOrcamentosTerceiros = (params: { order?: number; procedimento?: 
 // temos — sempre com o N, porque mediana de um caso é um caso, não régua.
 export const getAcervoPrecos = (params: { especialidade?: string; q?: string; so_sem_orcamento?: 1 }) =>
   api.get('/orders/acervo-precos/', { params });
+
+// ── A FICHA DO PEDIDO (rastreabilidade por fase) e o AVISO por colaborador ──────
+// A ficha LÊ o que já existe (nenhuma tabela nova). O aviso guarda o "não mostrar
+// mais" em PreferenciaUsuario — por COLABORADOR, não por navegador: quem dispensou
+// no computador de casa continua sem ver no do escritório, e vice-versa quando reativa.
+export const getFichaPedido = (orderId: number) =>
+  api.get(`/orders/${orderId}/ficha/`);
+
+export const getPreferencia = (chave: string) =>
+  api.get(`/preferencias/${chave}/`);
+
+export const salvarPreferencia = (chave: string, valor: Record<string, unknown>) =>
+  api.post(`/preferencias/${chave}/`, { valor });
