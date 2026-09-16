@@ -14,7 +14,7 @@ import { FilterMatchMode } from 'primereact/api';
 import html2canvas from 'html2canvas';
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { getOrcamentoMedico, getOrders, salvarOrcamentoMedico, getAnexosOrder, uploadAnexoOrder, getMedicosCompleto, aplicarStatusOrcamentoManual, trocarMedicoOrcamento } from '../../services/api/orders';
+import { getOrcamentoMedico, salvarOrcamentoMedico, getAnexosOrder, uploadAnexoOrder, getMedicosCompleto, aplicarStatusOrcamentoManual, trocarMedicoOrcamento } from '../../services/api/orders';
 import { getBaseOrcamento, getStatusOrcamentoPersonalizado, criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { getStatusTagStyle } from '../../utils/statusTag';
 import { EnviarOrcamentoDialog } from './EnviarOrcamentoDialog';
@@ -69,10 +69,12 @@ interface ProcessoOrcamento {
   medico_id?: number;
   nomeMedico?: string;
   hospital?: string;
+  /** nome do médico, já devolvido pela rota desta fase (_identificacao_por_order) —
+   *  antes a tela ia buscá-lo no índice de /orders/listar/, onde ele nunca esteve */
+  medico?: string;
 }
 
 interface ProcessoOrcamentoRow extends ProcessoOrcamento { sequencial: number; }
-interface OrderLookup extends Record<string, any> { id: number; }
 
 interface Anexo {
   id: number
@@ -119,7 +121,6 @@ export function OrcamentoMedicoPage() {
   const [parecerNaoFaco, setParecerNaoFaco] = useState('');
   const [salvandoNaoFaco, setSalvandoNaoFaco] = useState(false);
   const [processoSelecionado, setProcessoSelecionado] = useState<ProcessoOrcamentoRow | null>(null);
-  const [ordersLookup, setOrdersLookup] = useState<Record<number, OrderLookup>>({});
   const [exames, setExames] = useState('');
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -164,25 +165,23 @@ export function OrcamentoMedicoPage() {
 
   const [visibleProcessos, setVisibleProcessos] = useState<typeof dataComMedico>([]);
 
+  // Esta tela baixava /orders/listar/ INTEIRO (~3 MB, ~10 s) para montar um índice de
+  // pedidos. MEDIDO 16/09: daquele índice só `idMedico` existia de fato — `nomeMedico`,
+  // `hospital` e `nomeHospital` nunca estiveram na resposta, então as linhas que os liam
+  // caíam sempre no fallback. A rota desta tela passou a devolver `idMedico` (e já
+  // devolvia `medico`, o nome, por `_identificacao_por_order`), e a chamada pesada saiu.
   const carregarDados = () => {
     setLoading(true);
-    Promise.all([getOrcamentoMedico(), getOrders(), getMedicosCompleto()])
-      .then(([orcamentoResponse, ordersResponse, medicosResponse]) => {
-        const ordersIndex = (ordersResponse.data as OrderLookup[]).reduce<Record<number, OrderLookup>>((acc, order) => {
-          acc[order.id] = order;
-          return acc;
-        }, {});
-
-        setOrdersLookup(ordersIndex);
+    Promise.all([getOrcamentoMedico(), getMedicosCompleto()])
+      .then(([orcamentoResponse, medicosResponse]) => {
         setMedicos(medicosResponse.data);
-        console.log('[OrcamentoMedicoPage] orders lookup carregado', ordersIndex);
 
         setProcessos(orcamentoResponse.data.map((o: any) => ({
           ...o,
           idade: calcularIdade(o.dataNascimento),
         })));
       })
-      .catch((err) => console.error('[OrcamentoMedicoPage] erro ao carregar orçamentos/orders', err))
+      .catch((err) => console.error('[OrcamentoMedicoPage] erro ao carregar orçamentos', err))
       .finally(() => setLoading(false));
   };
 
@@ -194,18 +193,20 @@ export function OrcamentoMedicoPage() {
 
   const dataComMedico = useMemo(() => {
     return dataComSequencial.map((item) => {
-      const orderLookup = ordersLookup[item.id];
-      const medicoId = item.idMedico ?? item.medicoId ?? item.medico_id ?? orderLookup?.idMedico ?? orderLookup?.medicoId ?? null;
+      const medicoId = item.idMedico ?? item.medicoId ?? item.medico_id ?? null;
       const medicoSelecionado = medicos.find((medico: any) => medico.id === medicoId);
       const medicoNome = medicoSelecionado?.nomeSistema ?? '';
       return {
         ...item,
-        medico: item.nomeMedico ?? orderLookup?.nomeMedico ?? orderLookup?.medico ?? medicoNome,
-        hospital: item.hospital ?? orderLookup?.hospital ?? medicoSelecionado?.hospital ?? '',
-        nomeHospital: orderLookup?.nomeHospital ?? medicoSelecionado?.hospital ?? '',
+        // `item.medico` vem da própria rota desta tela (_identificacao_por_order);
+        // antes a cadeia passava pelo índice de /orders/listar/, que não tinha
+        // nenhum destes campos — o valor exibido sempre saiu do `medicos`.
+        medico: item.nomeMedico ?? item.medico ?? medicoNome,
+        hospital: item.hospital ?? medicoSelecionado?.hospital ?? '',
+        nomeHospital: medicoSelecionado?.hospital ?? '',
       };
     });
-  }, [dataComSequencial, ordersLookup, medicos]);
+  }, [dataComSequencial, medicos]);
 
   useEffect(() => { setVisibleProcessos(dataComMedico); }, [dataComMedico]);
 
@@ -921,11 +922,10 @@ ${blocos}
       <EnviarOrcamentoDialog
         visible={escolhaVisible && !readOnly}
         processo={processoSelecionado}
-        orderLookup={processoSelecionado ? ordersLookup[processoSelecionado.id] : null}
         onHide={() => setEscolhaVisible(false)}
         onSuccess={async () => {
           // Teste local 15/09: o orçamento era gravado (201) mas o pedido continuava na lista — o
-          // recarregamento passa por getOrders (/orders/listar/, medido 23 s e 2,9 MB). O pedido que
+          // recarregamento recarrega a lista desta fase. O pedido que
           // saiu desta fase some da tabela NA HORA; o recarregamento completo segue em segundo plano.
           const idEnviado = processoSelecionado?.id;
           setDetalheVisible(false);
