@@ -1,0 +1,22 @@
+.fic__topo{display:flex;gap:1rem;align-items:center;flex-wrap:wrap;padding:.5rem 0 1rem;border-bottom:1px solid #e5e7eb;margin-bottom:1rem}
+.fic__voltar{margin-left:auto;border:1px solid #b45309;background:#fff;color:#b45309;border-radius:4px;padding:.35rem .8rem;cursor:pointer}
+.fic__voltar:hover:not(:disabled){background:#b45309;color:#fff}
+.fic__voltar:disabled{opacity:.6;cursor:progress}
+.fic__erro{color:#b00020}
+.fic__bloco{border:1px solid #e5e7eb;border-radius:6px;padding:.75rem 1rem;margin-bottom:.85rem}
+.fic__fase{display:flex;gap:.75rem;align-items:baseline;flex-wrap:wrap;margin-bottom:.5rem}
+.fic__fase strong{font-size:1.02rem}
+.fic__quando,.fic__rastro{color:#667;font-size:.82rem}
+.fic__rastro{margin-left:auto}
+.fic__campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:.4rem 1.25rem;margin:0}
+.fic__campos dt{font-size:.78rem;color:#556;text-transform:uppercase;letter-spacing:.02em}
+.fic__campos dd{margin:0 0 .35rem;word-break:break-word}
+.fic__vazio dd{color:#99a;font-style:italic}
+.fic__arquivos{list-style:none;padding:0;margin:.6rem 0 0;border-top:1px dashed #e5e7eb;padding-top:.5rem}
+.fic__arquivos li{display:flex;gap:.6rem;align-items:baseline;flex-wrap:wrap;padding:.15rem 0}
+.fic__tipo{background:#eef2ff;color:#3730a3;border-radius:3px;padding:0 .35rem;font-size:.72rem}
+.fic__trilha{margin-top:1rem}
+.fic__trilha summary{cursor:pointer;color:#0d6efd}
+.fic__trilha ul{list-style:none;padding:.5rem 0 0;margin:0;max-height:260px;overflow:auto}
+.fic__trilha li{padding:.2rem 0;border-bottom:1px solid #f1f5f9;font-size:.88rem}
+.fic__campo{color:#556;font-size:.8rem}
