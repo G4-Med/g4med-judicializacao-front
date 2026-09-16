@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { usePrimeiraCarga } from '../usePrimeiraCarga';
 import './ContadorRegistros.css';
 
 /**
@@ -38,6 +39,7 @@ interface Props {
 }
 
 export function ContadorRegistros({ total, visiveis, fases = [], substantivo = 'registros' }: Props) {
+  const carregando = usePrimeiraCarga();
   const filtrado = visiveis !== total;
   const [pulsando, setPulsando] = useState(false);
   const anterior = useRef(visiveis);
@@ -62,6 +64,17 @@ export function ContadorRegistros({ total, visiveis, fases = [], substantivo = '
       ? `Por fase: ${fasesComRegistro.map((f) => `${f.rotulo}, ${f.quantidade}`).join('. ')}.`
       : '',
   ].join(' ').trim();
+
+  // "0 registros" durante a carga é uma resposta errada com cara de certa — a tabela
+  // ainda não sabe quantos tem. O esqueleto ocupa esse intervalo sem afirmar nada.
+  if (carregando) {
+    return (
+      <div className="contador-registros" role="status" aria-live="polite">
+        <span className="sr-only">Carregando os registros…</span>
+        <span className="mc-esqueleto-linha" aria-hidden="true" />
+      </div>
+    );
+  }
 
   return (
     <div className="contador-registros" role="status" aria-live="polite">

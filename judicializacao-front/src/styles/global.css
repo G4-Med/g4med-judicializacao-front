@@ -258,3 +258,28 @@ body.dark-theme .p-multiselect {
 .p-datatable .p-filter-column .p-dropdown .p-dropdown-trigger {
   width: 2rem;
 }
+
+/* ── ESQUELETO DE CARREGAMENTO (16/09/2026) ──────────────────────────────────
+   Ocupa o lugar do número enquanto a API não respondeu. Antes disso a tela
+   mostrava zero, e zero afirma "não há nada" quando o certo era "ainda não sei".
+   Respeita prefers-reduced-motion: quem pediu menos movimento vê o bloco parado. */
+.mc-esqueleto-card,
+.mc-esqueleto-linha {
+  display: inline-block;
+  background: linear-gradient(90deg, #eef2f7 25%, #f8fafc 50%, #eef2f7 75%);
+  background-size: 200% 100%;
+  animation: mc-esqueleto 1.2s ease-in-out infinite;
+  border-radius: 8px;
+}
+.mc-esqueleto-card { width: 9.5rem; height: 4.2rem; }
+.mc-esqueleto-linha { width: 14rem; height: 1.6rem; border-radius: 6px; }
+.painel-kpis__esqueleto { display: flex; gap: .75rem; flex-wrap: wrap; padding: .25rem 0; }
+
+@keyframes mc-esqueleto {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mc-esqueleto-card,
+  .mc-esqueleto-linha { animation: none; background: #eef2f7; }
+}

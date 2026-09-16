@@ -57,7 +57,6 @@ export interface OrcamentoProcessoBase {
 interface EnviarOrcamentoDialogProps {
   visible: boolean;
   processo: OrcamentoProcessoBase | null;
-  orderLookup?: Record<string, unknown> | null;
   onHide: () => void;
   onSuccess: () => void | Promise<void>;
 }
@@ -143,7 +142,6 @@ function extrairMedicoId(dados: Record<string, unknown>): number | null {
 export function EnviarOrcamentoDialog({
   visible,
   processo,
-  orderLookup,
   onHide,
   onSuccess,
 }: EnviarOrcamentoDialogProps) {
@@ -422,9 +420,10 @@ export function EnviarOrcamentoDialog({
     setMedicamentos([itemVazio()]);
     setBaseOrcamento(baseOrcamentoInicial);
 
-    const medicoId =
-      extrairMedicoId(processo as unknown as Record<string, unknown>) ??
-      extrairMedicoId((orderLookup ?? {}) as Record<string, unknown>);
+    // O fallback era um índice montado a partir de /orders/listar/ (~3 MB por abertura
+    // da tela). O pedido já traz `idMedico` da própria rota desta fase, então o
+    // primeiro extrairMedicoId basta — e é a mesma fonte que o fallback lia.
+    const medicoId = extrairMedicoId(processo as unknown as Record<string, unknown>);
     if (!medicoId) {
       console.warn('[EnviarOrcamentoDialog] nenhum medicoId encontrado para o processo', processo.id);
       return;
