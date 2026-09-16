@@ -53,7 +53,7 @@ export function CabecalhoFase({ nome, screen, subtitulo, slaDias, slaTexto, acoe
 
   useEffect(() => {
     const anterior = document.title;
-    document.title = `${titulo} · MedCheck`;
+    document.title = `${titulo} · G4MED`;
     return () => { document.title = anterior; };
   }, [titulo]);
 
