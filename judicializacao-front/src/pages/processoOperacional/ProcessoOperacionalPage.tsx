@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ETAPAS, DONOS, PRAZOS, REGRAS, PORQUE, FONTE } from './conteudo';
+import { ETAPAS, DONOS, PRAZOS, REGRAS, PORQUE, FONTE, DICAS } from './conteudo';
 import type { Etapa } from './conteudo';
 import './ProcessoOperacionalPage.css';
 
@@ -82,6 +82,53 @@ export function ProcessoOperacionalPage() {
         </div>
       </section>
 
+      {/* O FLUXO, antes de qualquer detalhe: as 6 fases em ordem, quem é dono de cada uma
+          e o que cada uma ENTREGA à seguinte. Clicar abre a etapa correspondente abaixo.
+          (@R 16/09: "o fluxo tem que estar claro processualmente") */}
+      <section className="proc-op__fluxo">
+        <h2>O fluxo, do pedido à decisão</h2>
+        <p className="proc-op__fluxo-legenda">
+          Cada fase entrega algo à próxima. Se a entrega não saiu, o pedido não deveria ter andado —
+          e é isso que o ⟲ (ficha do pedido) permite corrigir, em qualquer tela.
+        </p>
+        <ol className="proc-op__fluxo-fita">
+          {ETAPAS.map((e) => (
+            <li key={e.id}>
+              <button
+                type="button"
+                className="proc-op__fluxo-passo"
+                style={{ borderTopColor: DONOS[e.dono].cor }}
+                onClick={() => {
+                  setAbertas((atual) => new Set(atual).add(e.id));
+                  document.getElementById(`etapa-${e.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }}
+              >
+                <span className="proc-op__fluxo-num" style={{ background: DONOS[e.dono].cor }}>{e.numero}</span>
+                <strong>{e.titulo.split('—')[0].trim()}</strong>
+                <em style={{ color: DONOS[e.dono].cor }}>{DONOS[e.dono].rotulo}</em>
+                {e.entrega && <span className="proc-op__fluxo-entrega">entrega: {e.entrega}</span>}
+              </button>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {/* DICAS — o que a operação mais erra, com a cura em uma linha. */}
+      <section className="proc-op__dicas">
+        <h2>Dicas para o dia a dia</h2>
+        <div className="proc-op__dicas-grade">
+          {DICAS.map((d) => (
+            <div key={d.titulo} className="proc-op__dica">
+              <i className={`pi ${d.icone}`} />
+              <div>
+                <strong>{d.titulo}</strong>
+                <p>{d.texto}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="proc-op__prazos">
         <h2>Os prazos</h2>
         <div className="proc-op__prazos-grade">
@@ -121,6 +168,7 @@ export function ProcessoOperacionalPage() {
           return (
             <article
               key={etapa.id}
+              id={`etapa-${etapa.id}`}
               className={`proc-op__etapa ${estaAberta ? 'is-aberta' : ''}`}
               style={{ borderLeftColor: dono.cor }}
             >
@@ -143,6 +191,13 @@ export function ProcessoOperacionalPage() {
               {estaAberta && (
                 <div className="proc-op__etapa-corpo">
                   <p className="proc-op__etapa-oque">{etapa.oQueFaz}</p>
+
+                  {etapa.entrega && (
+                    <div className="proc-op__etapa-entrega">
+                      <i className="pi pi-arrow-right-arrow-left" />
+                      <span><strong>O que esta fase entrega à próxima:</strong> {etapa.entrega}</span>
+                    </div>
+                  )}
 
                   {etapa.prazo && (
                     <div className="proc-op__etapa-prazo">

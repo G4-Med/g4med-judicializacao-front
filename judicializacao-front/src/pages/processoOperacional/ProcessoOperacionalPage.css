@@ -304,3 +304,44 @@
     page-break-inside: avoid;
   }
 }
+
+/* ── O FLUXO (mapa processual) e as DICAS — @R 16/09/2026 ───────────────────── */
+.proc-op__fluxo { margin: 1.5rem 0; }
+.proc-op__fluxo-legenda { color: #475569; margin: .25rem 0 .9rem; }
+.proc-op__fluxo-fita {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+.proc-op__fluxo-passo {
+  width: 100%; height: 100%; text-align: left; cursor: pointer;
+  background: #fff; border: 1px solid #e2e8f0; border-top: 4px solid #94a3b8;
+  border-radius: 10px; padding: .7rem .8rem;
+  display: flex; flex-direction: column; gap: .3rem;
+  transition: box-shadow .15s, transform .15s;
+}
+.proc-op__fluxo-passo:hover { box-shadow: 0 4px 14px rgba(15,23,42,.10); transform: translateY(-2px); }
+.proc-op__fluxo-num {
+  width: 1.5rem; height: 1.5rem; border-radius: 50%; color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .8rem; font-weight: 700;
+}
+.proc-op__fluxo-passo strong { font-size: .95rem; color: #0f172a; }
+.proc-op__fluxo-passo em { font-style: normal; font-size: .75rem; font-weight: 600; }
+.proc-op__fluxo-entrega { font-size: .78rem; color: #475569; line-height: 1.35; }
+
+.proc-op__etapa-entrega {
+  display: flex; gap: .5rem; align-items: flex-start;
+  background: #f0f9ff; border-left: 3px solid #0284c7;
+  padding: .55rem .7rem; border-radius: 6px; margin: 0 0 1rem;
+  font-size: .88rem; color: #0c4a6e;
+}
+
+.proc-op__dicas { margin: 1.5rem 0; }
+.proc-op__dicas-grade { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr)); }
+.proc-op__dica {
+  display: flex; gap: .65rem; align-items: flex-start;
+  background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: .75rem .85rem;
+}
+.proc-op__dica i { color: #b45309; font-size: 1.05rem; margin-top: .15rem; }
+.proc-op__dica strong { display: block; color: #78350f; margin-bottom: .25rem; }
+.proc-op__dica p { margin: 0; font-size: .87rem; line-height: 1.45; color: #451a03; }

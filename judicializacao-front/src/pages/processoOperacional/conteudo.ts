@@ -24,6 +24,9 @@ export interface Etapa {
   prazo?: string;
   falaDoRapha?: string;
   atencao?: string;
+  /** O que SAI desta etapa e faz o pedido entrar na seguinte. É esta frase que torna o
+   *  fluxo legível como processo: cada fase entrega algo à próxima (@R 16/09). */
+  entrega?: string;
   /** Exemplos concretos de cada decisão da etapa (@R 15/09: "temos que dar exemplo para parte
    *  cotar, não cotar e segredo de justiça"). Sem nome de paciente real. */
   exemplos?: { decisao: string; quando: string[] }[];
@@ -37,6 +40,7 @@ export const DONOS = {
 export const ETAPAS: Etapa[] = [
   {
     id: 'juridico',
+    entrega: 'O pedido marcado COTAR, com CNJ confirmado (ou marcado como segredo de justiça).',
     prazo: 'Teto: 5 dias no funil — acima disso está errado (@R 28/08). Ideal: a análise sai no dia seguinte ("libera para mim até meio-dia")',
     numero: 1,
     titulo: 'Jurídico — a triagem',
@@ -89,6 +93,7 @@ export const ETAPAS: Etapa[] = [
   },
   {
     id: 'selecionar-medico',
+    entrega: 'O pedido com um médico da rede responsável por cotar o procedimento.',
     prazo: '24h para o médico dizer SE vai cotar (sem data própria no sistema — o relógio medido é o das 96h do orçamento)',
     numero: 2,
     titulo: 'Selecionar médico',
@@ -110,6 +115,7 @@ export const ETAPAS: Etapa[] = [
   },
   {
     id: 'orcamento-medico',
+    entrega: 'O orçamento discriminado do médico, em um arquivo só, pronto para os autos.',
     prazo: 'SLA 4 dias (96 horas) — é o prazo que sustenta o contrato com o Estado',
     numero: 3,
     titulo: 'Orçamento médico — a cobrança',
@@ -131,6 +137,7 @@ export const ETAPAS: Etapa[] = [
   },
   {
     id: 'para-protocolar',
+    entrega: 'O orçamento juntado ao processo, com a data do protocolo registrada.',
     prazo: 'SLA 1 dia — "esta é a área que você ZERA todo dia"',
     numero: 4,
     titulo: 'Para protocolar — juntar aos autos',
@@ -156,6 +163,7 @@ export const ETAPAS: Etapa[] = [
   },
   {
     id: 'protocolados',
+    entrega: 'A decisão judicial registrada — deferida (vira ganho) ou indeferida (vira perda).',
     prazo: 'A decisão é do juiz (sem prazo nosso), mas o acompanhamento tem: atualizar a cada 15 dias',
     numero: 5,
     titulo: 'Protocolados — acompanhar até a decisão',
@@ -181,6 +189,7 @@ export const ETAPAS: Etapa[] = [
   // 'Perda por segredo de justiça'; segredo enviado à SES vive na etapa 6 abaixo.
   {
     id: 'enviado-ses',
+    entrega: 'O retorno técnico da Secretaria sobre o que foi enviado sem protocolo.',
     prazo: 'A resposta é do Estado; nossa verificação tem prazo: checar em 120 dias, cobrar em 180',
     numero: 6,
     titulo: 'Enviado à SES sem protocolo — aguardando retorno técnico',
@@ -283,3 +292,51 @@ export const PORQUE = {
 
 export const FONTE =
   'Reunião de treinamento com a equipe do Instituto Mateus · 24/08/2026 · as falas são transcrição literal.';
+
+
+/**
+ * DICAS — os erros que a operação mais comete, com a cura em uma linha.
+ *
+ * @R 16/09/2026: "no processo operacional o fluxo tem que estar claro processualmente
+ * e ter ali as dicas para o usuário". Não é teoria: cada linha abaixo nasceu de um
+ * acidente real ou de uma pergunta que a equipe já fez mais de uma vez.
+ */
+export const DICAS: { titulo: string; texto: string; icone: string }[] = [
+  {
+    icone: 'pi-history',
+    titulo: 'Passou de fase sem querer? Dá para voltar',
+    texto:
+      'Em qualquer tela de fase, o botão ⟲ ao lado do paciente abre a FICHA DO PEDIDO: o que foi ' +
+      'preenchido em cada etapa, por quem, quando, e os arquivos que entraram. É por ali que se ' +
+      'volta o pedido para a fase anterior — o sistema mostra quem moveu, pede confirmação, e ' +
+      'recusa se o pedido já tiver andado de novo.',
+  },
+  {
+    icone: 'pi-search',
+    titulo: 'Antes de perguntar "o que fizeram aqui?", abra a ficha',
+    texto:
+      'A observação, o orçamento e os anexos da fase anterior não somem quando o pedido avança — ' +
+      'eles ficam na ficha. Abrir a ficha responde em 5 segundos o que hoje custa uma mensagem no grupo.',
+  },
+  {
+    icone: 'pi-clock',
+    titulo: 'Responder rápido vale mais que responder perfeito',
+    texto:
+      'O prazo do processo não espera a resposta ideal. Um orçamento simples dentro do prazo vale ' +
+      'mais do que um completo depois que o juiz decidiu.',
+  },
+  {
+    icone: 'pi-file',
+    titulo: 'Sem a peça de inteiro teor, metade do trabalho fica cego',
+    texto:
+      'É de dentro dela que saem os exames pedidos e os orçamentos concorrentes. Sem o CNJ, não é ' +
+      'possível protocolar. O sistema deixa seguir, mas avisa o que se perde.',
+  },
+  {
+    icone: 'pi-exclamation-circle',
+    titulo: 'Marcou NÃO COTAR? Escreva o motivo',
+    texto:
+      'Sem motivo, o sistema não salva — e não é burocracia: o motivo é o que permite saber depois ' +
+      'quantos pedidos perdemos por falta de médico e quantos por decisão nossa.',
+  },
+];

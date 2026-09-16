@@ -34,8 +34,7 @@ import './ProcessosPage.css';
 import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaOrigem } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
-import { FichaPedido } from '../../components/FichaPedido/FichaPedido';
-import { AvisoNovidade } from '../../components/AvisoNovidade/AvisoNovidade';
+import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
 import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
 
@@ -251,7 +250,7 @@ export function ProcessosPage() {
   const [processoMenuSelecionado, setProcessoMenuSelecionado] = useState<ProcessoTableRow | null>(null);
   const rowActionMenuRef = useRef<TieredMenu>(null);
   // ficha do pedido: qual pedido esta aberto na consulta de rastreabilidade
-  const [fichaOrderId, setFichaOrderId] = useState<number | null>(null);
+  const ficha = useFichaPedido();
   const [editDialogVisible, setEditDialogVisible] = useState(false);
   const [processoEditando, setProcessoEditando] = useState<ProcessoTableRow | null>(null);
   const [atualizandoRefPreco, setAtualizandoRefPreco] = useState(false);
@@ -522,7 +521,7 @@ ${linhasAnexos}
       // primeiro ver o que já foi feito — foi a falta disso que gerou o acidente de 16/09
       label: 'Ficha do pedido',
       icon: 'pi pi-history',
-      command: () => setFichaOrderId(processoMenuSelecionado?.id ?? null),
+      command: () => { const id = processoMenuSelecionado?.id; if (id) ficha.abrir(Number(id)); },
     },
     {
       label: 'Definir Médico',
@@ -2017,7 +2016,6 @@ ${linhasAnexos}
       </div>
       </PainelKpis>
 
-      <AvisoNovidade id="ficha-pedido" />
 
       <div className="processos-dono-legenda">
         <span>quem é dono de cada status:</span>
@@ -2036,12 +2034,6 @@ ${linhasAnexos}
         id="row_action_menu"
       />
 
-      <FichaPedido
-        orderId={fichaOrderId}
-        aberto={fichaOrderId !== null}
-        aoFechar={() => setFichaOrderId(null)}
-        podeVoltarFase={profile.group === 'ADMIN' || profile.group === 'GERENTE'}
-      />
 
       <EnviarOrcamentoDialog
         visible={enviarOrcamentoVisible && !readOnly}

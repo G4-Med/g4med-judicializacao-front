@@ -8,6 +8,7 @@ import { Outlet } from 'react-router-dom'
 import { Header } from './Header'
 import { Menu } from './Menu'                // ← trocar MenuSidebar por Menu
 import { MenuControlProvider, useMenuControl } from './MenuControlContext'
+import { FichaPedidoProvider } from '../../components/FichaPedido/FichaPedidoContext'
 
 // Arrastar-para-rolar horizontal nas tabelas (@R 28/08 03:0x: "barra de rolagem
 // lateral e para arrastar para o lado") — delegação global, 1 listener p/ o app.
@@ -98,8 +99,12 @@ function MainLayoutInner() {
         onHide={menu.close}
       />
 
+      {/* A ficha do pedido e o aviso de novidade vivem AQUI, e não em cada página:
+          montados uma vez, valem para todas as telas (@R 16/09: "é em todas as telas"). */}
       <main style={{ padding: '20px' }}>
-        <Outlet />
+        <FichaPedidoProvider>
+          <Outlet />
+        </FichaPedidoProvider>
       </main>
     </div>
   )
