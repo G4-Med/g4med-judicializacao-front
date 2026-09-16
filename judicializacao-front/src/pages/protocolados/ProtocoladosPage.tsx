@@ -572,7 +572,7 @@ export function ProtocoladosPage() {
           tableStyle={{ minWidth: '95rem' }}
           emptyMessage="Nenhum processo encontrado."
           className="protocolados-table"
-        >          {colunasCfg.filtrar(<>
+        >{colunasCfg.filtrar(<>
 
           <Column expander style={{ width: '3rem' }} frozen alignFrozen="left" />
           {!readOnly && <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} frozen alignFrozen="left" />}

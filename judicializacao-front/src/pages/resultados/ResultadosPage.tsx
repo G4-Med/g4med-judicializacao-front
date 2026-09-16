@@ -619,7 +619,7 @@ const kpis = useMemo(() => {
           tableStyle={{ minWidth: '90rem' }}
           emptyMessage="Nenhum resultado encontrado."
           className="resultados-table"
-        >          {colunasCfg.filtrar(<>
+        >{colunasCfg.filtrar(<>
 
           <Column expander style={{ width: '3rem' }} frozen alignFrozen="left" />
           <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} frozen alignFrozen="left" />

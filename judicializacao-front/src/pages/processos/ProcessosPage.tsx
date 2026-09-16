@@ -2070,7 +2070,7 @@ ${linhasAnexos}
           tableStyle={{ minWidth: '110rem' }}
           emptyMessage="Nenhum processo encontrado."
           className="processos-table"
-        >          {colunasCfg.filtrar(<>
+        >{colunasCfg.filtrar(<>
 
           <Column expander style={{ width: '3rem' }} frozen alignFrozen="left" />
           <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} frozen alignFrozen="left" />

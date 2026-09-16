@@ -475,7 +475,7 @@ export function SelecionarMedicoPage() {
           tableStyle={{ minWidth: '92rem' }}
           className="selecionar-medico-table"
           emptyMessage="Nenhum processo encontrado."
-        >          {colunasCfg.filtrar(<>
+        >{colunasCfg.filtrar(<>
 
           <Column expander style={{ width: '3rem' }} frozen alignFrozen="left" />
           {!readOnly && <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} frozen alignFrozen="left" />}

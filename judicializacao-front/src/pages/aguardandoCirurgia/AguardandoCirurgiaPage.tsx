@@ -565,7 +565,7 @@ export function AguardandoCirurgiaPage() {
           filterDisplay="row"
           emptyMessage="Nenhum pedido aguardando cirurgia."
           className="ag-cir-table"
-        >          {colunasCfg.filtrar(<>
+        >{colunasCfg.filtrar(<>
 
           <Column field="sequencial" header="#" style={{ minWidth: '4rem' }}  frozen alignFrozen="left" />
           {/* Ações da fase ao lado do paciente (@R 29/08) — mesmos botões, agora fixos à esquerda. */}
