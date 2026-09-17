@@ -253,6 +253,9 @@ export function EnviadoSesPage() {
             filterElement={(o) => filterElement(o, 'Buscar')}
             body={(r: LinhaEnviadoSes) => nomeComCopiar(r.paciente)} style={{ minWidth: '16rem' }}  frozen alignFrozen="left" />
           {colunaOrigem()}
+          {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
+              Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
+          {colunaSegredo()}
           {colunaRepedido()}
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')} sortable style={{ minWidth: '5rem' }} />
           <Column field="tipoPaciente" header={cabecalhoComHint('Tipo', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
@@ -285,7 +288,6 @@ export function EnviadoSesPage() {
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}

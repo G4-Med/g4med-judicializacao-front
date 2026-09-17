@@ -286,8 +286,10 @@ export function colunaSegredo(largura = '9rem') {
     <Column key="col-segredo" field="segredo" header={cabecalhoComHint('Segredo', EXPLICA.segredo)} sortable
       style={{ minWidth: largura }}
       body={(r: LinhaIdentificada) => {
-        if (r.segredo === 'sim') return <Tag value="Segredo de Justiça" severity="danger" icon="pi pi-lock" title={r.segredoFonte ?? 'Marcado no sistema'} />;
-        if (r.segredo === 'possivel') return <Tag value="Possível segredo" severity="warning" icon="pi pi-question-circle" title={`Sinal da API — confirme na tela Segredo de Justiça. ${r.segredoFonte ?? ''}`} />;
+        // @R 17/09: "encurtar o nome Segredo de Justiça para não quebrar linha". O texto
+        // completo vai para o hover — encurta o que ocupa espaço, ¬o que informa.
+        if (r.segredo === 'sim') return <Tag value="Segredo" severity="danger" icon="pi pi-lock" title={`Segredo de Justiça — ${r.segredoFonte ?? 'marcado no sistema'}`} />;
+        if (r.segredo === 'possivel') return <Tag value="Possível" severity="warning" icon="pi pi-question-circle" title={`Possível segredo de justiça: sinal da API, ainda não confirmado. Confirme na tela Segredo de Justiça. ${r.segredoFonte ?? ''}`} />;
         if (r.segredo === 'nao') return <Tag value="Sem segredo" severity="secondary" title={r.segredoFonte ?? 'Sem marca nem sinal da API'} />;
         return <span className="ident-vazio">—</span>;
       }} />
@@ -507,6 +509,41 @@ export function colunaOrigem() {
         ? <Tag value="Manual?" severity="warning" icon="pi pi-question-circle"
             title="Provavelmente cadastrado à mão: este pedido não tem NENHUM vestígio de e-mail (nem anexo do e-mail original, nem identificador de mensagem). É uma inferência — o sistema não registrou a origem na época." />
         : <span className="ident-vazio" title="Pedido anterior ao registro de origem.">—</span>} />
+  );
+}
+
+/** Procedimento que a decisão determinou — SEM quebrar a linha da tabela.
+ *
+ *  POR QUE (@R 17/09): ⟦"nomes de procedimentos grandes vamos encurtar e colocar um botão
+ *  para copiar para não quebrar linhas"⟧. Medido: "TRATAMENTO CIRURGICO DE DEFORMIDADE DA
+ *  COLUNA VIA POSTERIOR DOZE NIVEIS OU MAIS" tem 78 caracteres e empurra a tabela inteira.
+ *
+ *  O texto NÃO se perde em lugar nenhum: fica no hover e no botão de copiar. Encurta o que
+ *  ocupa espaço, ¬o que informa — e copiar existe porque o nome do procedimento é o que se
+ *  cola no pedido de orçamento, então ler na tela não basta.
+ *
+ *  Estava declarada à mão em 6 telas, cada uma com um corte diferente (70, 45, nenhum).
+ *  Fonte única aqui — a próxima melhoria chega em todas de uma vez.
+ */
+export function colunaProcedimento(largura = '20rem', limite = 48) {
+  return (
+    <Column key="col-procedimento" field="procedimento" sortable filter
+      header={cabecalhoComHint('Procedimento',
+        'O que a decisão judicial determinou. É a chave para achar o preço histórico. ' +
+        'Nome longo aparece cortado — passe o mouse para ler inteiro ou use o botão de copiar.')}
+      filterElement={filtro('Buscar procedimento')}
+      style={{ minWidth: largura, maxWidth: largura }}
+      body={(r: any) => {
+        const t = String(r?.procedimento ?? '').trim();
+        if (!t) return <span className="ident-vazio">—</span>;
+        const curto = t.length > limite ? `${t.slice(0, limite).trimEnd()}…` : t;
+        return (
+          <span className="ident-proc" title={t.length > limite ? t : undefined}>
+            <span className="ident-proc-texto">{curto}</span>
+            <BotaoCopiar valor={t} rotulo="procedimento" />
+          </span>
+        );
+      }} />
   );
 }
 

@@ -733,6 +733,9 @@ const handleConfirmarProtocolacao = async () => {
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
           {colunaOrigem()}
+          {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
+              Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
+          {colunaSegredo()}
           {colunaRepedido()}
           <Column
             field="cliente"
@@ -796,7 +799,6 @@ const handleConfirmarProtocolacao = async () => {
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}

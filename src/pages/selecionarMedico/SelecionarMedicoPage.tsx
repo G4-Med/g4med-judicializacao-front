@@ -532,6 +532,9 @@ export function SelecionarMedicoPage() {
             frozen alignFrozen="left"
           />
           {colunaOrigem()}
+          {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
+              Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
+          {colunaSegredo()}
           {colunaRepedido()}
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento. Criança/recém-nascido recebe o e-mail pediátrico de exames.')}
             sortable filter filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '6rem' }}
@@ -591,7 +594,6 @@ export function SelecionarMedicoPage() {
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}

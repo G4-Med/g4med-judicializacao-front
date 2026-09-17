@@ -14,7 +14,7 @@ import { getJuridico, salvarJuridico, getStatusOrders, getAnexosOrder, getCnjCan
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import './JuridicoPage.css';
-import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaCnj, colunaSei, colunaComarca } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaSegredo, colunaProcedimento, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaCnj, colunaSei, colunaComarca } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { PainelPrecos } from '../../components/PainelPrecos/PainelPrecos';
@@ -495,6 +495,9 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
               </span>
             )}  frozen alignFrozen="left" />
           {colunaOrigem()}
+          {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
+              Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
+          {colunaSegredo()}
           {colunaRepedido()}
           <Column
             field="idade"
@@ -506,8 +509,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
           />
           <Column field="tipoPaciente" header={cabecalhoComHint('Tipo', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
             body={(r: any) => tagTipoPaciente(r.tipoPaciente)} />
-          <Column field="procedimento" className="col-procedimento-upper" header={cabecalhoComHint('Procedimento', 'O que a decisão judicial determinou. É a chave para achar o preço histórico.')} sortable filter
-            filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '18rem' }} />
+          {colunaProcedimento()}
           {/* @R 28/08: "a data que o pedido chegou e o horário e o tempo atual no funil" */}
 <Column field="chegouEm" header={cabecalhoComHint('Chegou em',
               'Quando o pedido ENTROU no sistema (o monitor lê o e-mail a cada 10 min). Data e hora.')}

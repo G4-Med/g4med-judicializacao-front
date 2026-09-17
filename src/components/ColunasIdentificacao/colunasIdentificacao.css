@@ -106,3 +106,11 @@ body.dark-theme .chip-cadastro--completo { background: rgba(28,122,72,0.16); bor
   border-radius: 10px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;
   cursor: help; white-space: nowrap; vertical-align: middle;
 }
+
+/* Procedimento sem quebrar linha (@R 17/09). O texto completo vive no hover e no botão de
+   copiar — a tabela mostra o que cabe, e nada se perde. */
+.ident-proc { display: inline-flex; align-items: center; gap: .25rem; max-width: 100%; }
+.ident-proc-texto {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase;
+  font-size: .82rem;
+}
