@@ -1,0 +1,55 @@
+/* Área do cliente (@R 17/09). A hierarquia visual carrega a epistemologia:
+   o número grande é a leitura rápida, a régua abaixo dele é o que permite confiar,
+   e o aviso é o que impede o número de ser usado onde não vale. */
+.adc__topo { margin: 0 0 .8rem; color: #334155; }
+.adc__inativo { color: #b42318; font-weight: 600; }
+.adc__erro { color: #b42318; }
+.adc__vazio { color: #64748b; font-style: italic; }
+
+.adc__caixas { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .7rem; }
+.adc__caixa {
+  display: flex; flex-direction: column; gap: .15rem;
+  border: 1px solid #e2e8f0; border-radius: 8px; padding: .7rem .85rem; background: #fff;
+}
+.adc__caixa strong { font-size: 1.6rem; line-height: 1.1; color: #0f172a; }
+.adc__rotulo { font-size: .76rem; color: #475569; text-transform: uppercase; letter-spacing: .03em; }
+/* a régua nunca some: é ela que separa "96% de 106" de "100% de 3" */
+.adc__regua { font-size: .8rem; color: #64748b; }
+.adc__aviso { font-size: .72rem; color: #b45309; font-style: italic; }
+.adc__aviso--forte { color: #b42318; font-style: normal; font-weight: 600; }
+
+/* pouco medido = existe, mas não sustenta comparação — esmaecido de propósito */
+.adc__caixa--fraca { opacity: .62; border-style: dashed; }
+.adc__caixa--alerta { border-color: #fca5a5; background: rgba(180, 35, 24, .04); }
+.adc__caixa--sem strong { color: #94a3b8; }
+
+.adc__nota { font-size: .8rem; color: #64748b; margin: .7rem 0; line-height: 1.5; }
+.adc__bloco { margin: .7rem 0; border-top: 1px solid #e2e8f0; padding-top: .5rem; }
+.adc__bloco > summary { cursor: pointer; font-weight: 600; padding: .3rem 0; }
+
+.adc__lista { list-style: none; padding: 0; margin: .4rem 0; }
+.adc__lista li {
+  display: flex; justify-content: space-between; gap: 1rem;
+  padding: .25rem 0; border-bottom: 1px solid rgba(0,0,0,.05);
+}
+
+.adc__tabela { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.adc__tabela th, .adc__tabela td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid #eef2f7; }
+.adc__tabela th { color: #475569; font-weight: 600; }
+
+@media (prefers-color-scheme: dark) {
+  .adc__caixa { background: #0f172a; border-color: #1e293b; }
+  .adc__caixa strong { color: #e2e8f0; }
+  .adc__topo { color: #cbd5e1; }
+  .adc__tabela th, .adc__tabela td { border-color: #1e293b; }
+}
+
+/* Recusa explícita de medir — o placeholder "SEM PROFISSIONAL" não é um cliente.
+   Aparência de AVISO, ¬de erro: nada falhou, o sistema se recusou a difamar uma linha
+   que não é ninguém. */
+.adc__recusa {
+  border-left: 4px solid #b45309; background: rgba(180, 83, 9, .07);
+  padding: .8rem 1rem; border-radius: 6px; color: #78350f;
+}
+.adc__recusa p { margin: .3rem 0; line-height: 1.55; }
+@media (prefers-color-scheme: dark) { .adc__recusa { color: #fcd34d; } }

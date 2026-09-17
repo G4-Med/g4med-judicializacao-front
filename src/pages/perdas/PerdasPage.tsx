@@ -14,7 +14,7 @@ import { getPerdas, getOrders, getMedicosCompleto, reabrirPerda } from '../../se
 import { getStatusTagStyle } from '../../utils/statusTag';
 import './PerdasPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
-import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint} from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaOrigem, colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint} from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -413,6 +413,8 @@ export function PerdasPage() {
             filterElement={(options) => filterElement(options, 'Buscar')}
             style={{ minWidth: '16rem' }}
           />
+          {colunaOrigem()}
+          {colunaSegredo()}
           {colunaRepedido()}
           <Column field="procedimento" header={cabecalhoComHint('Procedimento', 'O que a decisão judicial determinou. É a chave para achar o preço histórico.')} sortable filter
             filterElement={(options: any) => (
@@ -483,7 +485,6 @@ export function PerdasPage() {
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}

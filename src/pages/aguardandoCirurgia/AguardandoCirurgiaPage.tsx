@@ -578,6 +578,7 @@ export function AguardandoCirurgiaPage() {
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
           {colunaOrigem()}
+          {colunaSegredo()}
           {colunaRepedido()}
           <Column
             field="medico"
@@ -638,7 +639,6 @@ export function AguardandoCirurgiaPage() {
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}

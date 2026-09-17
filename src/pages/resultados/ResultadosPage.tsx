@@ -668,6 +668,7 @@ const kpis = useMemo(() => {
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
           {colunaOrigem()}
+          {colunaSegredo()}
           {colunaRepedido()}
           <Column
             field="cliente"
@@ -709,7 +710,6 @@ const kpis = useMemo(() => {
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}

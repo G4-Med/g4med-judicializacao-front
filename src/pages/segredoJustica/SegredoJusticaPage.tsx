@@ -543,6 +543,7 @@ useEffect(() => { carregarDados(); }, [fila]);
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
           {colunaOrigem()}
+          {colunaSegredo()}
           {colunaRepedido()}
           {/* @R 27/08 16:45: "quero saber a idade, se é pediatria e adulto (tipo do
               médico) e o nome do procedimento". Idade ausente = "—", nunca chute. */}
@@ -646,7 +647,6 @@ useEffect(() => { carregarDados(); }, [fila]);
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
-import { getFichaPedido, getLogAuditoria, reverterHistorico } from '../../services/api/orders';
+import { getFichaPedido, getLogAuditoria, reverterHistorico, getConteudoEmail } from '../../services/api/orders';
 import './FichaPedido.css';
 
 /**
@@ -27,6 +27,15 @@ type Arquivo = { id: number; tipo: string; nome: string; quando: string; link: s
 type Rastro = { por: string | null; em: string | null; de?: string; para?: string; medido: boolean };
 type Bloco = { fase: string; quando: string | null; campos: Campo[]; arquivos: Arquivo[]; rastro: Rastro };
 type Trilha = { campo: string; de: string; para: string; por: string; em: string; historico_id: number };
+type Urgencia = { vezesPedido: number; ultimoPedidoEm: string | null; repedidosManuais: number; ultimoRepedidoManualEm: string | null };
+type EmailRecebido = { id: number; remetente: string | null; assunto: string | null; quando: string; status: string; detalhe: string | null };
+type EmailOriginal = { anexoId: number; nome: string; quando: string; link: string };
+type Emails = {
+  origem: 'COM_CONTEUDO' | 'SEM_ORIGINAL' | 'NAO_VEIO_POR_EMAIL';
+  explicacao: string | null;
+  recebidos: EmailRecebido[];
+  originais: EmailOriginal[];
+};
 
 const dataHora = (v?: string | null) =>
   v ? new Date(v).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
@@ -48,7 +57,13 @@ export function FichaPedido({
   aoFechar: () => void;
   podeVoltarFase?: boolean;
 }) {
-  const [dados, setDados] = useState<{ blocos: Bloco[]; trilha: Trilha[]; statusAtual: string; totalArquivos: number } | null>(null);
+  const [dados, setDados] = useState<{
+    blocos: Bloco[]; trilha: Trilha[]; statusAtual: string; totalArquivos: number;
+    urgencia?: Urgencia; emails?: Emails;
+  } | null>(null);
+  // conteúdo de e-mail carregado SOB DEMANDA: abrir a ficha não deve baixar .eml do R2
+  // que ninguém vai ler — a ficha é consultada o tempo todo, o e-mail raramente.
+  const [corpos, setCorpos] = useState<Record<number, { carregando?: boolean; texto?: string; vazio?: boolean; erro?: string }>>({});
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [revertendo, setRevertendo] = useState(false);
@@ -57,6 +72,7 @@ export function FichaPedido({
     if (!aberto || !orderId) return;
     setCarregando(true);
     setErro('');
+    setCorpos({});   // ¬carregar o e-mail do pedido ANTERIOR nesta ficha
     getFichaPedido(orderId)
       .then((r) => setDados(r.data))
       .catch((e) => setErro(e?.response?.data?.detail ?? 'Não foi possível carregar a ficha deste pedido.'))
@@ -94,6 +110,20 @@ export function FichaPedido({
     }
   };
 
+  const abrirEmail = async (anexoId: number) => {
+    if (!orderId || corpos[anexoId]?.texto !== undefined || corpos[anexoId]?.carregando) return;
+    setCorpos((c) => ({ ...c, [anexoId]: { carregando: true } }));
+    try {
+      const r = await getConteudoEmail(orderId, anexoId);
+      setCorpos((c) => ({ ...c, [anexoId]: { texto: r.data.corpo ?? '', vazio: !!r.data.vazio } }));
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { detail?: string } } };
+      // a CAUSA vai para a tela: "não foi possível" sem motivo faz a pessoa concluir que o
+      // e-mail não existe, quando o que houve foi o armazenamento não responder.
+      setCorpos((c) => ({ ...c, [anexoId]: { erro: err?.response?.data?.detail ?? 'Não consegui ler este e-mail.' } }));
+    }
+  };
+
   return (
     <Dialog
       header={`Ficha do pedido #${orderId ?? ''}`}
@@ -111,6 +141,15 @@ export function FichaPedido({
               Fase atual: <strong>{dados.statusAtual}</strong>
             </span>
             <span>{dados.totalArquivos} arquivo(s) no pedido</span>
+            {(dados.urgencia?.vezesPedido ?? 1) > 1 && (
+              <span className={`fic__urgencia fic__urgencia--${(dados.urgencia?.repedidosManuais ?? 0) > 0 ? 'max' : (dados.urgencia!.vezesPedido >= 3 ? 'tres' : 'dois')}`}>
+                <i className="pi pi-exclamation-triangle" aria-hidden="true" /> Urgência {dados.urgencia!.vezesPedido}×
+                {dados.urgencia?.ultimoPedidoEm && <> — último pedido em {dataHora(dados.urgencia.ultimoPedidoEm)}</>}
+                {(dados.urgencia?.repedidosManuais ?? 0) > 0 && (
+                  <> · {dados.urgencia!.repedidosManuais} cobrança(s) por telefone</>
+                )}
+              </span>
+            )}
             {podeVoltarFase && (
               <button type="button" className="fic__voltar" onClick={voltarFase} disabled={revertendo}>
                 {revertendo ? 'Voltando…' : '↩ Voltar para a fase anterior'}
@@ -154,6 +193,50 @@ export function FichaPedido({
               )}
             </section>
           ))}
+
+          {dados.emails && (
+            <section className="fic__bloco fic__emails">
+              <header className="fic__fase"><strong>E-mails deste pedido</strong></header>
+
+              {/* AUSÊNCIA DECLARADA, e com o MOTIVO: medido 17/09, só 3,2% dos pedidos têm
+                  o e-mail original — não porque a captura falhe (ela pega 90% dos que vêm
+                  por e-mail), mas porque a maioria é cadastro manual. Sem dizer isso, a
+                  equipe leria branco e concluiria que a tela quebrou. */}
+              {dados.emails.explicacao && <p className="fic__vazio-msg">{dados.emails.explicacao}</p>}
+
+              {dados.emails.recebidos.length > 0 && (
+                <ul className="fic__emails-lista">
+                  {dados.emails.recebidos.map((e) => (
+                    <li key={e.id}>
+                      <strong>{e.assunto || '(sem assunto)'}</strong>
+                      <span className="fic__de">{e.remetente || '(remetente desconhecido)'}</span>
+                      <span className="fic__quando">{dataHora(e.quando)}</span>
+                      <span className="fic__tipo">{e.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {dados.emails.originais.map((o) => (
+                <details key={o.anexoId} className="fic__email" onToggle={(ev) => {
+                  if ((ev.target as HTMLDetailsElement).open) abrirEmail(o.anexoId);
+                }}>
+                  <summary>{o.nome} · {dataHora(o.quando)} — abrir o conteúdo</summary>
+                  {corpos[o.anexoId]?.carregando && <p>Lendo o e-mail…</p>}
+                  {corpos[o.anexoId]?.erro && <p className="fic__erro">{corpos[o.anexoId].erro}</p>}
+                  {corpos[o.anexoId]?.vazio && (
+                    <p className="fic__vazio-msg">Este e-mail não tem texto — só anexos ou imagem.</p>
+                  )}
+                  {corpos[o.anexoId]?.texto && !corpos[o.anexoId]?.vazio && (
+                    <pre className="fic__corpo-email">{corpos[o.anexoId].texto}</pre>
+                  )}
+                  <a href={o.link} target="_blank" rel="noreferrer" className="fic__baixar">
+                    baixar o e-mail original (.eml)
+                  </a>
+                </details>
+              ))}
+            </section>
+          )}
 
           <details className="fic__trilha">
             <summary>Trilha completa ({dados.trilha.length} mudanças)</summary>

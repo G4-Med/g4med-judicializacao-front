@@ -2107,6 +2107,7 @@ ${linhasAnexos}
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
           {colunaOrigem()}
+          {colunaSegredo()}
           {colunaRepedido()}
           {/* <Column
             field="idade"
@@ -2205,7 +2206,6 @@ ${linhasAnexos}
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}

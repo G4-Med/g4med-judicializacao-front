@@ -20,3 +20,41 @@
 .fic__trilha ul{list-style:none;padding:.5rem 0 0;margin:0;max-height:260px;overflow:auto}
 .fic__trilha li{padding:.2rem 0;border-bottom:1px solid #f1f5f9;font-size:.88rem}
 .fic__campo{color:#556;font-size:.8rem}
+
+/* ── URGÊNCIA e E-MAILS na ficha (@R 17/09) ─────────────────────────────────────
+   A faixa só aparece quando HÁ repetição — pedido normal não ganha selo (mesma
+   regra da coluna nas tabelas: o normal é não ter, e o normal não precisa de aviso). */
+.fic__urgencia {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .2rem .6rem; border-radius: 999px;
+  color: #fff; font-weight: 700; font-size: .8rem;
+}
+.fic__urgencia--dois { background: #d97706; }
+.fic__urgencia--tres { background: #c2410c; }
+.fic__urgencia--max  { background: #b42318; }
+
+.fic__emails-lista { list-style: none; padding: 0; margin: .5rem 0; }
+.fic__emails-lista li {
+  display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline;
+  padding: .35rem 0; border-bottom: 1px solid rgba(0,0,0,.06);
+}
+.fic__de { color: #475569; font-size: .85rem; }
+
+.fic__email { margin: .4rem 0; }
+.fic__email > summary { cursor: pointer; padding: .3rem 0; font-size: .9rem; }
+
+/* pre: o corpo do e-mail vem como TEXTO (o back nunca devolve HTML — ver a view).
+   pre-wrap preserva as quebras do original sem deixar a linha estourar a caixa. */
+.fic__corpo-email {
+  white-space: pre-wrap; word-break: break-word;
+  background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+  padding: .7rem .9rem; margin: .4rem 0; max-height: 22rem; overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82rem; line-height: 1.5;
+}
+.fic__baixar { font-size: .8rem; }
+.fic__vazio-msg { color: #64748b; font-style: italic; margin: .4rem 0; }
+
+@media (prefers-color-scheme: dark) {
+  .fic__corpo-email { background: #0f172a; border-color: #1e293b; color: #e2e8f0; }
+  .fic__de, .fic__vazio-msg { color: #94a3b8; }
+}

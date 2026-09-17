@@ -290,6 +290,12 @@ export const getAcervoPrecos = (params: { especialidade?: string; q?: string; so
 export const getFichaPedido = (orderId: number) =>
   api.get(`/orders/${orderId}/ficha/`);
 
+/** O TEXTO do e-mail original guardado no R2 (@R 17/09) — texto puro, nunca HTML.
+ *  O backend parseia o .eml e devolve só o corpo legível; HTML cru abriria porta a
+ *  script e ao pixel que avisa o remetente que a mensagem foi aberta. */
+export const getConteudoEmail = (orderId: number, anexoId: number) =>
+  api.get(`/orders/${orderId}/emails/${anexoId}/conteudo/`);
+
 export const getPreferencia = (chave: string) =>
   api.get(`/preferencias/${chave}/`);
 

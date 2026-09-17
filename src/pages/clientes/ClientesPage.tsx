@@ -25,6 +25,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { FilterMatchMode } from 'primereact/api';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
+import AreaDoCliente from '../../components/AreaDoCliente/AreaDoCliente';
 import { MultiSelect } from 'primereact/multiselect';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { useAccess } from '../../access/AccessContext';
@@ -52,6 +53,10 @@ interface Cliente {
   especialidades?: number[];
   especialidadesNomes?: string[];
   keywords: string;
+  /** Escolha do profissional (@R 17/09). DECLARADO pelo cliente — ter atendido uma
+   *  criança uma vez não significa que aceite atender; e 'NAO_INFORMADO' é diferente
+   *  de 'NAO' (ninguém respondeu ainda ≠ recusou). */
+  atendePediatrico: 'SIM' | 'NAO' | 'NAO_INFORMADO';
   telefone: string;
   email: string;
   cnpj: string;
@@ -160,6 +165,7 @@ const clienteInicial: ClienteTableRow = {
   subespecialidade: '',
   especialidades: [],
   keywords: '',
+  atendePediatrico: 'NAO_INFORMADO',
   telefone: '',
   email: '',
   cnpj: '',
@@ -287,6 +293,7 @@ export function ClientesPage() {
   const [editDialogVisible, setEditDialogVisible] = useState(false);
   const [clienteEditando, setClienteEditando] = useState<ClienteTableRow | null>(null);
   const [hospitalOptions, setHospitalOptions] = useState<DropdownOption[]>([]);
+  const [areaCliente, setAreaCliente] = useState<{ id: number; nome: string } | null>(null);
   const [especialidadeOptions, setEspecialidadeOptions] = useState<DropdownOption[]>([]);
   // COM o id: `normalizarOptions` descarta o identificador e devolve só o nome — serve ao
   // Dropdown de texto, ¬ao M2M, que grava por id. Por isso esta lista existe em separado.
@@ -370,6 +377,7 @@ export function ClientesPage() {
       especialidade: m.especialidade ?? '',
       subespecialidade: m.subespecialidade ?? '',
       keywords: m.keywords ?? '',
+      atendePediatrico: m.atendePediatrico ?? 'NAO_INFORMADO',
       grupoWhatsapp: m.grupoWhatsapp ?? '',
       takeRate: m.takeRate !== null && m.takeRate !== undefined ? Number(m.takeRate) : null,
       origemCliente: m.origemCliente ?? '',
@@ -538,6 +546,21 @@ export function ClientesPage() {
       />
     );
   };
+
+/** Abre a ÁREA do cliente: o que ele FEZ com os pedidos que recebeu (@R 17/09).
+ *  Fica ao lado do lápis porque é a mesma pergunta em dois tempos — o lápis é o que ele
+ *  É (cadastro), este é o que ele FEZ (desempenho). */
+const areaBodyTemplate = (rowData: ClienteTableRow) => (
+  <Button
+    icon="pi pi-chart-bar"
+    rounded
+    outlined
+    severity="info"
+    aria-label={`Ver desempenho do cliente ${rowData.id}`}
+    tooltip="Desempenho: resposta, perdas, SLA, experiência"
+    onClick={() => setAreaCliente({ id: rowData.id, nome: rowData.nomeMedico ?? '' })}
+  />
+);
 
 const editarBodyTemplate = (rowData: ClienteTableRow) => {
   return (
@@ -900,6 +923,7 @@ const handleSalvarCadastro = async () => {
       especialidade: novoCliente.especialidade,
       subespecialidade: novoCliente.subespecialidade,
       keywords: novoCliente.keywords,
+      atendePediatrico: novoCliente.atendePediatrico,
       grupoWhatsapp: novoCliente.grupoWhatsapp,
       takeRate: novoCliente.takeRate,
       status: novoCliente.status,
@@ -1008,6 +1032,7 @@ const handleSalvarEdicao = async () => {
       especialidade: clienteEditando.especialidade,
       subespecialidade: clienteEditando.subespecialidade,
       keywords: clienteEditando.keywords,
+      atendePediatrico: clienteEditando.atendePediatrico,
       grupoWhatsapp: clienteEditando.grupoWhatsapp,
       takeRate: clienteEditando.takeRate,
       status: clienteEditando.status,
@@ -1662,7 +1687,12 @@ const handleSalvarEdicao = async () => {
 
           <Column
             header="Editar"
-            body={editarBodyTemplate}
+            body={(r: ClienteTableRow) => (
+              <span style={{ display: 'inline-flex', gap: '.35rem' }}>
+                {editarBodyTemplate(r)}
+                {areaBodyTemplate(r)}
+              </span>
+            )}
             style={{ minWidth: '4rem' }}
             bodyStyle={{ textAlign: 'center' }}
           />
@@ -1713,6 +1743,19 @@ const handleSalvarEdicao = async () => {
               <div className="field field-span-2">
                 <label>Keywords</label>
                 <InputText value={novoCliente.keywords} onChange={(e) => updateNovoCliente('keywords', e.target.value)} />
+              </div>
+              <div className="field">
+                <label>Atende pediátrico?</label>
+                <Dropdown
+                  value={novoCliente.atendePediatrico}
+                  options={[
+                    { label: 'Não informado', value: 'NAO_INFORMADO' },
+                    { label: 'Sim, atende', value: 'SIM' },
+                    { label: 'Não atende', value: 'NAO' },
+                  ]}
+                  onChange={(e) => updateNovoCliente('atendePediatrico', e.value)}
+                  placeholder="Não informado"
+                />
               </div>
               <div className="field field-span-2">
                 <label>Grupo WhatsApp</label>
@@ -2092,6 +2135,13 @@ const handleSalvarEdicao = async () => {
           {!readOnly && <Button label="Salvar" icon="pi pi-check" onClick={handleSalvarEdicao} />}
         </div>
       </Dialog>
+
+      <AreaDoCliente
+        medicoId={areaCliente?.id ?? null}
+        nome={areaCliente?.nome}
+        aberto={!!areaCliente}
+        aoFechar={() => setAreaCliente(null)}
+      />
     </div>
   );
 }
