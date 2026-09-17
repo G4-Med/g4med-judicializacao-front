@@ -25,6 +25,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { FilterMatchMode } from 'primereact/api';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
+import { MultiSelect } from 'primereact/multiselect';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { useAccess } from '../../access/AccessContext';
 import './ClientesPage.css';
@@ -44,6 +45,12 @@ interface Cliente {
   hospital: string;
   especialidade: string;
   subespecialidade: string;
+  /** VÁRIAS especialidades (@R 16/09: "clientes PJ como hospitais têm vários médicos
+   *  dentro deles, por especialidade... as especialidades são somente para podermos
+   *  escolher a especialidade"). Guarda IDs; `especialidade` (texto) continua para o
+   *  cliente pessoa-física de uma especialidade só. */
+  especialidades?: number[];
+  especialidadesNomes?: string[];
   keywords: string;
   telefone: string;
   email: string;
@@ -151,6 +158,7 @@ const clienteInicial: ClienteTableRow = {
   hospital: '',
   especialidade: '',
   subespecialidade: '',
+  especialidades: [],
   keywords: '',
   telefone: '',
   email: '',
@@ -280,6 +288,9 @@ export function ClientesPage() {
   const [clienteEditando, setClienteEditando] = useState<ClienteTableRow | null>(null);
   const [hospitalOptions, setHospitalOptions] = useState<DropdownOption[]>([]);
   const [especialidadeOptions, setEspecialidadeOptions] = useState<DropdownOption[]>([]);
+  // COM o id: `normalizarOptions` descarta o identificador e devolve só o nome — serve ao
+  // Dropdown de texto, ¬ao M2M, que grava por id. Por isso esta lista existe em separado.
+  const [especialidadesM2M, setEspecialidadesM2M] = useState<{ label: string; value: number }[]>([]);
   const [subespecialidadeOptions, setSubespecialidadeOptions] = useState<DropdownOption[]>([]);
   const [bancoOptions, setBancoOptions] = useState<BancoOption[]>([]);
 
@@ -423,6 +434,11 @@ export function ClientesPage() {
         setClientes(mapearClientesTabela(medicosRes.data));
 
         setEspecialidadeOptions(normalizarOptions(especialidadesRes.data, 'especialidade'));
+        setEspecialidadesM2M(
+          (Array.isArray(especialidadesRes.data) ? especialidadesRes.data : [])
+            .filter((e: any) => e?.id && e?.especialidade)
+            .map((e: any) => ({ label: String(e.especialidade), value: Number(e.id) }))
+            .sort((a: any, b: any) => a.label.localeCompare(b.label, 'pt-BR')));
         setSubespecialidadeOptions(normalizarOptions(subespecialidadesRes.data, 'subespecialidade'));
         setHospitalOptions(normalizarOptions(hospitaisRes.data, 'hospital'));
         setBancoOptions(normalizarBancos(bancosRes.data));
@@ -1683,6 +1699,17 @@ const handleSalvarEdicao = async () => {
                 <label>Subespecialidade</label>
                 <Dropdown value={novoCliente.subespecialidade} options={subespecialidadeOptions} onChange={(e) => updateNovoCliente('subespecialidade', e.value)} placeholder="Selecione" />
               </div>
+              <div className="field">
+                {/* @R 16/09: "é importante para Hospitais termos Especialidades e termos
+                    médicos e podermos cadastrar internamente" — o hospital atende VÁRIAS,
+                    e a de cima (texto) não comporta mais de uma. */}
+                <label>Especialidades atendidas (hospital/clínica)</label>
+                <MultiSelect value={novoCliente.especialidades ?? []} options={especialidadesM2M}
+                  onChange={(e) => updateNovoCliente('especialidades', e.value)}
+                  display="chip" filter placeholder="Marque uma ou mais"
+                  emptyFilterMessage="Nenhuma especialidade com esse nome" />
+                <small className="ajuda-campo">Para hospital: marque TODAS as especialidades que ele atende. É por elas que o jurídico escolhe na hora de cotar.</small>
+              </div>
               <div className="field field-span-2">
                 <label>Keywords</label>
                 <InputText value={novoCliente.keywords} onChange={(e) => updateNovoCliente('keywords', e.target.value)} />
@@ -1863,6 +1890,14 @@ const handleSalvarEdicao = async () => {
                   <div className="field field-span-2"><label>Nome Sistema</label><InputText value={clienteEditando.nomeSistema} onChange={(e) => updateClienteEditando('nomeSistema', e.target.value)} /></div>
                   <div className="field"><label>Especialidade</label><Dropdown value={clienteEditando.especialidade} options={especialidadeOptions} onChange={(e) => updateClienteEditando('especialidade', e.value)} placeholder="Selecione" /></div>
                   <div className="field"><label>Subespecialidade</label><Dropdown value={clienteEditando.subespecialidade} options={subespecialidadeOptions} onChange={(e) => updateClienteEditando('subespecialidade', e.value)} placeholder="Selecione" /></div>
+                  <div className="field">
+                    <label>Especialidades atendidas (hospital/clínica)</label>
+                    <MultiSelect value={clienteEditando.especialidades ?? []} options={especialidadesM2M}
+                      onChange={(e) => updateClienteEditando('especialidades', e.value)}
+                      display="chip" filter placeholder="Marque uma ou mais"
+                      emptyFilterMessage="Nenhuma especialidade com esse nome" />
+                    <small className="ajuda-campo">Para hospital: marque TODAS as especialidades que ele atende. É por elas que o jurídico escolhe na hora de cotar.</small>
+                  </div>
                   <div className="field field-span-2"><label>Keywords</label><InputText value={clienteEditando.keywords} onChange={(e) => updateClienteEditando('keywords', e.target.value)} /></div>
                   <div className="field field-span-2"><label>Grupo WhatsApp</label><InputText value={clienteEditando.grupoWhatsapp} onChange={(e) => updateClienteEditando('grupoWhatsapp', e.target.value)} /></div>
                   <div className="field">
