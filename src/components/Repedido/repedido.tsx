@@ -70,7 +70,7 @@ export const colunaRepedido = () => (
   <Column
     key="vezesPedido"
     field="vezesPedido"
-    header={<span className="mc-repedido-cab"><i className="pi pi-exclamation-triangle" aria-hidden="true" />{cabecalhoComHint('Re-pedido', 'Quantas vezes este mesmo paciente foi pedido. Mais de 1 = urgência: o pedido voltou e ninguém respondeu. A linha fica marcada em todas as telas. Vazio = pedido único, nada a fazer.')}</span>}
+    header={<span className="mc-repedido-cab"><i className="pi pi-exclamation-triangle" aria-hidden="true" />{cabecalhoComHint('Re-pedido', 'Quantas vezes este mesmo paciente foi pedido. Mais de 1 = urgência: o pedido voltou e ninguém respondeu. A linha fica marcada em todas as telas. \'Único pedido\' = chegou uma vez só, nada a fazer.')}</span>}
     sortable
     filter
     showFilterMenu={false}
@@ -85,7 +85,15 @@ export const colunaRepedido = () => (
     bodyStyle={{ textAlign: 'center' }}
     body={(r: any) => {
       const nivel = nivelRepedido(r);
-      if (nivel === 'nenhum') return null;   // ¬"—": o normal é não ter (@R 17/09)
+      if (nivel === 'nenhum') {
+        // @R 17/09, corrigindo a minha leitura: ⟦"eu disse para ela ganhar um valor, não
+        // ficar como vazio — tipo 'Único Pedido'"⟧. Eu tinha entendido "sem re-pedido"
+        // como "sem nada" e deixei a célula em branco. São coisas diferentes: célula vazia
+        // é ambígua (não sei? não se aplica? a tela quebrou?), e "Único pedido" AFIRMA que
+        // o pedido chegou uma vez só. O que incomodava no "—" nunca foi haver texto, era
+        // o traço não dizer nada.
+        return <span className="mc-repedido-unico" title="Este paciente foi pedido uma única vez pela SES.">Único pedido</span>;
+      }
 
       const n = r?.vezesPedido ?? 1;
       const manuais = r?.repedidosManuais ?? 0;

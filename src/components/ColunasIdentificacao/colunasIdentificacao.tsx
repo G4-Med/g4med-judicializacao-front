@@ -135,7 +135,9 @@ export const OPCOES_ORIGEM = [
 
 export const OPCOES_REPEDIDO = [
   { label: 'Com urgência (2× ou +)', value: 'sim' },
-  { label: 'Sem repetição', value: 'nao' },
+  // o rótulo é o MESMO que a célula mostra (@R 17/09) — filtro que chama a coisa de um
+  // jeito e a tela de outro obriga a pessoa a traduzir, e é aí que ela desiste do filtro
+  { label: 'Único pedido', value: 'nao' },
 ];
 
 export const OPCOES_ANEXOS = [

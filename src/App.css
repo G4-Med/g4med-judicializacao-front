@@ -98,6 +98,12 @@ body.mc-tabelas-justificadas .mc-scroll-topo { display: none; }
 .mc-repedido-badge--tres   { background: #c2410c; box-shadow: 0 0 0 3px rgba(194, 65, 12, .18); }
 .mc-repedido-badge--maximo { background: #b42318; box-shadow: 0 0 0 3px rgba(180, 35, 24, .22); }
 
+/* "Único pedido" (@R 17/09): estado NORMAL, e o estilo diz isso — texto discreto, sem
+   badge nem cor de alerta. Ele existe para AFIRMAR que chegou uma vez só; se competisse
+   visualmente com o badge de urgência, a tela inteira viraria ruído e o alerta que
+   importa se perderia no meio. */
+.mc-repedido-unico { color: #64748b; font-size: .8rem; white-space: nowrap; }
+
 .mc-repedido-cab { display: inline-flex; align-items: center; gap: .3rem; color: #b42318; font-weight: 700; }
 .mc-repedido-cab .pi { font-size: .95rem; }
 
@@ -107,3 +113,5 @@ body.mc-tabelas-justificadas .mc-scroll-topo { display: none; }
    PrimeReact põe o overflow no wrapper; com o cabeçalho fixo (sticky) a barra sobe para o topo. */
 .p-datatable-wrapper { overflow-x: auto !important; overflow-y: visible !important; max-height: none !important; }
 .p-datatable-scrollable .p-datatable-thead > tr > th { position: sticky; top: 0; z-index: 2; }
+
+@media (prefers-color-scheme: dark) { .mc-repedido-unico { color: #94a3b8; } }
