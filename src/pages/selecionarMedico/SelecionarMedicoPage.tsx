@@ -19,7 +19,7 @@ import {
 } from '../../services/api/orders';
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
-import { tagTipoPaciente, colunaOrigem, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
 import './SelecionarMedicoPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
@@ -577,6 +577,28 @@ export function SelecionarMedicoPage() {
             field="slaFaseHorasRestantes"
             header={cabecalhoComHint('SLA fase', 'Prazo para definir o médico: 1 dia útil depois que a análise jurídica salvou "Cotar". Pedido que chega na sexta fecha na segunda (fim de semana não conta). Verde = no prazo · laranja = menos de 6 h · vermelho = vencido.')}
             sortable
+            filter
+            showFilterMenu={false}
+            filterMatchMode="custom"
+            /* As faixas do filtro são AS MESMAS que pintam a célula (vencido · <6h · no
+               prazo). Se o filtro cortasse em outro ponto, a pessoa filtraria "vencido" e
+               veria linhas verdes — e passaria a desconfiar da cor, que é o sinal que ela
+               usa o dia inteiro. `null` (sem prazo definido) fica fora de todas: não ter
+               prazo não é estar no prazo. */
+            filterFunction={(horas: any, escolha: any) => {
+              if (!escolha) return true;
+              if (horas === null || horas === undefined) return escolha === 'sem';
+              if (escolha === 'vencido') return horas < 0;
+              if (escolha === 'perto') return horas >= 0 && horas < 6;
+              if (escolha === 'ok') return horas >= 6;
+              return false;
+            }}
+            filterElement={filtroOpcoes([
+              { label: 'Vencido', value: 'vencido' },
+              { label: 'Menos de 6 h', value: 'perto' },
+              { label: 'No prazo', value: 'ok' },
+              { label: 'Sem prazo', value: 'sem' },
+            ], 'Todos')}
             body={(r: ProcessoResumoTableRow) => <CelulaSlaFase r={r} />}
             style={{ minWidth: '11rem' }}
           />

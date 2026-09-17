@@ -1,4 +1,5 @@
 import { Column } from 'primereact/column';
+import { filtroOpcoes } from '../ColunasIdentificacao/colunasIdentificacao';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
@@ -106,6 +107,32 @@ export function colunaEmpenhoEstado() {
 export function colunaPagoEm() {
   return (
     <Column key="ultimoPagamento" field="empenho548.ultimoPagamento" header="Pago em" sortable style={{ minWidth: '9rem' }}
+      {...{
+        filter: true, showFilterMenu: false, filterMatchMode: 'custom',
+        // Por FAIXA DE TEMPO, ¬por data exata: ninguém procura "pago em 14/03" — procura
+        // "pago este mês" ou "ainda não pago". E a precisão da fonte é MENSAL (o dataset do
+        // Estado traz ano-mês, não o dia), então um filtro por dia prometeria uma exatidão
+        // que o dado não tem.
+        filterFunction: (data: any, escolha: any) => {
+          if (!escolha) return true;
+          if (!data) return escolha === 'nao';
+          if (escolha === 'nao') return false;
+          if (escolha === 'sim') return true;
+          const dias = (Date.now() - new Date(data).getTime()) / 86400000;
+          if (Number.isNaN(dias)) return false;          // data ilegível ¬entra em faixa
+          if (escolha === '30') return dias <= 30;
+          if (escolha === '90') return dias <= 90;
+          if (escolha === 'velho') return dias > 90;
+          return false;
+        },
+        filterElement: filtroOpcoes([
+          { label: 'Pago', value: 'sim' },
+          { label: 'Últimos 30 dias', value: '30' },
+          { label: 'Últimos 90 dias', value: '90' },
+          { label: 'Há mais de 90 dias', value: 'velho' },
+          { label: 'Sem pagamento', value: 'nao' },
+        ], 'Todos'),
+      }}
       sortFunction={(e: any) => {
         const v = (r: any) => r.empenho548?.ultimoPagamento ?? '';
         return [...e.data].sort((a: any, b: any) => v(a).localeCompare(v(b)) * (e.order ?? 1));
@@ -133,6 +160,21 @@ export function colunaPagoEm() {
 export function colunaDiferenca() {
   return (
     <Column key="difEmpenho" header="Diferença" sortable field="empenho548.pago" style={{ minWidth: '10rem' }}
+      {...{
+        filter: true, showFilterMenu: false, filterMatchMode: 'custom',
+        // A célula mostra `pago − orçado`, mas o `field` é só o PAGO. O filtro por valor do
+        // campo responderia outra pergunta ("quanto pagaram"), ¬a da coluna ("sobrou ou
+        // faltou"). Como o filterFunction só enxerga o campo, as opções são sobre o que ELE
+        // permite decidir honestamente: houve pagamento ou não. Separar "pagou a mais" de
+        // "pagou a menos" exigiria o valor orçado, que não chega aqui.
+        filterFunction: (pago: any, escolha: any) => {
+          if (!escolha) return true;
+          return escolha === 'sim' ? (pago ?? 0) > 0 : !((pago ?? 0) > 0);
+        },
+        filterElement: filtroOpcoes(
+          [{ label: 'Com pagamento', value: 'sim' }, { label: 'Sem pagamento', value: 'nao' }],
+          'Todos'),
+      }}
       sortFunction={(e: any) => {
         const v = (r: any) => ((r.empenho548?.pago ?? 0) > 0 && (r.valorOrcamento ?? 0) > 0)
           ? r.empenho548.pago - r.valorOrcamento : Number.NEGATIVE_INFINITY;
@@ -192,6 +234,16 @@ export function colunaBaixarOrcamento() {
   return (
     <Column key="baixarOrc" header="Orçamento" sortable field="temOrcamentoPdf"
       style={{ minWidth: '8rem' }} bodyStyle={{ textAlign: 'center' }}
+      {...{
+        filter: true, showFilterMenu: false, filterMatchMode: 'custom',
+        filterFunction: (tem: any, escolha: any) => {
+          if (!escolha) return true;
+          return escolha === 'sim' ? !!tem : !tem;
+        },
+        filterElement: filtroOpcoes(
+          [{ label: 'Com orçamento', value: 'sim' }, { label: 'Não enviado', value: 'nao' }],
+          'Todos'),
+      }}
       body={(r: any) => (r.temOrcamentoPdf
         ? <Button icon="pi pi-file-pdf" size="small" severity="success"
             tooltip="TEM orçamento anexado — clique para baixar o PDF enviado ao Estado"

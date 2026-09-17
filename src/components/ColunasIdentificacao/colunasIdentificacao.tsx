@@ -140,6 +140,16 @@ export const OPCOES_REPEDIDO = [
   { label: 'Único pedido', value: 'nao' },
 ];
 
+export const OPCOES_CADASTRO = [
+  { label: 'Completo', value: 'sim' },
+  { label: 'Falta algo', value: 'nao' },
+];
+
+export const OPCOES_INTEIRO_TEOR = [
+  { label: 'Tem a peça', value: 'sim' },
+  { label: 'Sem a peça', value: 'nao' },
+];
+
 export const OPCOES_ANEXOS = [
   { label: 'Com anexo', value: 'sim' },
   { label: 'Sem anexo', value: 'nao' },
@@ -421,6 +431,24 @@ export function colunaInteiroTeor(largura = '10rem') {
     <Column key="col-inteiro-teor" field="temInteiroTeor"
       header={cabecalhoComHint('Inteiro teor', EXPLICA.inteiroTeor)} sortable
       style={{ minWidth: largura }}
+      {...{
+        filter: true, showFilterMenu: false, filterMatchMode: 'custom',
+        // TRÊS estados, ¬dois: "sem a peça" e "declarado sem peça" são coisas diferentes —
+        // no segundo alguém já olhou e disse que a peça não existe. Juntá-los faria a
+        // equipe procurar de novo o que já foi procurado.
+        // ⚠ 2 ESTADOS, ¬3 — e o limite é do PrimeReact, ¬escolha de desenho.
+        // Eu tinha escrito 3 ("declarado sem peça" separado), lendo a linha inteira via
+        // `params.rowData`. O filterFunction do PrimeReact 10 recebe APENAS
+        // (valorDoCampo, filtro, locale, {column}) — conferido no fonte do pacote. Com
+        // `rowData` undefined, o filtro teria mostrado TUDO numa opção e NADA na outra,
+        // em silêncio, e o build passa porque `any` não reclama.
+        // Quem precisa separar "declarado sem peça" usa a tela Segredo/o hint da célula.
+        filterFunction: (temPeca: any, escolha: any) => {
+          if (!escolha) return true;
+          return escolha === 'sim' ? !!temPeca : !temPeca;
+        },
+        filterElement: filtroOpcoes(OPCOES_INTEIRO_TEOR, 'Todos'),
+      }}
       body={(r: LinhaIdentificada) => <CelulaInteiroTeor linha={r} />} />
   );
 }
@@ -623,6 +651,18 @@ export function colunaCadastro(largura = '9rem') {
   return (
     <Column key="col-cadastro" field="cadastro" header={cabecalhoComHint('Cadastro', EXPLICA.cadastro)} sortable
       sortField="cadastro.completos" style={{ minWidth: largura }}
+      {...{
+        filter: true, showFilterMenu: false, filterMatchMode: 'custom',
+        // o dado aqui é um OBJETO ({completo, cnj, sei, comarca, anexo}), ¬um valor: por
+        // isso filterFunction, e não comparação direta. `null` é "falha ao calcular" e
+        // NÃO conta como incompleto — não saber se falta algo ≠ faltar algo.
+        filterFunction: (valor: any, escolha: any) => {
+          if (!escolha) return true;
+          if (valor === null || valor === undefined) return false;
+          return escolha === 'sim' ? !!valor.completo : !valor.completo;
+        },
+        filterElement: filtroOpcoes(OPCOES_CADASTRO, 'Todos'),
+      }}
       body={(r: LinhaIdentificada) => {
         const c = r.cadastro;
         if (c === null) return <span className="ident-vazio" title="Falha ao calcular — a análise segue normalmente">indisponível</span>;
