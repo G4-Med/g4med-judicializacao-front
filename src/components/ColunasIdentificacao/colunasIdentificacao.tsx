@@ -65,6 +65,9 @@ export interface LinhaIdentificada {
   distanciaKm?: number | null;
   esfera?: 'estadual' | 'federal' | 'trabalhista' | 'stf' | 'stj' | 'outra' | null;
   geoMotivo?: string | null;
+  /** 'manual' quando não há registro de origem E nenhum vestígio de e-mail. Inferência
+   *  declarada — o banco continua sem o dado, e isso é proposital. */
+  origemInferida?: string | null;
 }
 
 export const FILTROS_IDENTIFICACAO = {
@@ -495,7 +498,15 @@ export function colunaOrigem() {
         ? <Tag value="E-mail" severity="info" icon="pi pi-envelope" title="Cadastro automático a partir do e-mail da SES." />
         : r.origemRegistro === 'base_antiga'
         ? <Tag value="Base antiga" severity="secondary" icon="pi pi-history" title={`Lançamento anterior ao sistema, importado da base histórica (30/08).${r.statusLegado ? ' Status original: ' + r.statusLegado : ''}`} />
-        : (r.origemRegistro ? <Tag value={String(r.origemRegistro)} severity="secondary" /> : <span className="ident-vazio" title="Pedido anterior ao registro de origem.">—</span>)} />
+        : r.origemRegistro ? <Tag value={String(r.origemRegistro)} severity="secondary" />
+        // ORIGEM INFERIDA (@R 17/09: "o que não veio por email e está vazio precisamos
+        // identificar se foi Inserção Manual"). O backend só marca quando NÃO HÁ vestígio
+        // nenhum de e-mail — separação medida 0/20 × 21/21. Vem com "?" porque é inferência,
+        // ¬registro: o dado original continua ausente no banco, de propósito.
+        : r.origemInferida === 'manual'
+        ? <Tag value="Manual?" severity="warning" icon="pi pi-question-circle"
+            title="Provavelmente cadastrado à mão: este pedido não tem NENHUM vestígio de e-mail (nem anexo do e-mail original, nem identificador de mensagem). É uma inferência — o sistema não registrou a origem na época." />
+        : <span className="ident-vazio" title="Pedido anterior ao registro de origem.">—</span>} />
   );
 }
 

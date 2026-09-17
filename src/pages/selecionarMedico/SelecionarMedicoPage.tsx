@@ -211,8 +211,15 @@ export function SelecionarMedicoPage() {
     const valorMedio = total > 0 ? somaRefPreco / total : 0;
     const maisAntigo = total > 0 ? Math.max(...visibleProcessos.map((p) => p.dias)) : 0;
 
+    // @R 17/09: "quantos temos em cada situação EM CADA PÁGINA para sabermos". O
+    // `visibleProcessos` já é a página visível (onValueChange do DataTable) — o contador
+    // acompanha filtro e paginação sem nenhuma query a mais.
+    const semMedico = visibleProcessos.filter((p: any) => !p.idMedico || p.idMedico === 1).length;
+    const emSegredo = visibleProcessos.filter((p: any) => p.segredo === 'sim').length;
     return {
       total,
+      semMedico,
+      emSegredo,
       valorMedio,
       maisAntigo,
     };
@@ -421,6 +428,23 @@ export function SelecionarMedicoPage() {
           <div className="kpi-value">{kpis.total}</div>
         </div>
 
+        {/* Contadores da PÁGINA (¬do total): acompanham filtro e paginação. */}
+        <div className="kpi-card kpi-sem-medico">
+          <div className="kpi-header">
+            <span>Sem médico nesta página</span>
+            <i className="pi pi-user-minus" />
+          </div>
+          <div className="kpi-value">{kpis.semMedico}</div>
+        </div>
+
+        <div className="kpi-card kpi-segredo">
+          <div className="kpi-header">
+            <span>Em segredo nesta página</span>
+            <i className="pi pi-lock" />
+          </div>
+          <div className="kpi-value">{kpis.emSegredo}</div>
+        </div>
+
         <div className="kpi-card">
           <div className="kpi-header">
             <span>Valor Médio dos Processos</span>
@@ -454,7 +478,13 @@ export function SelecionarMedicoPage() {
           onValueChange={(value) => setVisibleProcessos(value as ProcessoResumoTableRow[])}
           rowClassName={(r: any) => [((rowData: ProcessoResumoTableRow) =>
             rowData.slaMedicoEstourado ? 'linha-fora-sla' : ''
-          )(r), rowClassRepedido(r)].filter(Boolean).join(' ')}
+          )(r), rowClassRepedido(r),
+            // @R 17/09: "itens sem o médico tenham uma cor diferente... e itens em segredo
+            // de justiça". Medido nesta fase: 11 de 41 sem médico, 9 em segredo — a cor
+            // DISCRIMINA (a suposição de que a fase inteira era idMedico=1 estava errada).
+            (!r?.idMedico || r.idMedico === 1) ? 'linha-sem-medico' : '',
+            (r?.segredo === 'sim') ? 'linha-segredo' : '',
+          ].filter(Boolean).join(' ')}
           dataKey="id"
           paginator
           rowsPerPageOptions={[10, 20, 50, 100, 200]}
