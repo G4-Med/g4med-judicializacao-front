@@ -140,6 +140,23 @@ export interface SugestaoIAResposta {
   justificativa: string;
   confianca: 'alta' | 'media' | 'baixa';
   isFallback: boolean;
+  /** os números que sustentam a escolha — o motor já os calculava e descartava (@R 17/09) */
+  dossieMedico?: {
+    respondeOrcamento?: string;
+    diasParaResponder?: number | null;
+    jaFezDestaSubarea?: number;
+    atendePediatrico?: string;
+    pediatricosJaAtendidos?: number;
+    cidade?: string;
+  } | null;
+  /** este paciente já passou por aqui? casado pelo NOME — por isso vai para conferência */
+  historicoPaciente?: {
+    pedidosAnteriores: number;
+    jaTeveOrcamento?: boolean;
+    mesmoProcedimentoAntes?: boolean;
+    itens: { id: number; procedimento: string; dataPedido: string | null;
+             statusProcesso: string; teveOrcamento: boolean; mesmoProcedimento: boolean }[];
+  } | null;
 }
 
 export const sugerirMedicoIA = (orderId: number) =>

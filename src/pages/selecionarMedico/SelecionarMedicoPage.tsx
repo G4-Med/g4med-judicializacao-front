@@ -763,6 +763,61 @@ export function SelecionarMedicoPage() {
               </div>
             </div>
 
+            {/* O QUE SUSTENTA A ESCOLHA (@R 17/09: "tínhamos criado para verificar se a
+                cirurgia já tinha sido feita antes, se já mandamos orçamentos") — estes
+                números JÁ entravam na decisão da IA; o que faltava era saírem dela.
+                Veredito sem evidência não é auditável: ou se confia por fé, ou se ignora. */}
+            {iaSugestao.dossieMedico && (
+              <div className="ia-sugestao-dialog__bloco">
+                <div className="ia-sugestao-dialog__label">O que sustenta esta escolha</div>
+                <ul className="ia-sugestao-dossie">
+                  {iaSugestao.dossieMedico.respondeOrcamento && (
+                    <li>Responde orçamento: <strong>{iaSugestao.dossieMedico.respondeOrcamento}</strong></li>
+                  )}
+                  {iaSugestao.dossieMedico.diasParaResponder != null && (
+                    <li>Costuma responder em <strong>{iaSugestao.dossieMedico.diasParaResponder} dias</strong> (mediana)</li>
+                  )}
+                  {iaSugestao.dossieMedico.jaFezDestaSubarea != null && (
+                    <li>Já cotou esta subárea: <strong>{iaSugestao.dossieMedico.jaFezDestaSubarea}×</strong></li>
+                  )}
+                  {iaSugestao.dossieMedico.atendePediatrico && (
+                    <li>Atende pediátrico: <strong>{iaSugestao.dossieMedico.atendePediatrico === 'NAO_INFORMADO'
+                      ? 'não informado' : iaSugestao.dossieMedico.atendePediatrico.toLowerCase()}</strong>
+                      {iaSugestao.dossieMedico.pediatricosJaAtendidos
+                        ? ` (já atendeu ${iaSugestao.dossieMedico.pediatricosJaAtendidos})` : ''}</li>
+                  )}
+                  {iaSugestao.dossieMedico.cidade && <li>Cidade: <strong>{iaSugestao.dossieMedico.cidade}</strong></li>}
+                </ul>
+              </div>
+            )}
+
+            {/* ESTE PACIENTE JÁ PASSOU POR AQUI? Um repetido pode ser cobrança de algo
+                que já andou — e aí a decisão muda. Casado pelo NOME, que é o que temos:
+                homônimo existe, então a tela mostra os pedidos para o operador CONFERIR
+                em vez de afirmar "já foi operado" sem ele poder auditar. */}
+            {iaSugestao.historicoPaciente && iaSugestao.historicoPaciente.pedidosAnteriores > 0 && (
+              <div className="ia-sugestao-dialog__bloco">
+                <div className="ia-sugestao-dialog__label">
+                  Este paciente já apareceu antes ({iaSugestao.historicoPaciente.pedidosAnteriores})
+                  {iaSugestao.historicoPaciente.mesmoProcedimentoAntes && ' — com o MESMO procedimento'}
+                </div>
+                <ul className="ia-sugestao-dossie">
+                  {iaSugestao.historicoPaciente.itens.map((i) => (
+                    <li key={i.id}>
+                      #{i.id} · {i.dataPedido ? new Date(i.dataPedido).toLocaleDateString('pt-BR') : 's/ data'}
+                      {' · '}{i.procedimento || '—'}
+                      {i.statusProcesso ? ` · ${i.statusProcesso}` : ''}
+                      {i.teveOrcamento ? ' · teve orçamento' : ' · sem orçamento'}
+                      {i.mesmoProcedimento ? ' · mesmo procedimento' : ''}
+                    </li>
+                  ))}
+                </ul>
+                <div className="ia-sugestao-dialog__texto" style={{ opacity: 0.75, fontSize: '0.85em' }}>
+                  Casado pelo nome do paciente — confira antes de concluir que é a mesma pessoa.
+                </div>
+              </div>
+            )}
+
             <div className="ia-sugestao-dialog__row">
               <div className="ia-sugestao-dialog__bloco">
                 <div className="ia-sugestao-dialog__label">Confiança</div>
