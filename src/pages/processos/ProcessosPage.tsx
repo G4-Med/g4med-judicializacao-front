@@ -31,7 +31,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import './ProcessosPage.css';
-import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaOrigem, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaOrigem, filtroMaiorQue, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
@@ -2137,7 +2137,9 @@ ${linhasAnexos}
             header="Área"
             sortable
             filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
+            filterMatchMode="custom" showFilterMenu={false}
+            filterFunction={casaOpcaoDosDados}
+            filterElement={filtroOpcoesDosDados(dataComCamposCalculados, (l: any) => l?.area, 'Todas as áreas')}
             style={{ minWidth: '10rem' }}
           />
           <Column

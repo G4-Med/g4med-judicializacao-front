@@ -93,6 +93,84 @@ export const FILTROS_IDENTIFICACAO = {
    Caixa de texto filtraria pelo dado, e ninguém digita 'sim' esperando ver "Segredo".
    O dropdown mostra a ETIQUETA e filtra pelo DADO — é a única forma de os dois baterem. */
 
+/** Só as opções que EXISTEM nos dados carregados (@R 17/09: "só vamos aparecer aqueles
+ *  que temos ativos em cada tabela... de acordo com o banco de dados").
+ *
+ *  POR QUE ISTO IMPORTA: oferecer "Recém-nascido" numa tela que não tem nenhum faz a
+ *  pessoa filtrar, ver zero linhas e concluir que o filtro está quebrado. Opção que
+ *  devolve vazio treina a desconfiar da ferramenta — e a desconfiança não fica só naquela
+ *  opção, contamina o filtro inteiro.
+ *
+ *  `dados` ausente devolve TODAS as opções: página que ainda não carregou não deve
+ *  esconder opção nenhuma (durante o carregamento, "não tem" é indistinguível de "ainda
+ *  não chegou", e esconder no primeiro seria mentir no segundo). */
+/**
+ * Combobox de coluna montado A PARTIR DOS DADOS: os valores que existem naquela tabela,
+ * cada um com QUANTOS são, do maior para o menor.
+ *
+ * @R 17/09: ⟦"em area eu preciso que ele liste quantos temos por cada area do maior para
+ * o menor combobox"⟧ + ⟦"só vamos aparecer aqueles que temos ativos em cada tabela"⟧ +
+ * ⟦"tem que verificar todos os frontends para padronizar"⟧.
+ *
+ * POR QUE SUBSTITUI A CAIXA "Buscar": digitar exige saber COMO o valor está escrito no
+ * banco ("Ortopedia" · "ORTOPEDIA" · "Ortopedia e Traumatologia"). Quem digita o nome
+ * quase-certo recebe uma tabela vazia e conclui que não há nada naquela área — o erro
+ * silencioso mais caro de uma lista, porque parece resposta.
+ *
+ * E a CONTAGEM não é enfeite: ela responde antes do clique "vale a pena filtrar isto?".
+ * Ordenado por quantidade porque a pergunta real quase sempre começa pelo maior bolo.
+ *
+ * Valor vazio/nulo vira a opção "(sem preenchimento)" em vez de desaparecer — some da
+ * lista é exatamente como se esconde um buraco de cadastro.
+ */
+export function filtroOpcoesDosDados(
+  dados: any[] | undefined,
+  extrai: (linha: any) => unknown,
+  placeholder = 'Todos',
+  rotulo?: (valor: any) => string,
+) {
+  const contagem = new Map<string, number>();
+  for (const linha of dados ?? []) {
+    const v = extrai(linha);
+    const chave = v === null || v === undefined || v === '' ? SEM_VALOR : String(v);
+    contagem.set(chave, (contagem.get(chave) ?? 0) + 1);
+  }
+  const opcoes = [...contagem.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'))  // maior→menor; empate em ordem alfabética
+    .map(([valor, n]) => ({
+      label: `${valor === SEM_VALOR ? '(sem preenchimento)' : (rotulo ? rotulo(valor) : valor)} (${n})`,
+      value: valor,
+    }));
+  return filtroOpcoes(opcoes, placeholder);
+}
+
+/** Marcador do vazio — precisa ser um valor comparável pelo EQUALS do PrimeReact. */
+export const SEM_VALOR = '__SEM_VALOR__';
+
+/**
+ * Casa a escolha do combobox contra o valor da linha, tratando o vazio.
+ * Usar com `filterMatchMode="custom"` quando a coluna puder ter célula em branco.
+ */
+export const casaOpcaoDosDados = (valor: unknown, escolha: unknown): boolean => {
+  if (escolha === null || escolha === undefined || escolha === '') return true;
+  const vazio = valor === null || valor === undefined || valor === '';
+  return escolha === SEM_VALOR ? vazio : String(valor) === String(escolha);
+};
+
+export function opcoesPresentes(
+  todas: { label: string; value: unknown }[],
+  dados: unknown[] | undefined,
+  extrai: (linha: any) => unknown,
+): { label: string; value: unknown }[] {
+  if (!dados || dados.length === 0) return todas;
+  const presentes = new Set<unknown>(
+    dados.map(extrai).filter((v) => v !== null && v !== undefined));
+  const filtradas = todas.filter((o) => presentes.has(o.value));
+  // se NADA casou, algo está errado na régua de extração — devolver vazio deixaria o
+  // filtro sem nenhuma opção, que é pior que oferecer demais
+  return filtradas.length > 0 ? filtradas : todas;
+}
+
 /** Dropdown de filtro com as opções da própria coluna. `showClear` sempre: filtro sem
  *  como limpar é armadilha — a pessoa filtra, esquece, e jura que sumiram pedidos. */
 export const filtroOpcoes = (opcoes: { label: string; value: unknown }[], placeholder = 'Todos') =>
@@ -397,11 +475,11 @@ export function colunaComarca(largura = '11rem') {
  *  processo é segredo de justiça ou sem segredo em cada página"). 3 estados do backend:
  *  sim = marca confirmada · possivel = API DataJud sinalizou, aguardando confirmação
  *  humana (aba Candidatos do Segredo) · nao = sem marca nem sinal. */
-export function colunaSegredo(largura = '9rem') {
+export function colunaSegredo(largura = '9rem', dados?: any[]) {
   return (
     <Column key="col-segredo" field="segredo" header={cabecalhoComHint('Segredo', EXPLICA.segredo)} sortable
       filter filterMatchMode="equals" showFilterMenu={false}
-      filterElement={filtroOpcoes(OPCOES_SEGREDO, 'Todos')}
+      filterElement={filtroOpcoes(opcoesPresentes(OPCOES_SEGREDO, dados, (r) => r?.segredo), 'Todos')}
       style={{ minWidth: largura }}
       body={(r: LinhaIdentificada) => {
         // @R 17/09: "encurtar o nome Segredo de Justiça para não quebrar linha". O texto
@@ -626,11 +704,11 @@ const ROTULO_PONTO: Record<string, string> = { cnj: 'CNJ', sei: 'SEI', comarca: 
  *  fonte + próxima ação + dono. verde=tem · âmbar=falta com rota automática · cinza=fila
  *  humana. cadastro null (falha no cálculo) = "indisponível" — a tabela nunca cai (K6). */
 /** Selo de ORIGEM (@R 29/08 13:24): "para sabermos que é um cadastro manual, e os que vieram por e-mail cadastro automático". */
-export function colunaOrigem() {
+export function colunaOrigem(dados?: any[]) {
   return (
     <Column key="col-origem" field="origemRegistro" sortable style={{ minWidth: '7.5rem' }}
       filter filterMatchMode="equals" showFilterMenu={false}
-      filterElement={filtroOpcoes(OPCOES_ORIGEM, 'Todas')}
+      filterElement={filtroOpcoes(opcoesPresentes(OPCOES_ORIGEM, dados, (r) => r?.origemRegistro), 'Todas')}
       header={cabecalhoComHint('Origem', 'Como o pedido entrou: E-mail = cadastro automático a partir do e-mail da SES · Manual = alguém da equipe cadastrou à mão · — = pedido antigo, origem não registrada.')}
       body={(r: any) => r.origemRegistro === 'manual'
         ? <Tag value="Manual" severity="warning" icon="pi pi-user-edit" title="Cadastrado à mão pela equipe (sem e-mail de origem; nenhuma resposta automática saiu)." />

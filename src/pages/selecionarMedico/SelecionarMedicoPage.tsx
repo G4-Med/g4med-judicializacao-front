@@ -19,7 +19,7 @@ import {
 } from '../../services/api/orders';
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
-import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes, OPCOES_TIPO_PACIENTE } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
 import './SelecionarMedicoPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
@@ -546,11 +546,12 @@ export function SelecionarMedicoPage() {
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento. Criança/recém-nascido recebe o e-mail pediátrico de exames.')}
             sortable filter filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '6rem' }}
             body={(r: any) => r.idade ?? <span className="sm-sla-vazio">—</span>} />
-          <Column field="tipoPaciente" header={cabecalhoComHint('Grupo etário', 'Recém-nascido (≤28 dias) · Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')}
-            sortable style={{ minWidth: '9rem' }} body={(r: any) => tagTipoPaciente(r.tipoPaciente)}
-            filter showFilterMenu={false} filterMatchMode="equals"
-            filterElement={filtroOpcoes(OPCOES_TIPO_PACIENTE, 'Todos')} />
-          <Column
+          <Column field="tipoPaciente"
+            filter showFilterMenu={false} filterMatchMode="custom"
+            filterFunction={casaOpcaoDosDados}
+            filterElement={filtroOpcoesDosDados(dataComCamposCalculados, (l: any) => l?.tipoPaciente, 'Todos')} header={cabecalhoComHint('Grupo etário', 'Recém-nascido (≤28 dias) · Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')}
+            sortable style={{ minWidth: '9rem' }} body={(r: any) => tagTipoPaciente(r.tipoPaciente)} />
+            <Column
             field="procedimento" className="col-procedimento-upper"
             header={cabecalhoComHint('Procedimento', 'O que a decisão judicial determinou. É a chave para achar o preço histórico.')}
             sortable
@@ -563,7 +564,9 @@ export function SelecionarMedicoPage() {
             header="Área"
             sortable
             filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
+            filterMatchMode="custom" showFilterMenu={false}
+            filterFunction={casaOpcaoDosDados}
+            filterElement={filtroOpcoesDosDados(dataComCamposCalculados, (l: any) => l?.area, 'Todas as áreas')}
             style={{ minWidth: '10rem' }}
           />
           <Column
