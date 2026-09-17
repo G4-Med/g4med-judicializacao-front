@@ -97,3 +97,12 @@ body.dark-theme .chip-cadastro--completo { background: rgba(28,122,72,0.16); bor
   background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; cursor: help; white-space: nowrap;
 }
 .ident-manual-segredo { background: #f5f3ff; color: #5b21b6; border-color: #ddd6fe; }
+
+/* "nenhum parece de saúde" (@R 17/09): o tribunal devolveu processos da pessoa, mas de outra
+   natureza (dívida, curatela, inventário). As opções CONTINUAM visíveis — esconder seria tirar
+   dado real de quem sabe mais que o sistema. O aviso só impede a leitura errada de "candidatos". */
+.ident-sem-saude {
+  display: inline-block; margin-left: .4rem; font-size: .68rem; padding: 1px 7px;
+  border-radius: 10px; background: #fef2f2; color: #991b1b; border: 1px solid #fecaca;
+  cursor: help; white-space: nowrap; vertical-align: middle;
+}

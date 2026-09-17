@@ -55,7 +55,10 @@ export interface LinhaIdentificada {
    *  quando nenhuma via achou o número, a pessoa precisa saber POR QUE — e o porquê
    *  muda o que ela faz em seguida. */
   buscaProcesso?: { status: string; mensagem?: string | null;
-                    pedeBuscaManual?: boolean } | null;
+                    pedeBuscaManual?: boolean;
+                    /** achou processos, mas NENHUM parece ser de saúde (@R 17/09: mostrar
+                     *  as opções E o aviso — nunca esconder processo real da pessoa). */
+                    semPistaSaude?: boolean } | null;
   numeroSei?: string | null;
   familiaSei?: string | null;
   comarca?: string | null;
@@ -224,7 +227,14 @@ export function colunaCnj(largura = '14rem', aoDecidirCnj?: (cnj: string) => voi
         // sem número gravado, mas a peça trazia candidatos: a coluna deixa de ser um traço
         // mudo e vira a porta da escolha (a decisão @R só existe se chegar à tela)
         : (r.cnjsSugeridos && r.cnjsSugeridos.length > 0)
-          ? <SeletorCnj linha={r} aoDecidir={aoDecidirCnj} />
+          // @R 17/09: "mostrar as opções E um aviso ao lado". Esconder os processos seria
+          // tirar da advogada um dado real — ela pode saber algo que o sistema não sabe.
+          ? <><SeletorCnj linha={r} aoDecidir={aoDecidirCnj} />
+              {r.buscaProcesso?.semPistaSaude && (
+                <span className="ident-sem-saude" title={r.buscaProcesso.mensagem || ''}>
+                  nenhum parece de saúde
+                </span>)}
+            </>
           // vazio E sem candidato: se a busca já rodou e não achou, DIZ o porquê; senão
           // oferece a ação que ainda pode resolver. Nunca um traço mudo.
           : r.buscaProcesso?.pedeBuscaManual
