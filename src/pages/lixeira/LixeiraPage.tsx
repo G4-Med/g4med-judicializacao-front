@@ -96,7 +96,7 @@ export function LixeiraPage() {
         rowsPerPageOptions={[10, 25, 50, 100]} emptyMessage="A lixeira está vazia."
         sortField="excluidoEm" sortOrder={-1} aria-label="Pedidos na lixeira">
         <Column field="id" header="#" sortable style={{ width: '5rem' }} />
-        <Column field="paciente" header="Paciente" sortable style={{ minWidth: '14rem' }} />
+        <Column field="paciente" className="col-paciente-upper" header="Paciente" sortable style={{ minWidth: '14rem' }} />
         {colunaCnj()}
         {colunaSei()}
         <Column field="procedimento" header="Procedimento" style={{ minWidth: '14rem' }} />

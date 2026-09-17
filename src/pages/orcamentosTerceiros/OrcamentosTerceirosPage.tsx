@@ -77,7 +77,7 @@ function DetalheProcedimento({ linha }: { linha: Linha }) {
               bodyStyle={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} body={(r) => brl(r.valorTotal)} />
             <Column field="dataOrcamento" header="Data" sortable style={{ width: '7.5rem' }} body={(r) => r.dataOrcamento || '—'} />
             <Column field="paciente" header="Paciente / pedido"
-              body={(r) => <span>{r.paciente || '—'}{r.orderId ? <span className="acv-pedido-id">#{r.orderId}</span> : null}</span>} />
+              body={(r) => <span>{r.paciente || '—'}{r.orderId ? <span className="acv-pedido-id col-paciente-upper">#{r.orderId}</span> : null}</span>} />
             <Column header="Conferido" style={{ width: '7rem' }} bodyStyle={{ textAlign: 'center' }}
               body={(r) => r.confirmado ? <Tag value="sim" severity="success" /> : <Tag value="não" severity="warning" />} />
             <Column header="Origem" style={{ width: '8rem' }} bodyStyle={{ textAlign: 'center' }}

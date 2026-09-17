@@ -89,7 +89,7 @@ export function CardCnjAConfirmar() {
         </div>
         <DataTable value={filtradas} paginator rows={10} className="cnj-confirmar-tabela"
           emptyMessage={busca ? `Nenhum paciente com "${busca}".` : 'Nada a confirmar.'} dataKey="id">
-          <Column field="paciente" header="Paciente" style={{ minWidth: '14rem' }} />
+          <Column field="paciente" className="col-paciente-upper" header="Paciente" style={{ minWidth: '14rem' }} />
           <Column field="statusProcesso" header="Fase" style={{ minWidth: '11rem' }}
             body={(r: Linha) => <small className="cnj-confirmar-fase">{r.statusProcesso}</small>} />
           <Column field="procedimento" header="Procedimento" style={{ minWidth: '16rem' }}

@@ -145,7 +145,7 @@ export function AbaPerdaComPagamento() {
         emptyMessage="Nenhum pedido nesta situação."
       >
         <Column field="orderId" header="#" sortable style={{ minWidth: '4rem' }} />
-        <Column field="paciente" header="Paciente" sortable style={{ minWidth: '14rem' }} />
+        <Column field="paciente" className="col-paciente-upper" header="Paciente" sortable style={{ minWidth: '14rem' }} />
         <Column
           header="Médico do pedido"
           sortable

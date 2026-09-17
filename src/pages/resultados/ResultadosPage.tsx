@@ -667,7 +667,7 @@ const kpis = useMemo(() => {
             body={(r: any) => resultadoBodyTemplate(r)}
           />
           <Column
-            field="paciente" body={(r: any) => nomeComCopiar(r.paciente)}
+            field="paciente" className="col-paciente-upper" body={(r: any) => nomeComCopiar(r.paciente)}
             header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')}
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}

@@ -412,7 +412,7 @@ export function PerdasPage() {
             hint: 'Reabrir devolve o pedido à fase de onde ele saiu (a justificativa da perda continua no histórico). A lixeira remove do fluxo, com senha e reversível.',
           })}
           <Column
-            field="paciente" body={(r: any) => nomeComCopiar(r.paciente)}
+            field="paciente" className="col-paciente-upper" body={(r: any) => nomeComCopiar(r.paciente)}
             header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')}
             sortable
             filter

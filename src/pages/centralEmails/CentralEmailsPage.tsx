@@ -291,7 +291,7 @@ function Processados({ statusInicial }: { statusInicial: string | null }) {
         <Column expander style={{ width: '3rem' }} />
         <Column field="recebidoEm" header="Processado em" sortable body={(r) => fmt(r.recebidoEm)} style={{ minWidth: '10rem' }} />
         <Column field="status" header="Resultado" sortable body={(r) => <Tag value={ROTULO_STATUS[r.status] ?? r.status} severity={COR_STATUS[r.status] ?? 'secondary'} />} />
-        <Column field="paciente" header="Paciente" sortable style={{ minWidth: '13rem' }} body={(r) => r.paciente || <span className="ce-sub">—</span>} />
+        <Column field="paciente" header="Paciente" sortable style={{ minWidth: '13rem' }} body={(r) => r.paciente || <span className="ce-sub col-paciente-upper">—</span>} />
         <Column field="remetente" header="Remetente" sortable style={{ minWidth: '14rem' }} body={(r) => (r.remetente || '').replace(/<.*>/, '').trim() || r.remetente} />
         <Column field="assunto" header="Assunto" style={{ minWidth: '18rem' }} />
         <Column header="Pedido" body={(r) => r.pedido ? <>#{r.pedido.id}{r.pedido.vezesPedido > 1 && <span className="mc-repedido-badge" style={{ marginLeft: 6 }}>{r.pedido.vezesPedido}×</span>}</> : '—'} />
@@ -438,7 +438,7 @@ function Respostas({ statusInicial }: { statusInicial: string | null }) {
         <Column expander style={{ width: '3rem' }} />
         <Column field="destinatario" header="Para" sortable style={{ minWidth: '15rem' }} />
         <Column field="paciente" header="Paciente / pedido" sortable style={{ minWidth: '14rem' }}
-          body={(r) => <span>{r.paciente || '—'}{r.orderId ? <span className="acv-pedido-id"> #{r.orderId}</span> : null}</span>} />
+          body={(r) => <span>{r.paciente || '—'}{r.orderId ? <span className="acv-pedido-id col-paciente-upper"> #{r.orderId}</span> : null}</span>} />
         <Column field="tipoEmail" header="Tipo" sortable style={{ width: '11rem' }} body={(r) => ROTULO_TIPO[r.tipoEmail] ?? r.tipoEmail} />
         <Column field="criadoEm" header="Montada em" sortable style={{ width: '8rem' }} body={(r) => fmtDt(r.criadoEm)} />
         <Column field="enviadoEm" header="Enviada em" sortable style={{ width: '8rem' }} body={(r) => fmtDt(r.enviadoEm)} />

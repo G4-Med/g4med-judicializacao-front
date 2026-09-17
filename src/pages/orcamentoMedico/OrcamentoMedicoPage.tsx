@@ -643,7 +643,7 @@ ${blocos}
           <Column field="paciente" header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')} filter
             filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '16rem' }}
             body={(r: ProcessoOrcamentoRow) => (
-              <span className="orcamento-paciente-cel">
+              <span className="orcamento-paciente-cel col-paciente-upper">
                 {nomeComCopiar(r.paciente)}
               </span>
             )}  frozen alignFrozen="left" />

@@ -655,7 +655,7 @@ export function EmailsPage() {
           />
 
           <Column
-            field="paciente"
+            field="paciente" className="col-paciente-upper"
             header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')}
             sortable
             filter

@@ -44,7 +44,14 @@ body,
 
 
 /* Padronização: nomes de procedimento sempre em CAIXA ALTA nas tabelas. */
-.col-procedimento-upper, .col-procedimento-upper * { text-transform: uppercase; }
+/* O nome do paciente segue o MESMO padrão do procedimento — e o padrão não é meu:
+   o hint da coluna já declarava "Nome do beneficiário, em MAIÚSCULAS sem acento
+   (padrão de busca)". @R 17/09 notou um pedido com "Felipe Palhano Teixeira Oliveira"
+   ao lado de "MARIO RUBENS PEREIRA": o nome entra como veio no e-mail, sem padronizar.
+   Uniformizar na EXIBIÇÃO (e não no banco) vale também para os pedidos já gravados e
+   mantém intacto o nome como a SES escreveu, que é o que se audita. */
+.col-procedimento-upper, .col-procedimento-upper *,
+.col-paciente-upper, .col-paciente-upper * { text-transform: uppercase; }
 
 /* Linha fora do prazo (SLA) — reutilizado nas telas de Protocolos (Juridico,
    Orcamento Medico) que destacam quando um item passou da meta de dias

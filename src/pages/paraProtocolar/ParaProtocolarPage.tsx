@@ -732,7 +732,7 @@ const handleConfirmarProtocolacao = async () => {
           {/* Ações da fase ao lado do paciente (@R 29/08) — mesmos botões, agora fixos à esquerda. */}
 {colunaAcoesFase({ corpo: (r: any) => <>{editarBodyTemplate(r)}{protocolarBodyTemplate(r)}{excluirBodyTemplate(r)}{copiarBodyTemplate(r)}</>, excluir: carregarDados })}
           <Column
-            field="paciente" body={(r: any) => nomeComCopiar(r.paciente)}
+            field="paciente" className="col-paciente-upper" body={(r: any) => nomeComCopiar(r.paciente)}
             header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')}
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}

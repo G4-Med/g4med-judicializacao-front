@@ -274,7 +274,7 @@ export function ResultadosFinanceirosPage() {
         >
           <Column field="sequencial" header="#" sortable style={{ minWidth: '4rem' }} />
           <Column
-            field="paciente"
+            field="paciente" className="col-paciente-upper"
             header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')}
             sortable
             filter

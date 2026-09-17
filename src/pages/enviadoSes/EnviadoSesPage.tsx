@@ -258,7 +258,7 @@ export function EnviadoSesPage() {
 {colunaAcoesFase({ corpo: (r: any) => <>{(((r: LinhaEnviadoSes) => (!readOnly
               ? <Button label="Registrar" icon="pi pi-flag" size="small" outlined onClick={() => abrirResultado(r)} />
               : null)) as any)(r)}</>, excluir: carregar })}
-          <Column field="paciente" header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')} filter
+          <Column field="paciente" className="col-paciente-upper" header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')} filter
             filterElement={(o) => filterElement(o, 'Buscar')}
             body={(r: LinhaEnviadoSes) => nomeComCopiar(r.paciente)} style={{ minWidth: '16rem' }}  frozen alignFrozen="left" />
           {colunaOrigem(linhas)}

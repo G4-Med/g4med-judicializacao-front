@@ -501,7 +501,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
           <Column field="paciente" header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')} sortable filter
             filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '16rem' }}
             body={(r: ProcessoJuridicoRow) => (
-              <span className="juridico-paciente-cel">
+              <span className="juridico-paciente-cel col-paciente-upper">
                 {r.paciente}
                 <BotaoCopiar valor={r.paciente} rotulo="nome do paciente" />
                 {r.possivelMenorIdade && (

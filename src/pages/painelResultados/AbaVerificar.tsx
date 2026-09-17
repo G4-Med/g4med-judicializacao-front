@@ -274,7 +274,7 @@ export function AbaVerificar() {
         stripedRows
       >
         <Column field="orderId" header="Pedido" sortable style={{ width: '6rem' }} />
-        <Column field="paciente" header="Paciente" sortable />
+        <Column field="paciente" className="col-paciente-upper" header="Paciente" sortable />
         <Column
           field="resultado"
           header="Desfecho"
