@@ -443,3 +443,27 @@ body.dark-theme .selecionar-medico-resumo strong { color: #e6eef6; }
   .ia-candidato { border-color: var(--surface-600, #4b5563); }
   .ia-candidato--topo { background: rgba(34,197,94,.10); }
 }
+
+/* Cabeçalho do modal da IA: PARA QUE pedido é a escolha (@R 17/09). Vem antes de tudo
+   porque é o que torna a sugestão julgável — sem o procedimento, "confiança alta" é uma
+   afirmação sobre nada. */
+.ia-sugestao-dialog__pedido {
+  padding: .7rem .85rem;
+  margin-bottom: .9rem;
+  border-left: 3px solid var(--primary-color, #10b981);
+  background: var(--surface-50, #f8fafc);
+  border-radius: 0 8px 8px 0;
+}
+.ia-sugestao-dialog__pedido strong { display: block; line-height: 1.35; }
+.ia-sugestao-dialog__pedido-meta {
+  display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .35rem;
+  font-size: .76rem; color: var(--text-color-secondary, #6b7280);
+}
+.ia-sugestao-dialog__pedido-meta span:not(:last-child)::after { content: ' ·'; }
+
+.ia-sugestao-dialog__troca { margin-top: 1rem; }
+.ia-sugestao-dialog__drop { width: 100%; max-width: 26rem; }
+.ia-sugestao-dialog__aviso {
+  display: block; margin-top: .4rem; font-size: .76rem;
+  color: var(--orange-700, #b45309);
+}

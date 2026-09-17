@@ -104,6 +104,13 @@ export function SelecionarMedicoPage() {
   const [iaSugestao, setIaSugestao] = useState<SugestaoIAResposta | null>(null);
   const [iaOrderId, setIaOrderId] = useState<number | null>(null);
   const [iaAplicando, setIaAplicando] = useState(false);
+  // O PEDIDO que gerou a sugestão (@R 17/09: "mostrar na tela qual é o procedimento").
+  // Sem ele, o modal pede para confirmar um médico sem dizer PARA QUÊ — e quem confirma
+  // às cegas confirma errado. A linha já está na mão de quem clicou; guardá-la custa nada.
+  const [iaPedido, setIaPedido] = useState<ProcessoResumoTableRow | null>(null);
+  // Escolha MANUAL dentro do modal: a sugestão é conselho, não trava. Antes era preciso
+  // cancelar e procurar o médico na tabela — duas telas para uma decisão só.
+  const [iaMedicoEscolhido, setIaMedicoEscolhido] = useState<number | null>(null);
 
   const colunasCfg = useColunasVisiveis('selecionar-medico');
 
@@ -353,6 +360,8 @@ export function SelecionarMedicoPage() {
       const sug = data as SugestaoIAResposta;
       setIaSugestao(sug);
       setIaOrderId(rowData.id);
+      setIaPedido(rowData);
+      setIaMedicoEscolhido(sug?.idMedico ?? null);
       setIaDialogVisible(true);
     } catch (error: any) {
       console.error('Erro ao sugerir médico via IA:', error);
@@ -366,17 +375,23 @@ export function SelecionarMedicoPage() {
     setIaDialogVisible(false);
     setIaSugestao(null);
     setIaOrderId(null);
+    setIaPedido(null);
+    setIaMedicoEscolhido(null);
   };
 
   const handleAplicarSugestaoIA = async () => {
     if (!iaSugestao || !iaOrderId) return;
-    if (!iaSugestao.idMedico) {
-      alert('A IA não conseguiu identificar um médico — não há sugestão para aplicar.');
+    // Aplica quem está NO DROPDOWN, ¬quem a IA sugeriu: desde 17/09 o jurídico pode trocar
+    // dentro do próprio modal. Continuar mandando `iaSugestao.idMedico` faria a tela
+    // mostrar um médico e gravar outro — o pior erro possível aqui, porque é silencioso.
+    const escolhido = iaMedicoEscolhido ?? iaSugestao.idMedico;
+    if (!escolhido) {
+      alert('Escolha um médico antes de confirmar.');
       return;
     }
     setIaAplicando(true);
     try {
-      await aplicarSugestaoIA(iaSugestao.sugestaoId, iaSugestao.idMedico);
+      await aplicarSugestaoIA(iaSugestao.sugestaoId, escolhido);
       fecharIaDialog();
       await carregarDados();
     } catch (error: any) {
@@ -752,6 +767,24 @@ export function SelecionarMedicoPage() {
       >
         {iaSugestao && (
           <div className="ia-sugestao-dialog">
+            {/* PARA QUE pedido é esta escolha (@R 17/09: "mostrar na tela qual é o
+                procedimento"). Antes o modal pedia para confirmar um médico sem dizer
+                para quê — e quem confirma às cegas confirma errado. O procedimento é o
+                dado que torna a sugestão julgável: é dele que vem a especialidade. */}
+            {iaPedido && (
+              <div className="ia-sugestao-dialog__pedido">
+                <div>
+                  <span className="ia-sugestao-dialog__label">Procedimento</span>
+                  <strong>{iaPedido.procedimento || '— não informado'}</strong>
+                </div>
+                <div className="ia-sugestao-dialog__pedido-meta">
+                  {iaPedido.paciente && <span>{iaPedido.paciente}</span>}
+                  {iaPedido.area && <span>{iaPedido.area}</span>}
+                  {iaPedido.subarea && <span>{iaPedido.subarea}</span>}
+                  <span>pedido #{iaPedido.id}</span>
+                </div>
+              </div>
+            )}
             {/* A ORDEM, ¬um nome (@R 17/09: "central inteligente para atuar na escolha
                 do profissional" · SPEC 3.1). Um nome só escondia a pergunta que ele fazia:
                 "e quando tem mais de um da mesma especialidade?". Cada linha traz o número
@@ -875,6 +908,31 @@ export function SelecionarMedicoPage() {
               )}
             </div>
 
+            {/* TROCAR SEM SAIR (@R 17/09: "ter um dropdown para trocarmos o médico caso
+                a gente queira escolher outro ali"). A sugestão é conselho: antes, discordar
+                custava cancelar o modal e procurar o médico na tabela — duas telas para uma
+                decisão só, e a justificativa que acabou de ser lida sumia da frente. */}
+            <div className="ia-sugestao-dialog__bloco ia-sugestao-dialog__troca">
+              <div className="ia-sugestao-dialog__label">Médico que vai ser confirmado</div>
+              <Dropdown
+                value={iaMedicoEscolhido}
+                options={medicosOptions}
+                optionLabel="label"
+                optionValue="value"
+                onChange={(e) => setIaMedicoEscolhido(e.value)}
+                placeholder="Escolha o médico"
+                filter
+                disabled={iaAplicando}
+                className="ia-sugestao-dialog__drop"
+              />
+              {iaSugestao.idMedico != null && iaMedicoEscolhido !== iaSugestao.idMedico && (
+                <small className="ia-sugestao-dialog__aviso">
+                  Você escolheu um médico diferente do sugerido — a escolha é sua, e é ela
+                  que será aplicada.
+                </small>
+              )}
+            </div>
+
             <div className="ia-sugestao-dialog__actions">
               <Button
                 label="Cancelar"
@@ -888,7 +946,7 @@ export function SelecionarMedicoPage() {
                 severity="success"
                 onClick={handleAplicarSugestaoIA}
                 loading={iaAplicando}
-                disabled={!iaSugestao.idMedico}
+                disabled={!iaMedicoEscolhido}
               />
             </div>
           </div>
