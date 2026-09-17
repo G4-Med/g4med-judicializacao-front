@@ -4,7 +4,7 @@ import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { BotaoCopiar } from '../BotaoCopiar/BotaoCopiar';
-import { uploadAnexoOrder } from '../../services/api/orders';
+import { uploadAnexoOrder, decidirCnjSugerido } from '../../services/api/orders';
 import './colunasIdentificacao.css';
 
 /**
@@ -43,6 +43,11 @@ export interface LinhaIdentificada {
   solicitante?: string | null;
   segredoFonte?: string | null;
   nprocesso?: string | null;
+  /** Números de processo LIDOS do documento que ainda esperam a escolha do jurídico.
+   *  Vem preenchido quando a peça trazia MAIS DE UM CNJ — decisão @R 17/09/2026: nesse
+   *  caso o sistema não escolhe, mostra os dois e quem decide é pessoa. */
+  cnjsSugeridos?: { id: number; cnj: string; pagina?: number | null;
+                    documento?: string | null; anexoId?: number | null }[] | null;
   numeroSei?: string | null;
   familiaSei?: string | null;
   comarca?: string | null;
@@ -63,13 +68,83 @@ const filtro = (placeholder: string) => (options: any) => (
     placeholder={placeholder} className="p-column-filter" />
 );
 
-export function colunaCnj(largura = '14rem') {
+/** Os números que a peça trazia, esperando a escolha do jurídico.
+ *
+ *  POR QUE ISTO EXISTE (decisão @R 17/09/2026, cartão perguntas_extracao_cnj): quando o
+ *  documento traz MAIS DE UM número de processo — o caso de uma cópia integral, que cita
+ *  apensos e precedentes — o sistema NÃO escolhe. ⟦"o sistema mostra os dois na tela do
+ *  pedido e o jurídico escolhe qual é o certo. Nada é gravado sozinho"⟧.
+ *
+ *  Sem este seletor a decisão morria no banco: as sugestões existiam e ninguém as via.
+ *  Caso real que fundou isto: pedido 1254, peça de 166 páginas com o número na página 1
+ *  (capa) e outro na 164 — e a coluna Nº CNJ mostrando "—" como se não houvesse nada.
+ */
+function SeletorCnj({ linha, aoDecidir }: {
+  linha: LinhaIdentificada;
+  aoDecidir?: (cnj: string) => void;
+}) {
+  const [aberto, setAberto] = useState(false);
+  const [gravando, setGravando] = useState<number | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const sugestoes = linha.cnjsSugeridos || [];
+
+  async function escolher(sugeridoId: number, cnj: string) {
+    if (!linha.id) return;
+    setGravando(sugeridoId); setErro(null);
+    try {
+      await decidirCnjSugerido(linha.id, sugeridoId, 'aplicar');
+      setAberto(false);
+      aoDecidir?.(cnj);          // a tela recarrega; sem isto o número só aparece no F5
+    } catch (e: any) {
+      setErro(e?.response?.data?.error || 'Não consegui gravar. Tente de novo.');
+    } finally {
+      setGravando(null);
+    }
+  }
+
+  return (
+    <>
+      <button type="button" className="ident-cnj-sugerido" onClick={() => setAberto(true)}
+        title="O documento trazia mais de um número de processo — clique para escolher qual é o certo">
+        {sugestoes.length} número{sugestoes.length > 1 ? 's' : ''} encontrado{sugestoes.length > 1 ? 's' : ''}
+      </button>
+      <Dialog visible={aberto} onHide={() => setAberto(false)} style={{ width: '34rem' }}
+        header="Qual é o número deste processo?">
+        <p className="ident-cnj-ajuda">
+          Estes números foram lidos do documento anexado. Como havia mais de um, nada foi
+          gravado — uma cópia integral costuma citar outros processos. Escolha o correto.
+        </p>
+        {sugestoes.map((s) => (
+          <div key={s.id} className="ident-cnj-opcao">
+            <div>
+              <code className="ident-numero">{s.cnj}</code>
+              <div className="ident-cnj-origem">
+                {s.documento || 'documento'}{s.pagina ? ` · página ${s.pagina}` : ''}
+              </div>
+            </div>
+            <button type="button" className="ident-cnj-usar" disabled={gravando !== null}
+              onClick={() => escolher(s.id, s.cnj)}>
+              {gravando === s.id ? 'gravando…' : 'é este'}
+            </button>
+          </div>
+        ))}
+        {erro && <p className="ident-cnj-erro">{erro}</p>}
+      </Dialog>
+    </>
+  );
+}
+
+export function colunaCnj(largura = '14rem', aoDecidirCnj?: (cnj: string) => void) {
   return (
     <Column key="col-cnj" field="nprocesso" header={cabecalhoComHint('Nº CNJ', EXPLICA.cnj)} sortable filter
       filterElement={filtro('Buscar CNJ')} style={{ minWidth: largura }}
       body={(r: LinhaIdentificada) => r.nprocesso
         ? <><code className="ident-numero" title="Número CNJ do processo">{r.nprocesso}</code><BotaoCopiar valor={r.nprocesso} rotulo="número CNJ" /></>
-        : <span className="ident-vazio">—</span>} />
+        // sem número gravado, mas a peça trazia candidatos: a coluna deixa de ser um traço
+        // mudo e vira a porta da escolha (a decisão @R só existe se chegar à tela)
+        : (r.cnjsSugeridos && r.cnjsSugeridos.length > 0)
+          ? <SeletorCnj linha={r} aoDecidir={aoDecidirCnj} />
+          : <span className="ident-vazio">—</span>} />
   );
 }
 

@@ -49,3 +49,23 @@ body.dark-theme .chip-cadastro--completo { background: rgba(28,122,72,0.16); bor
 .inteiro-teor-anexar:hover { background: #fffbeb; }
 
 .inteiro-teor-wrap { display: inline-flex; flex-direction: column; gap: .25rem; align-items: flex-start; }
+
+/* Números de processo lidos do documento, aguardando a escolha do jurídico (@R 17/09/2026).
+   A coluna Nº CNJ vazia deixa de ser um traço mudo e passa a dizer que HÁ informação. */
+.ident-cnj-sugerido {
+  background: #fff7ed; border: 1px solid #fdba74; color: #9a3412;
+  border-radius: 6px; padding: 2px 8px; font-size: .78rem; cursor: pointer; white-space: nowrap;
+}
+.ident-cnj-sugerido:hover { background: #ffedd5; }
+.ident-cnj-ajuda { color: #475569; font-size: .88rem; margin: 0 0 1rem; line-height: 1.5; }
+.ident-cnj-opcao {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  border: 1px solid #e2e8f0; border-radius: 8px; padding: .7rem .9rem; margin-bottom: .6rem;
+}
+.ident-cnj-origem { color: #64748b; font-size: .78rem; margin-top: .25rem; }
+.ident-cnj-usar {
+  background: #16a34a; color: #fff; border: 0; border-radius: 6px;
+  padding: .45rem 1rem; cursor: pointer; white-space: nowrap;
+}
+.ident-cnj-usar:disabled { opacity: .6; cursor: default; }
+.ident-cnj-erro { color: #b91c1c; font-size: .85rem; margin-top: .5rem; }

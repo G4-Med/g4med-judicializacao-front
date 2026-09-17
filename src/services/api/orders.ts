@@ -295,3 +295,10 @@ export const getPreferencia = (chave: string) =>
 
 export const salvarPreferencia = (chave: string, valor: Record<string, unknown>) =>
   api.post(`/preferencias/${chave}/`, { valor });
+
+/** O jurídico escolhe (ou descarta) um dos números de processo que o documento trazia.
+ *  Decisão @R 17/09/2026: com mais de um CNJ na peça, nada é gravado sozinho — quem
+ *  escolhe é pessoa. Aplicar um número recusa os irmãos no mesmo ato. */
+export const decidirCnjSugerido = (orderId: number, sugeridoId: number,
+                                   acao: 'aplicar' | 'recusar' = 'aplicar') =>
+  api.post(`/orders/${orderId}/cnj-sugerido/${sugeridoId}/decidir/`, { acao });
