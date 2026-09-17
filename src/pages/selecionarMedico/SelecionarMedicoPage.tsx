@@ -108,6 +108,12 @@ export function SelecionarMedicoPage() {
   const colunasCfg = useColunasVisiveis('selecionar-medico');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
+    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
     tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
     ...FILTRO_PAGAMENTO,   // @R 28/08: pedir cotação para caso JÁ PAGO é trabalho perdido
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
@@ -466,7 +472,7 @@ export function SelecionarMedicoPage() {
 
       <div className="card">
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />Pedidos aguardando seleção de médico</h2>
-          <AcoesTabela>
+          <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={dataComCamposCalculados} visiveis={visibleProcessos} nome="selecionar-medico" />
             {colunasCfg.botao}
           </AcoesTabela>
@@ -532,11 +538,11 @@ export function SelecionarMedicoPage() {
             style={{ minWidth: '16rem' }}
             frozen alignFrozen="left"
           />
-          {colunaOrigem()}
+          {colunaOrigem(dataComCamposCalculados)}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
-          {colunaSegredo()}
-          {colunaRepedido()}
+          {colunaSegredo(undefined, dataComCamposCalculados)}
+          {colunaRepedido(dataComCamposCalculados)}
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento. Criança/recém-nascido recebe o e-mail pediátrico de exames.')}
             sortable filter filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '6rem' }}
             body={(r: any) => r.idade ?? <span className="sm-sla-vazio">—</span>} />
@@ -614,7 +620,7 @@ export function SelecionarMedicoPage() {
             filterElement={filtroMaiorQue('mais de…')}
             style={{ minWidth: '7rem' }}
           />
-          {colunaAnexosSES()}
+          {colunaAnexosSES(dataComCamposCalculados)}
           {/* Identificação do pedido (task #214): CNJ + SEI com copiar, Comarca + km */}
 {colunaCnj()}
           {colunaSei()}

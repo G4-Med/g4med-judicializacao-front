@@ -139,6 +139,12 @@ export function SegredoJusticaPage() {
   const colunasCfg = useColunasVisiveis('segredo-justica');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
+    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
     tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -500,7 +506,7 @@ useEffect(() => { carregarDados(); }, [fila]);
         </div>
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />
           {fila === 'ses' ? 'Segredo de justiça — enviado à SES (aguardando resposta)' : 'Pedidos em segredo de justiça'}</h2>
-          <AcoesTabela>
+          <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={dataComCamposCalculados} visiveis={visibleProcessos} nome="segredo-justica" />
             {colunasCfg.botao}
           </AcoesTabela>
@@ -543,9 +549,9 @@ useEffect(() => { carregarDados(); }, [fila]);
             filterElement={(options) => filterElement(options, 'Buscar')}
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
-          {colunaOrigem()}
-          {colunaSegredo()}
-          {colunaRepedido()}
+          {colunaOrigem(dataComCamposCalculados)}
+          {colunaSegredo(undefined, dataComCamposCalculados)}
+          {colunaRepedido(dataComCamposCalculados)}
           {/* @R 27/08 16:45: "quero saber a idade, se é pediatria e adulto (tipo do
               médico) e o nome do procedimento". Idade ausente = "—", nunca chute. */}
 <Column
@@ -643,7 +649,7 @@ useEffect(() => { carregarDados(); }, [fila]);
             body={statusBodyTemplate}
             style={{ minWidth: '12rem' }}
           />
-          {colunaAnexosSES()}
+          {colunaAnexosSES(dataComCamposCalculados)}
           {/* Identificação do pedido (task #214): CNJ + SEI com copiar, Comarca + km */}
 {colunaCnj()}
           {colunaSei()}

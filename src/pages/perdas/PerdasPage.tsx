@@ -65,6 +65,12 @@ export function PerdasPage() {
   const colunasCfg = useColunasVisiveis('perdas');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
+    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
     ...FILTRO_PAGAMENTO,   // filtrar por exato · não exato · empenhado · sem pagamento
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -340,7 +346,7 @@ export function PerdasPage() {
 
       <div className="card">
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />Pedidos perdidos — motivo e fase em que a perda ocorreu</h2>
-          <AcoesTabela>
+          <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={dataComCamposCalculados} nome="perdas" />
             {colunasCfg.botao}
           </AcoesTabela>
@@ -413,9 +419,9 @@ export function PerdasPage() {
             filterElement={(options) => filterElement(options, 'Buscar')}
             style={{ minWidth: '16rem' }}
           />
-          {colunaOrigem()}
-          {colunaSegredo()}
-          {colunaRepedido()}
+          {colunaOrigem(linhasVisiveis)}
+          {colunaSegredo(undefined, linhasVisiveis)}
+          {colunaRepedido(linhasVisiveis)}
           <Column field="procedimento" header={cabecalhoComHint('Procedimento', 'O que a decisão judicial determinou. É a chave para achar o preço histórico.')} sortable filter
             filterElement={(options: any) => (
               <InputText value={options.value || ''} onChange={(e) => options.filterApplyCallback(e.target.value)}
@@ -480,7 +486,7 @@ export function PerdasPage() {
             filterElement={(options) => filterElement(options, 'Buscar')}
             style={{ minWidth: '24rem' }}
           />
-          {colunaAnexosSES()}
+          {colunaAnexosSES(linhasVisiveis)}
           {/* Identificação do pedido (task #214): CNJ + SEI com copiar, Comarca + km */}
 {colunaCnj()}
           {colunaSei()}

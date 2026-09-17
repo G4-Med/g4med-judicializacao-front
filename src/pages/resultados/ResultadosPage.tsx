@@ -108,6 +108,12 @@ export function ResultadosPage() {
   const colunasCfg = useColunasVisiveis('resultados');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
+    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
     ...FILTRO_PAGAMENTO,   // filtrar por exato · não exato · empenhado · sem pagamento
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -590,7 +596,7 @@ const kpis = useMemo(() => {
 
       <div className="card">
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />Processos finalizados — resultado (ganho ou perda), valor e tempo de tramitação</h2>
-          <AcoesTabela>
+          <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={dataComCamposCalculados} nome="resultados" />
             {colunasCfg.botao}
           </AcoesTabela>
@@ -667,9 +673,9 @@ const kpis = useMemo(() => {
             filterElement={(options) => filterElement(options, 'Buscar')}
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
-          {colunaOrigem()}
-          {colunaSegredo()}
-          {colunaRepedido()}
+          {colunaOrigem(dataComCamposCalculados)}
+          {colunaSegredo(undefined, dataComCamposCalculados)}
+          {colunaRepedido(dataComCamposCalculados)}
           <Column
             field="cliente"
             header={cabecalhoComHint('Cliente', 'Empresa/prestador que responde pelo orçamento.')}
@@ -705,7 +711,7 @@ const kpis = useMemo(() => {
             body={diasBodyTemplate}
             style={{ minWidth: '7rem' }}
           />
-          {colunaAnexosSES()}
+          {colunaAnexosSES(dataComCamposCalculados)}
           {/* Identificação do pedido (task #214): CNJ + SEI com copiar, Comarca + km */}
 {colunaCnj()}
           {colunaSei()}

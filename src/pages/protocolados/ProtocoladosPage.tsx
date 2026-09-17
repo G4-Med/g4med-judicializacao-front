@@ -95,6 +95,12 @@ export function ProtocoladosPage() {
   const colunasCfg = useColunasVisiveis('protocolados');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
+    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
     diasSemAtualizacao: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     ...FILTRO_PAGAMENTO,   // filtrar por exato · não exato · empenhado · sem pagamento
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
@@ -546,7 +552,7 @@ export function ProtocoladosPage() {
 
       <div className="card">
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />Pedidos protocolados</h2>
-          <AcoesTabela>
+          <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={dataComCamposCalculados} visiveis={visibleProcessos} nome="protocolados" />
             {colunasCfg.botao}
           </AcoesTabela>
@@ -592,11 +598,11 @@ export function ProtocoladosPage() {
             filterElement={(options) => filterElement(options, 'Buscar')}
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
-          {colunaOrigem()}
+          {colunaOrigem(dataComCamposCalculados)}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
-          {colunaSegredo()}
-          {colunaRepedido()}
+          {colunaSegredo(undefined, dataComCamposCalculados)}
+          {colunaRepedido(dataComCamposCalculados)}
           <Column
             field="cliente"
             header={cabecalhoComHint('Cliente', 'Empresa/prestador que responde pelo orçamento.')}
@@ -660,7 +666,7 @@ export function ProtocoladosPage() {
             body={statusBodyTemplate}
             style={{ minWidth: '12rem' }}
           />
-          {colunaAnexosSES()}
+          {colunaAnexosSES(dataComCamposCalculados)}
           {/* Identificação do pedido (task #214): CNJ + SEI com copiar, Comarca + km */}
 {colunaCnj()}
           {colunaSei()}

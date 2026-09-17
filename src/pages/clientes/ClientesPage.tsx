@@ -1566,7 +1566,7 @@ const handleSalvarEdicao = async () => {
 
       <div className="card">
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />Médicos cadastrados como cliente — dados, contrato e procuração</h2>
-          <AcoesTabela>
+          <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={dataComSequencial} nome="clientes" />
             {colunasCfg.botao}
           </AcoesTabela>

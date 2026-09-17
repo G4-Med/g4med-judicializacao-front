@@ -75,6 +75,12 @@ export function EnviadoSesPage() {
   const colunasCfg = useColunasVisiveis('enviado-ses');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
+    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
     tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
     dataEnvio: { value: null, matchMode: FilterMatchMode.CUSTOM },
     valorOrcamento: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
@@ -227,7 +233,7 @@ export function EnviadoSesPage() {
           <span title="Pedidos SEM pagamento atribuível a eles — o que ainda esperamos"><strong>Em aberto:</strong> {kpis.empenho.somaAberto.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} em {kpis.empenho.nAbertos}</span>
           {kpis.empenho.nHistorico > 0 && <span style={{ opacity: 0.7 }} title="CNJs com pagamento anterior/valor distante — provável outro item do processo">histórico não atribuível: {kpis.empenho.nHistorico}</span>}
         </div>
-        <AcoesTabela>
+        <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
           <BotaoExportarExcel todos={linhas} visiveis={visiveis} nome="enviado-ses" />
           {colunasCfg.botao}
         </AcoesTabela>
@@ -255,11 +261,11 @@ export function EnviadoSesPage() {
           <Column field="paciente" header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')} filter
             filterElement={(o) => filterElement(o, 'Buscar')}
             body={(r: LinhaEnviadoSes) => nomeComCopiar(r.paciente)} style={{ minWidth: '16rem' }}  frozen alignFrozen="left" />
-          {colunaOrigem()}
+          {colunaOrigem(linhas)}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
-          {colunaSegredo()}
-          {colunaRepedido()}
+          {colunaSegredo(undefined, linhas)}
+          {colunaRepedido(linhas)}
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')} sortable style={{ minWidth: '5rem' }} />
           <Column field="tipoPaciente" header={cabecalhoComHint('Grupo etário', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
             filter showFilterMenu={false} filterMatchMode="equals"
@@ -293,7 +299,7 @@ export function EnviadoSesPage() {
                 ? <Tag value={`${r.dias}d`} severity="warning" icon="pi pi-clock"
                     title={`${SLA_VERIFICACAO_1}+ dias sem retorno — primeira verificação baixa`} />
                 : <span>{r.dias}d</span>)} />
-          {colunaAnexosSES()}
+          {colunaAnexosSES(linhas)}
           {colunaCnj()}
           {colunaSei()}
           {colunaComarca()}

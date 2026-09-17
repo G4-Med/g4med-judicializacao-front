@@ -267,6 +267,12 @@ export function AguardandoCirurgiaPage() {
   const colunasCfg = useColunasVisiveis('aguardando-cirurgia');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
+    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     medico: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -545,7 +551,7 @@ export function AguardandoCirurgiaPage() {
 
       <div className="card">
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />Pedidos aguardando confirmação de cirurgia</h2>
-          <AcoesTabela>
+          <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={linhas} nome="aguardando-cirurgia" />
             {colunasCfg.botao}
           </AcoesTabela>
@@ -577,9 +583,9 @@ export function AguardandoCirurgiaPage() {
             filterElement={(options) => filterElement(options, 'Buscar')}
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
-          {colunaOrigem()}
-          {colunaSegredo()}
-          {colunaRepedido()}
+          {colunaOrigem(linhas)}
+          {colunaSegredo(undefined, linhas)}
+          {colunaRepedido(linhas)}
           <Column
             field="medico"
             header={cabecalhoComHint('Médico', 'Profissional da rede que cotou (ou vai cotar) este procedimento.')}
@@ -634,7 +640,7 @@ export function AguardandoCirurgiaPage() {
             filterElement={filtroMaiorQue('mais de…')}
             style={{ minWidth: '7rem' }}
           />
-          {colunaAnexosSES()}
+          {colunaAnexosSES(linhas)}
           {/* Identificação do pedido (task #214): CNJ + SEI com copiar, Comarca + km */}
 {colunaCnj()}
           {colunaSei()}

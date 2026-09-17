@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import './AcoesTabela.css';
+import { FiltrosAtivos, limparValores } from '../FiltrosAtivos/FiltrosAtivos';
 
 /**
  * Frame reutilizável para os botões de ação de TODA tabela (Baixar Excel · Colunas
@@ -171,11 +172,48 @@ export function AvisoColunasDireita() {
   );
 }
 
-export function AcoesTabela({ children }: { children: ReactNode }) {
+/**
+ * AVISO DE FILTROS ATIVOS (@R 17/09): ⟦"ao lado de ajustar a tela em cada tabela para
+ * saber se temos filtros ativos para limpar eles por favor e ter um aviso ao usuario"⟧.
+ *
+ * Mora AQUI porque este container já é o dono da barra de ações de TODA tabela — plugar
+ * num lugar só acende o aviso nas 11 páginas de uma vez, em vez de 11 edições que
+ * envelhecem em ritmos diferentes.
+ *
+ * As props são OPCIONAIS de propósito: página que ainda não passa `filtros` continua
+ * funcionando exatamente como antes (só não mostra o aviso). Assim a adoção é página a
+ * página, sem um commit-relâmpago que toca 11 arquivos e quebra tudo junto.
+ */
+export function AcoesTabela({
+  children,
+  filtros,
+  aoMudarFiltros,
+  totalVisivel,
+  totalSemFiltro,
+}: {
+  children: ReactNode;
+  /** o mesmo objeto passado ao `filters` do DataTable */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  filtros?: Record<string, any>;
+  /** o mesmo `setFilters` da página — o botão Limpar zera os valores e devolve por aqui */
+  aoMudarFiltros?: (f: any) => void;
+  /** linhas na tela agora (opcional: torna o aviso concreto, "N fora da lista") */
+  totalVisivel?: number;
+  /** linhas sem filtro nenhum (opcional) */
+  totalSemFiltro?: number;
+}) {
   return (
     <div className="mc-acoes-tabela">
       {children}
       <BotaoModoTabela />
+      {filtros && aoMudarFiltros && (
+        <FiltrosAtivos
+          filtros={filtros}
+          aoLimpar={() => aoMudarFiltros(limparValores(filtros))}
+          totalVisivel={totalVisivel}
+          totalSemFiltro={totalSemFiltro}
+        />
+      )}
       <AvisoColunasDireita />
     </div>
   );

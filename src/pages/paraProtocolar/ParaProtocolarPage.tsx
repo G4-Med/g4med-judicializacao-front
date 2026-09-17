@@ -91,6 +91,12 @@ export function ParaProtocolarPage() {
   const colunasCfg = useColunasVisiveis('protocolar');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
+    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
     ...FILTRO_PAGAMENTO,   // filtrar por exato · não exato · empenhado · sem pagamento
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -684,7 +690,7 @@ const handleConfirmarProtocolacao = async () => {
 
       <div className="card">
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />Pedidos para protocolar</h2>
-          <AcoesTabela>
+          <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={dataComCamposCalculados} visiveis={visibleProcessos} nome="protocolar" />
             {colunasCfg.botao}
           </AcoesTabela>
@@ -732,11 +738,11 @@ const handleConfirmarProtocolacao = async () => {
             filterElement={(options) => filterElement(options, 'Buscar')}
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
-          {colunaOrigem()}
+          {colunaOrigem(dataComCamposCalculados)}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
-          {colunaSegredo()}
-          {colunaRepedido()}
+          {colunaSegredo(undefined, dataComCamposCalculados)}
+          {colunaRepedido(dataComCamposCalculados)}
           <Column
             field="cliente"
             header={cabecalhoComHint('Cliente', 'Empresa/prestador que responde pelo orçamento.')}
@@ -794,7 +800,7 @@ const handleConfirmarProtocolacao = async () => {
             body={statusBodyTemplate}
             style={{ minWidth: '12rem' }}
           />
-          {colunaAnexosSES()}
+          {colunaAnexosSES(dataComCamposCalculados)}
           {/* Identificação do pedido (task #214): CNJ + SEI com copiar, Comarca + km */}
 {colunaCnj()}
           {colunaSei()}

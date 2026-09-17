@@ -155,6 +155,12 @@ export function JuridicoPage() {
   const colunasCfg = useColunasVisiveis('analise-juridica');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
+    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
     tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
     chegouEm: { value: null, matchMode: FilterMatchMode.CUSTOM },
     ...FILTRO_PAGAMENTO,   // já pago no CNJ? decide se vale cotar
@@ -434,7 +440,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
             ]}
           />
         </h2>
-          <AcoesTabela>
+          <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             {podeCadastrarPedido && <NovoPedidoManual aoCriar={() => carregarDados()} />}
             <BotaoExportarExcel todos={dataComSequencial} visiveis={visibleProcessos} nome="analise-juridica" />
             {colunasCfg.botao}
@@ -496,11 +502,11 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                 )}
               </span>
             )}  frozen alignFrozen="left" />
-          {colunaOrigem()}
+          {colunaOrigem(dataComSequencial)}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
-          {colunaSegredo()}
-          {colunaRepedido()}
+          {colunaSegredo(undefined, dataComSequencial)}
+          {colunaRepedido(dataComSequencial)}
           <Column
             field="idade"
             header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')}
@@ -539,7 +545,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                 icon={estourou ? 'pi pi-exclamation-triangle' : 'pi pi-clock'}
                 title={estourou ? `Passou do teto de ${SLA_META_DIAS_TRIAGEM} dias` : `Dentro do teto de ${SLA_META_DIAS_TRIAGEM} dias`} />;
             }} />
-          {colunaAnexosSES()}
+          {colunaAnexosSES(dataComSequencial)}
           {/* CNJ e SEI nas colunas (@R 27/08 12:59): os dois números do pedido, buscáveis e copiáveis */}
             {/* 17/09/2026: esta tela tinha a SUA PRÓPRIA coluna de CNJ, cópia da compartilhada.
                 Resultado: quando o seletor de números lidos do documento entrou em `colunaCnj`,

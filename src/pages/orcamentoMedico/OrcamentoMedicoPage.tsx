@@ -150,6 +150,12 @@ export function OrcamentoMedicoPage() {
 
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
+    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
+    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
     tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
     ...FILTRO_PAGAMENTO,   // @R 28/08: pedir cotação para caso JÁ PAGO é trabalho perdido
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
@@ -591,7 +597,7 @@ ${blocos}
             )}
           />
         </h2>
-          <AcoesTabela>
+          <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={dataComMedico} visiveis={visibleProcessos} nome="orcamento-medico" />
             {colunasCfg.botao}
           </AcoesTabela>
@@ -641,14 +647,14 @@ ${blocos}
                 {nomeComCopiar(r.paciente)}
               </span>
             )}  frozen alignFrozen="left" />
-          {colunaOrigem()}
+          {colunaOrigem(dataComMedico)}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
-          {colunaSegredo()}
+          {colunaSegredo(undefined, dataComMedico)}
           {/* @R 17/09: segredo ao lado de origem — "para sabermos". Nesta fase a
               informação decide O MOLDE do pedido de orçamento, então precisa estar
               no campo de visão de quem vai pedir, ¬no fim da tabela. */}
-          {colunaRepedido()}
+          {colunaRepedido(dataComMedico)}
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')} sortable filter
             dataType="numeric" filterElement={filtroMaiorQue('a partir de…')} style={{ minWidth: '7rem' }} />
           <Column field="tipoPaciente" header={cabecalhoComHint('Grupo etário', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
@@ -672,7 +678,7 @@ ${blocos}
             showFilterMenu={false}
             filterElement={statusFilterElement}
             style={{ minWidth: '15rem' }} />
-          {colunaAnexosSES()}
+          {colunaAnexosSES(dataComMedico)}
           {/* Identificação do pedido (task #214): CNJ + SEI com copiar, Comarca + km */}
 {colunaCnj()}
           {colunaSei()}
