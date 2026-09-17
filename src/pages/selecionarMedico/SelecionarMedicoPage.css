@@ -418,15 +418,3 @@ body.dark-theme .selecionar-medico-resumo strong { color: #e6eef6; }
 .sm-sla--urgente { background: #fff4e0; color: #b45309; }
 .sm-sla--vencido { background: #fbe9ec; color: #8b2236; font-weight: 600; }
 .sm-sla-vazio { opacity: .5; }
-
-/* @R 17/09: destaque visual para o que exige atenção NESTA fase.
-   Medido em 17/09: 11 de 41 sem médico · 9 em segredo — a cor discrimina de verdade.
-   Tons suaves de propósito: a linha continua legível, o olho só é guiado. */
-.linha-sem-medico > td { background: #fff7ed !important; }
-.linha-sem-medico:hover > td { background: #ffedd5 !important; }
-.linha-segredo > td { background: #f5f3ff !important; }
-.linha-segredo:hover > td { background: #ede9fe !important; }
-/* sem médico E em segredo: o segredo vence (é a restrição mais forte) */
-.linha-sem-medico.linha-segredo > td { background: #f5f3ff !important; }
-.kpi-sem-medico .kpi-value { color: #c2410c; }
-.kpi-segredo .kpi-value { color: #6d28d9; }

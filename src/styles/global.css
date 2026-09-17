@@ -283,3 +283,22 @@ body.dark-theme .p-multiselect {
   .mc-esqueleto-card,
   .mc-esqueleto-linha { animation: none; background: #eef2f7; }
 }
+
+/* ── COR DE LINHA POR SITUAÇÃO (compartilhada entre as fases) ───────────────────────
+   @R 17/09: "itens sem o médico tenham uma cor diferente... e itens em segredo de
+   justiça" (fase 2) + "a marcação da cor da linha diferente, e se estiver sem
+   profissional diferente, na fase 3 — pois cada um precisa de um MOLDE para pedir o
+   orçamento". Na fase 3 a cor não é enfeite: ela diz qual pedido vai ser escrito.
+
+   Vive no GLOBAL, ¬na CSS de uma página: a regra é a mesma nas duas, e duplicar é como
+   duplicar coluna — a próxima melhoria chegaria só numa delas.
+   Medido em 17/09 (fase 2): 11 de 41 sem médico · 9 em segredo — a cor discrimina.
+   Tons suaves de propósito: a linha continua legível, o olho só é guiado. */
+.linha-sem-medico > td { background: #fff7ed !important; }
+.linha-sem-medico:hover > td { background: #ffedd5 !important; }
+.linha-segredo > td { background: #f5f3ff !important; }
+.linha-segredo:hover > td { background: #ede9fe !important; }
+/* sem médico E em segredo: o segredo vence — é a restrição mais forte */
+.linha-sem-medico.linha-segredo > td { background: #f5f3ff !important; }
+.kpi-sem-medico .kpi-value { color: #c2410c; }
+.kpi-segredo .kpi-value { color: #6d28d9; }

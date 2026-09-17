@@ -602,7 +602,13 @@ ${blocos}
           onValueChange={(value) => setVisibleProcessos(value as typeof dataComMedico)}
           rowClassName={(r: any) => [((rowData: { dias: number }) =>
             rowData.dias > SLA_META_DIAS_ORCAMENTO ? 'linha-fora-sla' : ''
-          )(r), rowClassRepedido(r)].filter(Boolean).join(' ')}
+          )(r), rowClassRepedido(r),
+            // @R 17/09: "a marcação da cor da linha diferente, e se estiver sem profissional
+            // diferente... pois cada um precisa de um MOLDE para pedir o orçamento".
+            // Nesta fase a cor não é enfeite: ela diz qual pedido vai ser escrito.
+            (!r?.idMedico || r.idMedico === 1) ? 'linha-sem-medico' : '',
+            (r?.segredo === 'sim') ? 'linha-segredo' : '',
+          ].filter(Boolean).join(' ')}
           onPage={(e: DataTablePageEvent) => { setFirst(e.first); setRows(e.rows); }}
           sortField={sortField} sortOrder={sortOrder}
           onSort={(e: DataTableSortEvent) => { setSortField(e.sortField); setSortOrder(e.sortOrder); }}
@@ -635,6 +641,10 @@ ${blocos}
               </span>
             )}  frozen alignFrozen="left" />
           {colunaOrigem()}
+          {/* @R 17/09: segredo ao lado de origem — "para sabermos". Nesta fase a
+              informação decide O MOLDE do pedido de orçamento, então precisa estar
+              no campo de visão de quem vai pedir, ¬no fim da tabela. */}
+          {colunaSegredo()}
           {colunaRepedido()}
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')} sortable filter
             filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '7rem' }} />
@@ -663,7 +673,6 @@ ${blocos}
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}
