@@ -19,7 +19,7 @@ import {
 } from '../../services/api/orders';
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
-import { tagTipoPaciente, colunaOrigem } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { tagTipoPaciente, colunaOrigem, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
 import './SelecionarMedicoPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
@@ -115,7 +115,7 @@ export function SelecionarMedicoPage() {
     area: { value: '', matchMode: FilterMatchMode.CONTAINS },
     subarea: { value: '', matchMode: FilterMatchMode.CONTAINS },
     medico: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    dias: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    dias: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
   });
 
   const [visibleProcessos, setVisibleProcessos] = useState<ProcessoResumoTableRow[]>([]);
@@ -585,7 +585,8 @@ export function SelecionarMedicoPage() {
             header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')}
             sortable
             filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
+            dataType="numeric"
+            filterElement={filtroMaiorQue('mais de…')}
             style={{ minWidth: '7rem' }}
           />
           {colunaAnexosSES()}

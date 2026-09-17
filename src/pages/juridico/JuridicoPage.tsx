@@ -14,7 +14,7 @@ import { getJuridico, salvarJuridico, getStatusOrders, getAnexosOrder, getCnjCan
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import './JuridicoPage.css';
-import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaSegredo, colunaProcedimento, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaCnj, colunaSei, colunaComarca } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaSegredo, colunaProcedimento, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaCnj, colunaSei, colunaComarca, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { PainelPrecos } from '../../components/PainelPrecos/PainelPrecos';
@@ -161,7 +161,7 @@ export function JuridicoPage() {
     procedimento: { value: '', matchMode: FilterMatchMode.CONTAINS },
     nprocesso: { value: '', matchMode: FilterMatchMode.CONTAINS },
     numeroSei: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    dias: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    dias: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
   });
 
   const [visibleProcessos, setVisibleProcessos] = useState<ProcessoJuridicoRow[]>([]);
@@ -523,7 +523,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
             }} />
           <Column field="dias" header={cabecalhoComHint('Tempo no funil',
               `Desde a data do e-mail do pedido. Teto: ${SLA_META_DIAS_TRIAGEM} dias — acima disso está errado (fica vermelho).`)}
-            sortable filter filterElement={(o) => filterElement(o, 'Buscar')}
+            sortable filter dataType="numeric" filterElement={filtroMaiorQue('mais de…')}
             style={{ minWidth: '9rem' }}
             body={(r: ProcessoJuridicoRow) => {
               const h = r.horasNoFunil ?? r.dias * 24;

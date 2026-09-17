@@ -24,7 +24,7 @@ import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { ContadorRegistros, contarPorCampo } from '../../components/ContadorRegistros/ContadorRegistros';
 import { CabecalhoFase } from '../../components/CabecalhoFase/CabecalhoFase';
-import { colunaSolicitante, tagTipoPaciente, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaProcedimento, colunaOrigem } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, tagTipoPaciente, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaProcedimento, colunaOrigem, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -159,7 +159,7 @@ export function OrcamentoMedicoPage() {
     area: { value: '', matchMode: FilterMatchMode.CONTAINS },
     subarea: { value: '', matchMode: FilterMatchMode.CONTAINS },
     dataStatusJuridico: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    dias: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    dias: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     statusOrcamento: { value: null, matchMode: FilterMatchMode.EQUALS },
   });
 
@@ -661,7 +661,7 @@ ${blocos}
             body={(r) => formatarData(r.dataStatusJuridico)} sortable filter
             filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '12rem' }} />
           <Column field="dias" header="Dias em Aberto" sortable filter
-            filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '10rem' }} />
+            dataType="numeric" filterElement={filtroMaiorQue('mais de…')} style={{ minWidth: '10rem' }} />
           <Column field="statusOrcamento" header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}
             body={(r) => <Tag value={r.statusOrcamento} style={getStatusTagStyle(r.statusOrcamento)} className="status-tag-custom" />}
             filter

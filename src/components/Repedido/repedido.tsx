@@ -1,5 +1,6 @@
 import { Column } from 'primereact/column';
-import { cabecalhoComHint } from '../ColunasIdentificacao/colunasIdentificacao';
+import { cabecalhoComHint, filtroOpcoes, OPCOES_REPEDIDO }
+  from '../ColunasIdentificacao/colunasIdentificacao';
 
 /**
  * RE-PEDIDO (@R 28/08 17:17): "pedidos duplicados sao contados para o pedido para dar a
@@ -59,13 +60,27 @@ const CLASSE: Record<NivelRepedido, string> = {
 /** Linha colorida conforme a urgência — âmbar (2×), laranja (3×+), vermelho (telefone). */
 export const rowClassRepedido = (r: any) => CLASSE[nivelRepedido(r)];
 
-/** Coluna de urgência — só mostra algo quando há repetição; o resto da linha fica limpo. */
+/** Coluna de urgência — só mostra algo quando há repetição; o resto da linha fica limpo.
+ *
+ *  FILTRO (@R 17/09): o dado é um NÚMERO (`vezesPedido`) e a tela mostra "Urgência 2×".
+ *  Filtrar por número exigiria a pessoa saber que 1 significa "sem repetição" — conhecimento
+ *  que só quem escreveu o código tem. O dropdown pergunta o que ela quer saber (tem urgência
+ *  ou não) e o `filterFunction` traduz a escolha para a régua do dado. */
 export const colunaRepedido = () => (
   <Column
     key="vezesPedido"
     field="vezesPedido"
     header={<span className="mc-repedido-cab"><i className="pi pi-exclamation-triangle" aria-hidden="true" />{cabecalhoComHint('Re-pedido', 'Quantas vezes este mesmo paciente foi pedido. Mais de 1 = urgência: o pedido voltou e ninguém respondeu. A linha fica marcada em todas as telas. Vazio = pedido único, nada a fazer.')}</span>}
     sortable
+    filter
+    showFilterMenu={false}
+    filterMatchMode="custom"
+    filterFunction={(valor: any, escolha: any) => {
+      if (escolha === null || escolha === undefined || escolha === '') return true;
+      const temRepeticao = (valor ?? 1) > 1;
+      return escolha === 'sim' ? temRepeticao : !temRepeticao;
+    }}
+    filterElement={filtroOpcoes(OPCOES_REPEDIDO, 'Todos')}
     style={{ width: '9rem' }}
     bodyStyle={{ textAlign: 'center' }}
     body={(r: any) => {

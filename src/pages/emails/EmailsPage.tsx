@@ -24,7 +24,7 @@ import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import './EmailsPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
-import { cabecalhoComHint } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { cabecalhoComHint, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 
 type TipoEmail = 'ENVIAR_ORCAMENTO' | 'PEDIR_EXAMES' | 'DAR_PERDA';
 
@@ -158,7 +158,7 @@ export function EmailsPage() {
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     procedimento: { value: '', matchMode: FilterMatchMode.CONTAINS },
     medico: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    dias: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    dias: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     tipoEmail: { value: '', matchMode: FilterMatchMode.CONTAINS },
     status: { value: '', matchMode: FilterMatchMode.CONTAINS },
   });
@@ -686,7 +686,8 @@ export function EmailsPage() {
             header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')}
             sortable
             filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
+            dataType="numeric"
+            filterElement={filtroMaiorQue('mais de…')}
             body={diasBodyTemplate}
             style={{ minWidth: '7rem' }}
           />

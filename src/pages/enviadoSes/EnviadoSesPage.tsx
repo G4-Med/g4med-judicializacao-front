@@ -20,7 +20,7 @@ import { CabecalhoFase } from '../../components/CabecalhoFase/CabecalhoFase';
 import { ContadorRegistros } from '../../components/ContadorRegistros/ContadorRegistros';
 import {
   colunaCnj, colunaSei, colunaComarca, colunaCadastro, colunaSegredo, colunaInteiroTeor,
-  colunaSolicitante, tagTipoPaciente, FILTROS_IDENTIFICACAO, nomeComCopiar, cabecalhoComHint, colunaOrigem } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+  colunaSolicitante, tagTipoPaciente, FILTROS_IDENTIFICACAO, nomeComCopiar, cabecalhoComHint, colunaOrigem, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -79,7 +79,7 @@ export function EnviadoSesPage() {
     ...FILTROS_IDENTIFICACAO,
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     procedimento: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    dias: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    dias: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
   });
 
   // diálogo de resultado (o retorno técnico chegou)
@@ -275,7 +275,7 @@ export function EnviadoSesPage() {
           <Column field="dataEnvio" header={cabecalhoComHint('Enviado em', 'Data em que o orçamento foi enviado ao Estado.')} sortable style={{ minWidth: '8rem' }}
             body={(r: LinhaEnviadoSes) => fmtData(r.dataEnvio)} />
           <Column field="dias" header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')} sortable filter
-            filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '8rem' }}
+            dataType="numeric" filterElement={filtroMaiorQue('mais de…')} style={{ minWidth: '8rem' }}
             body={(r: LinhaEnviadoSes) => (r.dias >= SLA_VERIFICACAO_2
               ? <Tag value={`${r.dias}d`} severity="danger" icon="pi pi-exclamation-triangle"
                   title={`${SLA_VERIFICACAO_2}+ dias sem retorno — verificação RECOMENDADA junto à SES`} />

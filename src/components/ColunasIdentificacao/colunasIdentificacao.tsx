@@ -3,6 +3,8 @@ import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
+import { Dropdown } from 'primereact/dropdown';
+import { InputNumber } from 'primereact/inputnumber';
 import { BotaoCopiar } from '../BotaoCopiar/BotaoCopiar';
 import { uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos } from '../../services/api/orders';
 import './colunasIdentificacao.css';
@@ -76,6 +78,70 @@ export const FILTROS_IDENTIFICACAO = {
   numeroSei: { value: '', matchMode: 'contains' as const },
   comarca: { value: '', matchMode: 'contains' as const },
 };
+
+/* ── FILTROS DE COLUNA (@R 17/09) ───────────────────────────────────────────────────
+   ⟦"a coluna Re-pedido, Origem, Segredo precisam ter filtros para os valores ali
+   exibidos... SES Anexos que tenham anexos ou não tenham... e o filtro de dias ele filtra
+   dias com MAIS DE e aí o usuário escolhe"⟧.
+
+   O QUE ESTAVA ERRADO: essas colunas simplesmente não tinham filtro, e a de Dias tinha um
+   de TEXTO (matchMode CONTAINS) — digitar "100" trazia 100, 1002, 210... qualquer número
+   que CONTENHA "100", que não é o que ninguém quer de um campo de dias.
+
+   POR QUE DROPDOWN E NÃO CAIXA DE TEXTO: o valor que a pessoa vê na tela é uma etiqueta
+   ("Segredo", "E-mail", "Com anexo") e o valor no dado é outro ('sim', 'email', true).
+   Caixa de texto filtraria pelo dado, e ninguém digita 'sim' esperando ver "Segredo".
+   O dropdown mostra a ETIQUETA e filtra pelo DADO — é a única forma de os dois baterem. */
+
+/** Dropdown de filtro com as opções da própria coluna. `showClear` sempre: filtro sem
+ *  como limpar é armadilha — a pessoa filtra, esquece, e jura que sumiram pedidos. */
+export const filtroOpcoes = (opcoes: { label: string; value: unknown }[], placeholder = 'Todos') =>
+  (options: any) => (
+    <Dropdown
+      value={options.value}
+      options={opcoes}
+      onChange={(e) => options.filterApplyCallback(e.value)}
+      placeholder={placeholder}
+      showClear
+      className="p-column-filter ident-filtro-opcoes"
+    />
+  );
+
+/** Filtro numérico "MAIS DE N" (@R 17/09, sobre a coluna Dias). Usa o matchMode `gte`,
+ *  ¬texto: com CONTAINS, "100" trazia 1002 e 210. */
+export const filtroMaiorQue = (placeholder = 'mais de…') => (options: any) => (
+  <InputNumber
+    value={options.value}
+    onValueChange={(e) => options.filterApplyCallback(e.value)}
+    placeholder={placeholder}
+    min={0}
+    className="p-column-filter"
+    inputStyle={{ width: '6.5rem' }}
+  />
+);
+
+/** As opções de cada coluna, num lugar só — para a tela e o filtro nunca discordarem. */
+export const OPCOES_SEGREDO = [
+  { label: 'Segredo', value: 'sim' },
+  { label: 'Possível', value: 'possivel' },
+  { label: 'Sem segredo', value: 'nao' },
+];
+
+export const OPCOES_ORIGEM = [
+  { label: 'E-mail', value: 'email' },
+  { label: 'Manual', value: 'manual' },
+  { label: 'Base antiga', value: 'base_antiga' },
+];
+
+export const OPCOES_REPEDIDO = [
+  { label: 'Com urgência (2× ou +)', value: 'sim' },
+  { label: 'Sem repetição', value: 'nao' },
+];
+
+export const OPCOES_ANEXOS = [
+  { label: 'Com anexo', value: 'sim' },
+  { label: 'Sem anexo', value: 'nao' },
+];
 
 const filtro = (placeholder: string) => (options: any) => (
   <InputText value={options.value || ''} onChange={(e) => options.filterApplyCallback(e.target.value)}
@@ -284,6 +350,8 @@ export function colunaComarca(largura = '11rem') {
 export function colunaSegredo(largura = '9rem') {
   return (
     <Column key="col-segredo" field="segredo" header={cabecalhoComHint('Segredo', EXPLICA.segredo)} sortable
+      filter filterMatchMode="equals" showFilterMenu={false}
+      filterElement={filtroOpcoes(OPCOES_SEGREDO, 'Todos')}
       style={{ minWidth: largura }}
       body={(r: LinhaIdentificada) => {
         // @R 17/09: "encurtar o nome Segredo de Justiça para não quebrar linha". O texto
@@ -493,6 +561,8 @@ const ROTULO_PONTO: Record<string, string> = { cnj: 'CNJ', sei: 'SEI', comarca: 
 export function colunaOrigem() {
   return (
     <Column key="col-origem" field="origemRegistro" sortable style={{ minWidth: '7.5rem' }}
+      filter filterMatchMode="equals" showFilterMenu={false}
+      filterElement={filtroOpcoes(OPCOES_ORIGEM, 'Todas')}
       header={cabecalhoComHint('Origem', 'Como o pedido entrou: E-mail = cadastro automático a partir do e-mail da SES · Manual = alguém da equipe cadastrou à mão · — = pedido antigo, origem não registrada.')}
       body={(r: any) => r.origemRegistro === 'manual'
         ? <Tag value="Manual" severity="warning" icon="pi pi-user-edit" title="Cadastrado à mão pela equipe (sem e-mail de origem; nenhuma resposta automática saiu)." />
