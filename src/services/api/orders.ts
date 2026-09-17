@@ -302,3 +302,9 @@ export const salvarPreferencia = (chave: string, valor: Record<string, unknown>)
 export const decidirCnjSugerido = (orderId: number, sugeridoId: number,
                                    acao: 'aplicar' | 'recusar' = 'aplicar') =>
   api.post(`/orders/${orderId}/cnj-sugerido/${sugeridoId}/decidir/`, { acao });
+
+/** Relê os documentos anexados do pedido e popula CNJ/SEI/data com o que achar.
+ *  @R 17/09/2026: a leitura automática só roda quando o documento entra — este é o
+ *  caminho para tentar de novo depois que a leitura melhorou. */
+export const extrairNumerosDosAnexos = (orderId: number) =>
+  api.post(`/orders/${orderId}/extrair-numeros/`);

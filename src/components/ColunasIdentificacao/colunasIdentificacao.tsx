@@ -4,7 +4,7 @@ import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
 import { BotaoCopiar } from '../BotaoCopiar/BotaoCopiar';
-import { uploadAnexoOrder, decidirCnjSugerido } from '../../services/api/orders';
+import { uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos } from '../../services/api/orders';
 import './colunasIdentificacao.css';
 
 /**
@@ -134,6 +134,51 @@ function SeletorCnj({ linha, aoDecidir }: {
   );
 }
 
+/** Botão "tentar extrair" — relê os documentos do pedido e popula o que achar.
+ *
+ *  POR QUE (@R 17/09/2026): ⟦"na coluna cnj e sei vamos criar um botao para tentar extrair
+ *  dos documentos caso exista documentos SES Anexos para ter um botao que tenta buscar e
+ *  popular para os registros"⟧.
+ *
+ *  A leitura automática só acontece quando o documento ENTRA. Mas a leitura MELHORA: só em
+ *  17/09 ela aprendeu a ler metadados, a reconhecer o SEI escrito com "_" (a forma que
+ *  aparece em nome de arquivo) e a usar OCR em qualquer tipo. Documento guardado antes
+ *  disso não é relido sozinho. Este botão é a pessoa dizendo "tenta de novo agora".
+ *
+ *  Caso real que o fundou: o relatório do pedido 1261 tinha 2 páginas sem texto nenhum e o
+ *  número SEI no TÍTULO do arquivo. O botão o encontrou em um clique.
+ */
+function BotaoExtrair({ orderId, aoConcluir }: { orderId?: number; aoConcluir?: () => void }) {
+  const [rodando, setRodando] = useState(false);
+  const [resposta, setResposta] = useState<string | null>(null);
+
+  if (!orderId) return null;
+
+  async function tentar() {
+    setRodando(true); setResposta(null);
+    try {
+      const { data } = await extrairNumerosDosAnexos(orderId!);
+      setResposta(data?.mensagem || 'Pronto.');
+      if ((data?.achados || []).length) aoConcluir?.();   // recarrega a lista: sem isto o
+                                                          // número achado só aparece no F5
+    } catch (e: any) {
+      setResposta(e?.response?.data?.error || 'Não consegui ler os documentos agora.');
+    } finally {
+      setRodando(false);
+    }
+  }
+
+  return (
+    <span className="ident-extrair-wrap">
+      <button type="button" className="ident-extrair" onClick={tentar} disabled={rodando}
+        title="Ler os documentos anexados e preencher o número, se ele estiver lá">
+        {rodando ? 'lendo…' : 'tentar extrair'}
+      </button>
+      {resposta && <small className="ident-extrair-msg" title={resposta}>{resposta}</small>}
+    </span>
+  );
+}
+
 export function colunaCnj(largura = '14rem', aoDecidirCnj?: (cnj: string) => void) {
   return (
     <Column key="col-cnj" field="nprocesso" header={cabecalhoComHint('Nº CNJ', EXPLICA.cnj)} sortable filter
@@ -144,17 +189,18 @@ export function colunaCnj(largura = '14rem', aoDecidirCnj?: (cnj: string) => voi
         // mudo e vira a porta da escolha (a decisão @R só existe se chegar à tela)
         : (r.cnjsSugeridos && r.cnjsSugeridos.length > 0)
           ? <SeletorCnj linha={r} aoDecidir={aoDecidirCnj} />
-          : <span className="ident-vazio">—</span>} />
+          // vazio E sem candidato: em vez do traço mudo, oferece a ação que pode resolver
+          : <BotaoExtrair orderId={r.id} aoConcluir={aoDecidirCnj ? () => aoDecidirCnj('') : undefined} />} />
   );
 }
 
-export function colunaSei(largura = '12rem') {
+export function colunaSei(largura = '12rem', aoRecarregar?: () => void) {
   return (
     <Column key="col-sei" field="numeroSei" header={cabecalhoComHint('Nº SEI', EXPLICA.sei)} sortable filter
       filterElement={filtro('Buscar SEI')} style={{ minWidth: largura }}
       body={(r: LinhaIdentificada) => r.numeroSei
         ? <><code className="ident-numero" title={r.familiaSei ? `Família ${r.familiaSei}` : 'Número SEI'}>{r.numeroSei}</code><BotaoCopiar valor={r.numeroSei} rotulo="número SEI" /></>
-        : <span className="ident-vazio">—</span>} />
+        : <BotaoExtrair orderId={r.id} aoConcluir={aoRecarregar} />} />
   );
 }
 

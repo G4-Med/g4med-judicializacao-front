@@ -69,3 +69,17 @@ body.dark-theme .chip-cadastro--completo { background: rgba(28,122,72,0.16); bor
 }
 .ident-cnj-usar:disabled { opacity: .6; cursor: default; }
 .ident-cnj-erro { color: #b91c1c; font-size: .85rem; margin-top: .5rem; }
+
+/* Botão "tentar extrair" (@R 17/09/2026): a célula vazia deixa de ser um traço mudo e passa
+   a oferecer a ação que pode resolvê-la. */
+.ident-extrair-wrap { display: inline-flex; flex-direction: column; gap: .2rem; }
+.ident-extrair {
+  background: #eff6ff; border: 1px dashed #93c5fd; color: #1d4ed8;
+  border-radius: 6px; padding: 2px 8px; font-size: .75rem; cursor: pointer; white-space: nowrap;
+}
+.ident-extrair:hover { background: #dbeafe; border-style: solid; }
+.ident-extrair:disabled { opacity: .6; cursor: default; }
+.ident-extrair-msg {
+  color: #475569; font-size: .68rem; max-width: 13rem; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}

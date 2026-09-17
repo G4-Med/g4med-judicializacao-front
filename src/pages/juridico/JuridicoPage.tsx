@@ -14,7 +14,7 @@ import { getJuridico, salvarJuridico, getStatusOrders, getAnexosOrder, getCnjCan
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import './JuridicoPage.css';
-import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaCnj } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaCnj, colunaSei, colunaComarca } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { PainelPrecos } from '../../components/PainelPrecos/PainelPrecos';
@@ -539,27 +539,8 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                 Consumir a compartilhada faz a melhoria chegar aqui e evita que a próxima mudança
                 precise ser feita em dois lugares (e seja esquecida num deles). */}
             {colunaCnj('14rem', () => carregarDados())}
-          <Column field="numeroSei" header="Nº SEI" sortable filter
-            filterElement={(o) => filterElement(o, 'Buscar SEI')} style={{ minWidth: '12rem' }}
-            body={(r: ProcessoJuridicoRow) => r.numeroSei
-              ? <><code className="juridico-numero" title={r.familiaSei ? `Família ${r.familiaSei}` : 'Número SEI'}>{r.numeroSei}</code><BotaoCopiar valor={r.numeroSei} rotulo="número SEI" /></>
-              : <span className="juridico-geo-vazio">—</span>} />
-          <Column field="comarca" header="Comarca" sortable style={{ minWidth: '11rem' }}
-            body={(r: ProcessoJuridicoRow) => {
-              // @R 27/08: "quando for federal aí não temos distância" — dizer isso na cara,
-              // ¬deixar a célula vazia (vazio lê como 'esqueceram de preencher').
-              if (r.esfera === 'federal') return <Tag value="Federal" severity="info" title="Processo na Justiça Federal — sem comarca estadual" />;
-              if (!r.comarca) return <span className="juridico-geo-vazio" title={r.geoMotivo ?? ''}>
-                {r.geoMotivo === 'sem_cnj' ? 'sem nº do processo' : 'comarca não mapeada'}</span>;
-              return (
-                <span className="juridico-geo">
-                  <strong>{r.comarca}</strong>
-                  {r.distanciaKm !== null && r.distanciaKm !== undefined && (
-                    <small>{r.distanciaKm === 0 ? 'aqui (JF)' : `${r.distanciaKm.toLocaleString('pt-BR')} km`}</small>
-                  )}
-                </span>
-              );
-            }} />
+            {colunaSei('12rem', () => carregarDados())}
+            {colunaComarca()}
           {colunaCadastro()}
           {/* Selo Segredo em toda tabela (@R 27/08 16:52) — na fase 1 é onde a decisão
               COTAR/NÃO COTAR acontece já sabendo que o processo é sigiloso. */}
