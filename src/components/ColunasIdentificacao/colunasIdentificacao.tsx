@@ -809,13 +809,19 @@ export function colunaOrigem(dados?: any[]) {
         : r.origemRegistro === 'base_antiga'
         ? <Tag value="Base antiga" severity="secondary" icon="pi pi-history" title={`Lançamento anterior ao sistema, importado da base histórica (30/08).${r.statusLegado ? ' Status original: ' + r.statusLegado : ''}`} />
         : r.origemRegistro ? <Tag value={String(r.origemRegistro)} severity="secondary" />
-        // ORIGEM INFERIDA (@R 17/09: "o que não veio por email e está vazio precisamos
-        // identificar se foi Inserção Manual"). O backend só marca quando NÃO HÁ vestígio
-        // nenhum de e-mail — separação medida 0/20 × 21/21. Vem com "?" porque é inferência,
-        // ¬registro: o dado original continua ausente no banco, de propósito.
+        // INFERÊNCIA CORRIGIDA 17/09 (@R: "tem Manual? mas tem o email"). A régua antiga
+        // olhava só o .eml guardado e chamava de "provavelmente manual" 546 pedidos que
+        // TODOS têm o endereço de quem pediu na SES — quem lia concluía que não havia
+        // e-mail. Agora o "?" diz o que de fato sabemos: veio de e-mail, mas o original
+        // não ficou guardado. "Manual?" sobrou para quem não tem sinal algum.
+        : r.origemInferida === 'email'
+        ? <AbreFicha id={r.id} titulo="Abrir a ficha deste pedido">
+            <Tag value="E-mail?" severity="info" icon="pi pi-question-circle"
+              title={`Veio de e-mail, mas o original não foi guardado — o cadastro foi feito à mão a partir dele (antes do monitor automático). Sabemos quem pediu: ${r.emailSolicitante ?? 'endereço da SES registrado'}.`} />
+          </AbreFicha>
         : r.origemInferida === 'manual'
         ? <Tag value="Manual?" severity="warning" icon="pi pi-question-circle"
-            title="Provavelmente cadastrado à mão: este pedido não tem NENHUM vestígio de e-mail (nem anexo do e-mail original, nem identificador de mensagem). É uma inferência — o sistema não registrou a origem na época." />
+            title="Provavelmente cadastrado à mão: este pedido não tem vestígio nenhum de e-mail — nem o arquivo original, nem identificador de mensagem, nem o endereço de quem pediu. É uma inferência — o sistema não registrou a origem na época." />
         : <span className="ident-vazio" title="Pedido anterior ao registro de origem.">—</span>} />
   );
 }
