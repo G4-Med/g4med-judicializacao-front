@@ -47,7 +47,15 @@ export interface LinhaIdentificada {
    *  Vem preenchido quando a peça trazia MAIS DE UM CNJ — decisão @R 17/09/2026: nesse
    *  caso o sistema não escolhe, mostra os dois e quem decide é pessoa. */
   cnjsSugeridos?: { id: number; cnj: string; pagina?: number | null;
-                    documento?: string | null; anexoId?: number | null }[] | null;
+                    documento?: string | null; anexoId?: number | null;
+                    /** classe · partes · autuação · vara · movimentação — o que permite
+                     *  decidir sem abrir o processo no PJe. Vazio quando veio de documento. */
+                    contexto?: string | null; fonte?: string | null }[] | null;
+  /** O estado da busca automática do processo. Existe para a tela NUNCA ficar muda:
+   *  quando nenhuma via achou o número, a pessoa precisa saber POR QUE — e o porquê
+   *  muda o que ela faz em seguida. */
+  buscaProcesso?: { status: string; mensagem?: string | null;
+                    pedeBuscaManual?: boolean } | null;
   numeroSei?: string | null;
   familiaSei?: string | null;
   comarca?: string | null;
@@ -111,16 +119,22 @@ function SeletorCnj({ linha, aoDecidir }: {
       <Dialog visible={aberto} onHide={() => setAberto(false)} style={{ width: '34rem' }}
         header="Qual é o número deste processo?">
         <p className="ident-cnj-ajuda">
-          Estes números foram lidos do documento anexado. Como havia mais de um, nada foi
-          gravado — uma cópia integral costuma citar outros processos. Escolha o correto.
+          {sugestoes.some((s) => s.fonte === 'pje_publico')
+            ? 'Estes são os processos que a consulta pública do TJMG devolveu para esta pessoa. ' +
+              'Nada foi gravado — o sistema não tem como saber qual é o nosso. Escolha o correto.'
+            : 'Estes números foram lidos do documento anexado. Como havia mais de um, nada foi ' +
+              'gravado — uma cópia integral costuma citar outros processos. Escolha o correto.'}
         </p>
         {sugestoes.map((s) => (
           <div key={s.id} className="ident-cnj-opcao">
             <div>
               <code className="ident-numero">{s.cnj}</code>
               <div className="ident-cnj-origem">
-                {s.documento || 'documento'}{s.pagina ? ` · página ${s.pagina}` : ''}
+                {s.fonte === 'pje_publico'
+                  ? 'consulta pública do TJMG'
+                  : `${s.documento || 'documento'}${s.pagina ? ` · página ${s.pagina}` : ''}`}
               </div>
+              {s.contexto && <div className="ident-cnj-contexto">{s.contexto}</div>}
             </div>
             <button type="button" className="ident-cnj-usar" disabled={gravando !== null}
               onClick={() => escolher(s.id, s.cnj)}>
@@ -131,6 +145,28 @@ function SeletorCnj({ linha, aoDecidir }: {
         {erro && <p className="ident-cnj-erro">{erro}</p>}
       </Dialog>
     </>
+  );
+}
+
+/** O que a tela diz quando NENHUMA via achou o número.
+ *
+ *  POR QUE (@R 17/09): ⟦"dizer que cnj deve ser procurado manualmente caso todas falhem e
+ *  se não for segredo de justiça"⟧. Célula vazia lê como "ninguém olhou ainda" — e aqui
+ *  alguém olhou, tentou, e o resultado tem um motivo que muda o próximo passo da pessoa:
+ *    · não identifiquei a pessoa  → conferir a grafia do nome
+ *    · era menor na data          → procurar pelo responsável
+ *    · nada público               → pode ser segredo; não adianta procurar no site
+ *
+ *  ⚠ FALHOU não chega aqui: erro técnico volta para a fila, nunca vira veredito.
+ */
+function AvisoBuscaManual({ busca }: { busca: LinhaIdentificada['buscaProcesso'] }) {
+  if (!busca?.pedeBuscaManual) return null;
+  const segredo = busca.status === 'NADA_PUBLICO';
+  return (
+    <span className={`ident-manual${segredo ? ' ident-manual-segredo' : ''}`}
+      title={busca.mensagem || ''}>
+      {segredo ? 'possível segredo' : 'buscar à mão'}
+    </span>
   );
 }
 
@@ -189,8 +225,11 @@ export function colunaCnj(largura = '14rem', aoDecidirCnj?: (cnj: string) => voi
         // mudo e vira a porta da escolha (a decisão @R só existe se chegar à tela)
         : (r.cnjsSugeridos && r.cnjsSugeridos.length > 0)
           ? <SeletorCnj linha={r} aoDecidir={aoDecidirCnj} />
-          // vazio E sem candidato: em vez do traço mudo, oferece a ação que pode resolver
-          : <BotaoExtrair orderId={r.id} aoConcluir={aoDecidirCnj ? () => aoDecidirCnj('') : undefined} />} />
+          // vazio E sem candidato: se a busca já rodou e não achou, DIZ o porquê; senão
+          // oferece a ação que ainda pode resolver. Nunca um traço mudo.
+          : r.buscaProcesso?.pedeBuscaManual
+            ? <AvisoBuscaManual busca={r.buscaProcesso} />
+            : <BotaoExtrair orderId={r.id} aoConcluir={aoDecidirCnj ? () => aoDecidirCnj('') : undefined} />} />
   );
 }
 

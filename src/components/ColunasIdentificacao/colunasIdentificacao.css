@@ -83,3 +83,17 @@ body.dark-theme .chip-cadastro--completo { background: rgba(28,122,72,0.16); bor
   color: #475569; font-size: .68rem; max-width: 13rem; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* O contexto de cada possibilidade (@R 17/09): sem ele a advogada teria que abrir cada
+   processo no PJe — a lista empurraria o trabalho em vez de resolvê-lo. */
+.ident-cnj-contexto {
+  margin-top: .3rem; font-size: .72rem; color: #334155; line-height: 1.35;
+  background: #f8fafc; border-left: 3px solid #cbd5e1; padding: .35rem .5rem; border-radius: 4px;
+  white-space: pre-line;
+}
+/* "buscar à mão" / "possível segredo" — a tela nunca fica muda quando nada foi achado. */
+.ident-manual {
+  display: inline-block; font-size: .72rem; padding: 2px 8px; border-radius: 10px;
+  background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; cursor: help; white-space: nowrap;
+}
+.ident-manual-segredo { background: #f5f3ff; color: #5b21b6; border-color: #ddd6fe; }
