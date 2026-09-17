@@ -8,3 +8,17 @@
 .cnj-confirmar-sub { display: block; font-size: .8rem; color: #64748b; margin-top: .2rem; }
 .cnj-confirmar-fase { color: #475569; }
 .cnj-confirmar-tabela { margin-top: .75rem; }
+/* contador sem depender de CSS de biblioteca — o <Tag> dentro de <button> vazava cru */
+.cnj-confirmar-contador {
+  background: #f59e0b; color: #fff; border-radius: 10px; padding: 1px 9px;
+  font-size: .78rem; font-weight: 700; line-height: 1.5;
+}
+.cnj-confirmar-busca {
+  display: flex; align-items: center; gap: .5rem; margin-top: .75rem;
+}
+.cnj-confirmar-busca .pi-search { color: #94a3b8; }
+.cnj-confirmar-busca input { flex: 0 1 22rem; }
+.cnj-confirmar-busca small { color: #64748b; font-size: .75rem; }
+.cnj-confirmar-limpar {
+  background: none; border: none; color: #64748b; font-size: 1.1rem; cursor: pointer; line-height: 1;
+}
