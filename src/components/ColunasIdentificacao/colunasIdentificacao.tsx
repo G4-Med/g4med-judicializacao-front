@@ -148,6 +148,44 @@ export function filtroOpcoesDosDados(
 export const SEM_VALOR = '__SEM_VALOR__';
 
 /**
+ * REGISTRO DOS FILTROS CUSTOM — sem isto, `filterMatchMode="custom"` filtra NADA.
+ *
+ * @R 17/09, print do Orçamento Médico: a opção dizia "2× pedido — urgência (3)" e a
+ * tabela respondia "0 de 32 pedidos". A contagem estava certa (os 3 existem); quem
+ * mentia era o filtro.
+ *
+ * O PORQUÊ, lido no fonte do PrimeReact 10.9 (datatable.cjs.js:6910-6922): ele registra
+ * o `filterFunction` da coluna como `custom_<campo>` no FilterService **apenas dentro do
+ * `else` de `if (filters)`** — ou seja, SÓ quando a tabela é não-controlada. Todas as
+ * nossas telas passam `filters={filters}`, então esse ramo nunca roda, o registro nunca
+ * acontece, e na hora de filtrar ele procura `custom_vezesPedido`, não encontra, e
+ * devolve zero linha. Não é um bug nosso nem deles: é uma armadilha da combinação
+ * `filterDisplay="row"` + estado controlado + matchMode custom.
+ *
+ * Por isso o registro vai aqui, no módulo que TODA página de tabela já importa — assim
+ * ninguém precisa lembrar de registrar ao criar a próxima coluna custom. Quem esquecer
+ * não vê erro: vê uma tabela vazia, que é o resultado mais fácil de confundir com
+ * "não há nada aqui".
+ */
+import { FilterService } from 'primereact/api';
+
+const CAMPOS_OPCAO = [
+  'vezesPedido', 'segredo', 'origemRegistro', 'sesAnexos', 'tipoPaciente', 'area',
+  'cadastro', 'temInteiroTeor',
+];
+const CAMPOS_PERIODO = ['chegouEm', 'dataEnvio', 'dataStatusJuridico', 'dataPedido'];
+
+for (const campo of CAMPOS_OPCAO) {
+  FilterService.register(`custom_${campo}`, (valor: unknown, escolha: unknown) =>
+    casaOpcaoDosDados(valor, escolha));
+}
+for (const campo of CAMPOS_PERIODO) {
+  FilterService.register(`custom_${campo}`, (valor: unknown, escolha: unknown) =>
+    casaPeriodo(valor, escolha));
+}
+
+
+/**
  * Casa a escolha do combobox contra o valor da linha, tratando o vazio.
  * Usar com `filterMatchMode="custom"` quando a coluna puder ter célula em branco.
  */
