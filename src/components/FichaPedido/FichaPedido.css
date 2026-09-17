@@ -58,3 +58,28 @@
   .fic__corpo-email { background: #0f172a; border-color: #1e293b; color: #e2e8f0; }
   .fic__de, .fic__vazio-msg { color: #94a3b8; }
 }
+
+/* Situação do pedido (@R 17/09). Fica ANTES da trilha das fases de propósito: quem abre a
+   ficha para corrigir quer ver o estado agora, não a história — a história responde
+   "como chegou aqui", e a pergunta aqui é "onde está e como movo". */
+.fic__situacao {
+  margin: 0 0 1rem;
+  padding: .75rem .9rem;
+  border: 1px solid var(--surface-border, #dfe3e8);
+  border-radius: 10px;
+  background: var(--surface-50, #f8fafc);
+}
+.fic__situacao-cab { display: flex; flex-direction: column; gap: .15rem; margin-bottom: .6rem; }
+.fic__situacao-cab small { color: var(--text-color-secondary, #6b7280); font-size: .74rem; }
+.fic__situacao-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: .6rem .9rem;
+}
+.fic__situacao-item { display: flex; flex-direction: column; gap: .2rem; min-width: 0; }
+.fic__situacao-item label {
+  font-size: .7rem; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--text-color-secondary, #6b7280);
+}
+.fic__situacao-drop { width: 100%; }
+.fic__situacao-nota { display: block; margin-top: .55rem; color: var(--text-color-secondary, #6b7280); font-size: .74rem; }

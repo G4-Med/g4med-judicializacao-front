@@ -17,9 +17,18 @@ import { FichaPedido } from './FichaPedido';
 import { AvisoNovidade } from '../AvisoNovidade/AvisoNovidade';
 import { useAccess } from '../../access/AccessContext';
 
-type Ctx = { abrir: (orderId: number) => void; disponivel: boolean };
+type Ctx = {
+  abrir: (orderId: number) => void;
+  disponivel: boolean;
+  /** Incrementa quando a ficha muda a situação de um pedido. A tela que lista põe este
+   *  número nas dependências do seu efeito de carga e recarrega sozinha.
+   *  @R 17/09: "atualizar a página corretamente, para garantir que moveu o item para a
+   *  fase" — a ficha se atualizava e a tabela atrás continuava com a fase antiga, então
+   *  quem fechava a ficha concluía que não tinha funcionado. */
+  versaoDados: number;
+};
 
-const FichaCtx = createContext<Ctx>({ abrir: () => {}, disponivel: false });
+const FichaCtx = createContext<Ctx>({ abrir: () => {}, disponivel: false, versaoDados: 0 });
 
 export function useFichaPedido() {
   return useContext(FichaCtx);
@@ -27,6 +36,7 @@ export function useFichaPedido() {
 
 export function FichaPedidoProvider({ children }: { children: React.ReactNode }) {
   const [orderId, setOrderId] = useState<number | null>(null);
+  const [versaoDados, setVersaoDados] = useState(0);
   const { profile } = useAccess();
 
   // Quem opera a fase pode corrigi-la (@R 16/09: "libere o voltar-fase para o Jurídico
@@ -34,7 +44,10 @@ export function FichaPedidoProvider({ children }: { children: React.ReactNode })
   const podeVoltarFase =
     profile?.group === 'ADMIN' || profile?.group === 'GERENTE' || profile?.group === 'JURIDICO';
 
-  const valor = useMemo<Ctx>(() => ({ abrir: (id: number) => setOrderId(id), disponivel: true }), []);
+  const valor = useMemo<Ctx>(
+    () => ({ abrir: (id: number) => setOrderId(id), disponivel: true, versaoDados }),
+    [versaoDados],
+  );
 
   return (
     <FichaCtx.Provider value={valor}>
@@ -45,6 +58,7 @@ export function FichaPedidoProvider({ children }: { children: React.ReactNode })
         aberto={orderId !== null}
         aoFechar={() => setOrderId(null)}
         podeVoltarFase={podeVoltarFase}
+        aoMudarSituacao={() => setVersaoDados((v) => v + 1)}
       />
     </FichaCtx.Provider>
   );

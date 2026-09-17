@@ -318,6 +318,12 @@ export const getAcervoPrecos = (params: { especialidade?: string; q?: string; so
 export const getFichaPedido = (orderId: number) =>
   api.get(`/orders/${orderId}/ficha/`);
 
+// Mover a fase/status pela ficha (@R 17/09). NÃO é o fluxo de operação: não dispara
+// e-mail nem cria registro — é correção de cadastro, para quando o pedido está na fase
+// errada e a operação real já aconteceu (ou não deve acontecer de novo).
+export const moverSituacao = (orderId: number, campo: string, valor: string | null) =>
+  api.post(`/orders/${orderId}/situacao/`, { campo, valor });
+
 /** O TEXTO do e-mail original guardado no R2 (@R 17/09) — texto puro, nunca HTML.
  *  O backend parseia o .eml e devolve só o corpo legível; HTML cru abriria porta a
  *  script e ao pixel que avisa o remetente que a mensagem foi aberta. */

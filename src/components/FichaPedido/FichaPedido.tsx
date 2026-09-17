@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
-import { getFichaPedido, getLogAuditoria, reverterHistorico, getConteudoEmail } from '../../services/api/orders';
+import { getFichaPedido, getLogAuditoria, reverterHistorico, getConteudoEmail, moverSituacao } from '../../services/api/orders';
+import { Dropdown } from 'primereact/dropdown';
 import './FichaPedido.css';
 
 /**
@@ -30,6 +31,15 @@ type Trilha = { campo: string; de: string; para: string; por: string; em: string
 type Urgencia = { vezesPedido: number; ultimoPedidoEm: string | null; repedidosManuais: number; ultimoRepedidoManualEm: string | null };
 type EmailRecebido = { id: number; remetente: string | null; assunto: string | null; quando: string; status: string; detalhe: string | null };
 type EmailOriginal = { anexoId: number; nome: string; quando: string; link: string };
+type Situacao = {
+  statusProcesso: string | null;
+  statusJuridico: string | null;
+  statusOrcamento: string | null;
+  statusPerda: string | null;
+  dataStatusPerda?: string | null;
+};
+type SituacaoOpcoes = Record<string, string[]>;
+
 type Emails = {
   origem: 'COM_CONTEUDO' | 'SEM_ORIGINAL' | 'NAO_VEIO_POR_EMAIL';
   explicacao: string | null;
@@ -39,6 +49,14 @@ type Emails = {
 
 const dataHora = (v?: string | null) =>
   v ? new Date(v).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
+
+const ROTULO_CAMPO: Record<string, string> = {
+  statusProcesso: 'a fase',
+  statusJuridico: 'o status jurídico',
+  statusOrcamento: 'o status do orçamento',
+  statusPerda: 'o motivo da perda',
+};
+const rotuloCampo = (c: string) => ROTULO_CAMPO[c] ?? c;
 
 function valorLegivel(v: unknown): string {
   if (v === null || v === undefined || v === '') return '';
@@ -51,16 +69,24 @@ export function FichaPedido({
   aberto,
   aoFechar,
   podeVoltarFase = false,
+  aoMudarSituacao,
 }: {
   orderId: number | null;
   aberto: boolean;
   aoFechar: () => void;
   podeVoltarFase?: boolean;
+  /** Avisa a tela QUE ABRIU a ficha que o pedido mudou de fase. Sem isto, a ficha se
+   *  atualiza sozinha e a tabela atrás continua mostrando a fase antiga — a pessoa fecha
+   *  a ficha e conclui que não funcionou (@R 17/09: "atualizar a página corretamente,
+   *  para garantir que moveu o item para a fase"). */
+  aoMudarSituacao?: () => void;
 }) {
   const [dados, setDados] = useState<{
     blocos: Bloco[]; trilha: Trilha[]; statusAtual: string; totalArquivos: number;
     urgencia?: Urgencia; emails?: Emails;
+    situacao?: Situacao; situacaoOpcoes?: SituacaoOpcoes;
   } | null>(null);
+  const [mudandoCampo, setMudandoCampo] = useState<string | null>(null);
   // conteúdo de e-mail carregado SOB DEMANDA: abrir a ficha não deve baixar .eml do R2
   // que ninguém vai ler — a ficha é consultada o tempo todo, o e-mail raramente.
   const [corpos, setCorpos] = useState<Record<number, { carregando?: boolean; texto?: string; vazio?: boolean; erro?: string }>>({});
@@ -84,7 +110,15 @@ export function FichaPedido({
     try {
       setRevertendo(true);
       // a última mudança de fase é o que se desfaz — buscada na hora, ¬deduzida da tela
-      const log = await getLogAuditoria({ order_id: String(orderId), campo: 'statusProcesso' });
+      // excluir_origem=reversao: sem isto o botão vira GANGORRA — depois de desfazer, a
+      // "última mudança" passa a ser o PRÓPRIO desfazer, e o 2º clique refaz o que o 1º
+      // tinha desfeito. O @R gerou 4 registros alternados no pedido #1248 tentando, e no
+      // #1243 o diálogo chegou a oferecer "voltar para Perda" — o oposto do que ele queria.
+      const log = await getLogAuditoria({
+        order_id: String(orderId),
+        campo: 'statusProcesso',
+        excluir_origem: 'reversao',
+      });
       const ultima = (log.data?.itens ?? [])[0];
       if (!ultima) {
         alert('Este pedido não tem mudança de fase registrada para desfazer.');
@@ -96,10 +130,16 @@ export function FichaPedido({
           'A volta fica registrada no histórico com o seu nome.',
       );
       if (!ok) return;
-      await reverterHistorico(ultima.id);
+      const resp = await reverterHistorico(ultima.id);
       const r = await getFichaPedido(orderId);
       setDados(r.data);
-      alert('Pedido devolvido para a fase anterior.');
+      aoMudarSituacao?.();   // a tabela atrás também precisa saber
+      const campos: string[] = resp?.data?.camposRevertidos ?? [];
+      // Diz QUANTOS campos voltaram: dar perda mexe em três, e a versão antiga desfazia
+      // um só — o pedido voltava para a fase certa ainda marcado como perdido.
+      alert(campos.length > 1
+        ? `Pedido devolvido para a fase anterior (${campos.length} campos restaurados: ${campos.join(', ')}).`
+        : 'Pedido devolvido para a fase anterior.');
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } } };
       // o 409 do backend tem mensagem própria e ela é melhor que qualquer genérica:
@@ -107,6 +147,35 @@ export function FichaPedido({
       alert(err?.response?.data?.error ?? 'Não foi possível voltar a fase deste pedido.');
     } finally {
       setRevertendo(false);
+    }
+  };
+
+  // MOVER a situação (@R 17/09). Distinto do "voltar fase": aquele DESFAZ o que
+  // aconteceu; este COLOCA o pedido onde ele deveria estar. Não dispara e-mail — se
+  // disparasse, corrigir um cadastro mandaria a cotação de novo ao órgão público.
+  const mudarSituacao = async (campo: string, valor: string | null) => {
+    if (!orderId) return;
+    const atual = (dados?.situacao as Record<string, unknown> | undefined)?.[campo] ?? null;
+    if (atual === valor) return;
+    const ok = window.confirm(
+      `Mudar ${rotuloCampo(campo)} de "${atual ?? '(vazio)'}" para "${valor ?? '(vazio)'}"?\n\n` +
+      'Isto corrige o cadastro e fica registrado no histórico com o seu nome.\n' +
+      'Nenhum e-mail é enviado por esta mudança.',
+    );
+    if (!ok) return;
+    try {
+      setMudandoCampo(campo);
+      await moverSituacao(orderId, campo, valor);
+      // relê do servidor em vez de assumir: o backend pode ter mexido em mais de um campo
+      // (limpar statusPerda também limpa a data da perda).
+      const r = await getFichaPedido(orderId);
+      setDados(r.data);
+      aoMudarSituacao?.();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string } } };
+      alert(err?.response?.data?.error ?? 'Não foi possível mudar este campo.');
+    } finally {
+      setMudandoCampo(null);
     }
   };
 
@@ -136,6 +205,54 @@ export function FichaPedido({
 
       {dados && (
         <>
+          {/* SITUAÇÃO COMPLETA (@R 17/09: "na ficha não mostra a fase e os status, é
+              importante também para podermos ver e alterar corretamente caso precise").
+              Os quatro juntos porque é a COMBINAÇÃO que conta a história: "Perda" com
+              "Perda pelo Medico" é o médico que recusou; "Perda" com "Perda Pelo
+              Juridico" é decisão nossa. Ver um sem o outro fez o #1248 parecer
+              consertado quando só um dos três campos tinha voltado. */}
+          <section className="fic__situacao">
+            <header className="fic__situacao-cab">
+              <strong>Situação do pedido</strong>
+              {podeVoltarFase
+                ? <small>Alterar aqui corrige o cadastro e fica no histórico — nenhum e-mail é enviado.</small>
+                : <small>Somente leitura — seu perfil não altera a situação.</small>}
+            </header>
+            <div className="fic__situacao-grade">
+              {(['statusProcesso', 'statusJuridico', 'statusOrcamento', 'statusPerda'] as const).map((campo) => {
+                const atual = (dados.situacao as Record<string, string | null> | undefined)?.[campo] ?? null;
+                const opcoes = dados.situacaoOpcoes?.[campo] ?? [];
+                return (
+                  <div className="fic__situacao-item" key={campo}>
+                    <label>{rotuloCampo(campo).replace(/^(a|o) /, '')}</label>
+                    {podeVoltarFase && opcoes.length > 0 ? (
+                      <Dropdown
+                        value={atual}
+                        options={opcoes.map((o) => ({ label: o, value: o }))}
+                        onChange={(e) => mudarSituacao(campo, e.value)}
+                        placeholder="— não definido"
+                        // só statusPerda pode ficar vazio: pedido que deixou de ser perda
+                        // não tem motivo de perda. Fase vazia não é um estado que exista.
+                        showClear={campo === 'statusPerda'}
+                        disabled={mudandoCampo !== null}
+                        loading={mudandoCampo === campo}
+                        className="fic__situacao-drop"
+                      />
+                    ) : (
+                      <strong>{atual ?? '— não definido'}</strong>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {dados.situacao?.dataStatusPerda && (
+              <small className="fic__situacao-nota">
+                Perda registrada em {new Date(dados.situacao.dataStatusPerda).toLocaleDateString('pt-BR')}
+                {' '}— limpar o motivo da perda também limpa esta data.
+              </small>
+            )}
+          </section>
+
           <div className="fic__topo">
             <span>
               Fase atual: <strong>{dados.statusAtual}</strong>
