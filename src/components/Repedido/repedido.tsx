@@ -1,5 +1,5 @@
 import { Column } from 'primereact/column';
-import { cabecalhoComHint, filtroOpcoes, OPCOES_REPEDIDO }
+import { cabecalhoComHint, casaOpcaoDosDados, filtroOpcoesDosDados }
   from '../ColunasIdentificacao/colunasIdentificacao';
 
 /**
@@ -66,7 +66,7 @@ export const rowClassRepedido = (r: any) => CLASSE[nivelRepedido(r)];
  *  Filtrar por número exigiria a pessoa saber que 1 significa "sem repetição" — conhecimento
  *  que só quem escreveu o código tem. O dropdown pergunta o que ela quer saber (tem urgência
  *  ou não) e o `filterFunction` traduz a escolha para a régua do dado. */
-export const colunaRepedido = () => (
+export const colunaRepedido = (dados?: any[]) => (
   <Column
     key="vezesPedido"
     field="vezesPedido"
@@ -75,12 +75,15 @@ export const colunaRepedido = () => (
     filter
     showFilterMenu={false}
     filterMatchMode="custom"
-    filterFunction={(valor: any, escolha: any) => {
-      if (escolha === null || escolha === undefined || escolha === '') return true;
-      const temRepeticao = (valor ?? 1) > 1;
-      return escolha === 'sim' ? temRepeticao : !temRepeticao;
-    }}
-    filterElement={filtroOpcoes(OPCOES_REPEDIDO, 'Todos')}
+    /* @R 17/09: ⟦"repedido ainda está errado em 3"⟧ + ⟦"verificar todos os frontends
+       para padronizar"⟧. As duas opções fixas ("Com urgência 2× ou +" · "Único pedido")
+       escondiam a diferença entre o pedido que voltou UMA vez e o que voltou TRÊS — e é
+       essa diferença que decide o que se atende primeiro. Agora o filtro lista as
+       repetições que EXISTEM na tabela, cada uma com quantos pedidos, do maior para o
+       menor: nada de opção que não devolve linha, nada de 2 e 3 no mesmo balaio. */
+    filterFunction={casaOpcaoDosDados}
+    filterElement={filtroOpcoesDosDados(dados, (r: any) => r?.vezesPedido ?? 1, 'Todos',
+      (v) => (Number(v) > 1 ? `${v}× pedido — urgência` : 'Único pedido'))}
     style={{ width: '9rem' }}
     bodyStyle={{ textAlign: 'center' }}
     body={(r: any) => {

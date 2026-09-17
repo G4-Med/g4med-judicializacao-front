@@ -478,8 +478,9 @@ export function colunaComarca(largura = '11rem') {
 export function colunaSegredo(largura = '9rem', dados?: any[]) {
   return (
     <Column key="col-segredo" field="segredo" header={cabecalhoComHint('Segredo', EXPLICA.segredo)} sortable
-      filter filterMatchMode="equals" showFilterMenu={false}
-      filterElement={filtroOpcoes(opcoesPresentes(OPCOES_SEGREDO, dados, (r) => r?.segredo), 'Todos')}
+      filter filterMatchMode="custom" filterFunction={casaOpcaoDosDados} showFilterMenu={false}
+      filterElement={filtroOpcoesDosDados(dados, (r: any) => r?.segredo, 'Todos',
+        (v) => ({ sim: 'Segredo', possivel: 'Possível', nao: 'Sem segredo' } as Record<string, string>)[v] ?? String(v))}
       style={{ minWidth: largura }}
       body={(r: LinhaIdentificada) => {
         // @R 17/09: "encurtar o nome Segredo de Justiça para não quebrar linha". O texto
@@ -707,8 +708,9 @@ const ROTULO_PONTO: Record<string, string> = { cnj: 'CNJ', sei: 'SEI', comarca: 
 export function colunaOrigem(dados?: any[]) {
   return (
     <Column key="col-origem" field="origemRegistro" sortable style={{ minWidth: '7.5rem' }}
-      filter filterMatchMode="equals" showFilterMenu={false}
-      filterElement={filtroOpcoes(opcoesPresentes(OPCOES_ORIGEM, dados, (r) => r?.origemRegistro), 'Todas')}
+      filter filterMatchMode="custom" filterFunction={casaOpcaoDosDados} showFilterMenu={false}
+      filterElement={filtroOpcoesDosDados(dados, (r: any) => r?.origemRegistro, 'Todas',
+        (v) => ({ email: 'E-mail', manual: 'Manual', base_antiga: 'Base antiga' } as Record<string, string>)[v] ?? String(v))}
       header={cabecalhoComHint('Origem', 'Como o pedido entrou: E-mail = cadastro automático a partir do e-mail da SES · Manual = alguém da equipe cadastrou à mão · — = pedido antigo, origem não registrada.')}
       body={(r: any) => r.origemRegistro === 'manual'
         ? <Tag value="Manual" severity="warning" icon="pi pi-user-edit" title="Cadastrado à mão pela equipe (sem e-mail de origem; nenhuma resposta automática saiu)." />
