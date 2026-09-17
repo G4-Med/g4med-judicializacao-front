@@ -67,16 +67,37 @@ body.mc-tabelas-justificadas .p-datatable .p-datatable-tbody > tr > td {
 body.mc-tabelas-justificadas .mc-scroll-topo { display: none; }
 
 /* ── RE-PEDIDO (@R 28/08): linha mais escura + badge "!" quando a SES pediu mais de 1× ── */
-.p-datatable .p-datatable-tbody > tr.mc-linha-repedido > td {
-  background: rgba(180, 83, 9, 0.10);
-  box-shadow: inset 3px 0 0 #b45309;
+/* RE-PEDIDO — 3 níveis de urgência (@R 17/09: "o número de vezes para mudar a cor da
+   linha para sabermos"). Antes havia UMA cor para qualquer n>1: 2× e 3× ficavam iguais.
+   A escala é âmbar → laranja → vermelho, e a barra lateral engrossa junto, para a
+   diferença sobreviver a quem não distingue bem as duas primeiras. */
+.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-2 > td {
+  background: rgba(217, 119, 6, 0.09);
+  box-shadow: inset 3px 0 0 #d97706;
 }
-.p-datatable .p-datatable-tbody > tr.mc-linha-repedido:hover > td { background: rgba(180, 35, 24, 0.14); }
+.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-2:hover > td { background: rgba(217, 119, 6, 0.16); }
+
+.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-3 > td {
+  background: rgba(194, 65, 12, 0.13);
+  box-shadow: inset 5px 0 0 #c2410c;
+}
+.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-3:hover > td { background: rgba(194, 65, 12, 0.20); }
+
+/* Cobrança por TELEFONE = urgência máxima: alguém ligou porque o e-mail não resolveu. */
+.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-max > td {
+  background: rgba(180, 35, 24, 0.16);
+  box-shadow: inset 6px 0 0 #b42318;
+}
+.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-max:hover > td { background: rgba(180, 35, 24, 0.24); }
+
 .mc-repedido-badge {
   display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .55rem; border-radius: 999px;
-  background: #b42318; color: #fff; font-weight: 700; font-size: .8rem; letter-spacing: .02em;
-  box-shadow: 0 0 0 3px rgba(180, 35, 24, .15);
+  color: #fff; font-weight: 700; font-size: .78rem; letter-spacing: .02em; white-space: nowrap;
 }
+.mc-repedido-badge--dois   { background: #d97706; box-shadow: 0 0 0 3px rgba(217, 119, 6, .15); }
+.mc-repedido-badge--tres   { background: #c2410c; box-shadow: 0 0 0 3px rgba(194, 65, 12, .18); }
+.mc-repedido-badge--maximo { background: #b42318; box-shadow: 0 0 0 3px rgba(180, 35, 24, .22); }
+
 .mc-repedido-cab { display: inline-flex; align-items: center; gap: .3rem; color: #b42318; font-weight: 700; }
 .mc-repedido-cab .pi { font-size: .95rem; }
 

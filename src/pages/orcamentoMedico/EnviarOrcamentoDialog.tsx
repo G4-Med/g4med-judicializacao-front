@@ -8,7 +8,7 @@ import html2canvas from 'html2canvas';
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { getBaseOrcamento, getDadosMedico, type TipoBaseOrcamento } from '../../services/api/client';
-import { salvarOrcamentoMedico, uploadAnexoOrder, getInteligenciaPedido } from '../../services/api/orders';
+import { salvarOrcamentoMedico, uploadAnexoOrder, getInteligenciaPedido, lerOrcamentoDoArquivo } from '../../services/api/orders';
 import './OrcamentoMedicoPage.css';
 
 GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -139,6 +139,22 @@ function extrairMedicoId(dados: Record<string, unknown>): number | null {
   return null;
 }
 
+type AlertaOrcamento = { nivel: 'grave' | 'aviso'; campo: string; texto: string };
+type LeituraOrcamento = {
+  ok: boolean;
+  motivo: string;
+  valorTotal: number | null;
+  paciente: string | null;
+  medicoOuPrestador: string | null;
+  dataDocumento: string | null;
+  validadeDias: number | null;
+  procedimento: string | null;
+  itens: { descricao: string; valor: number }[];
+  confianca: string;
+  observacao: string | null;
+  alertas: AlertaOrcamento[];
+};
+
 export function EnviarOrcamentoDialog({
   visible,
   processo,
@@ -149,6 +165,14 @@ export function EnviarOrcamentoDialog({
   const [valorArquivo, setValorArquivo] = useState<number | null>(null);
   const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null);
   const [enviandoArquivo, setEnviandoArquivo] = useState(false);
+
+  /** LEITURA DO ORÇAMENTO (@R 17/09): ao escolher o arquivo, a visão computacional lê o
+   *  documento e devolve valor, paciente, médico, data e os alertas de conferência.
+   *  PROPÕE — o valor entra no campo mas quem confirma é a pessoa; o contrato é o mesmo
+   *  do CNJ ("nada é gravado sozinho"). Medido: 94%+ de acerto, ou seja ~6% de erro, e
+   *  um número plausível que ninguém confere é pior que um campo vazio. */
+  const [lendoArquivo, setLendoArquivo] = useState(false);
+  const [leitura, setLeitura] = useState<LeituraOrcamento | null>(null);
   const [enviandoManual, setEnviandoManual] = useState(false);
   const [equipeMedica, setEquipeMedica] = useState<ItemOrcamento[]>([itemVazio()]);
   const [taxasHospitalar, setTaxasHospitalar] = useState<ItemOrcamento[]>([itemVazio()]);
@@ -672,6 +696,31 @@ export function EnviarOrcamentoDialog({
     </div>
   );
 
+  /** Lê o arquivo recém-escolhido. Falha aqui NUNCA trava o modal: o campo continua
+   *  digitável à mão, que é como funcionava antes. */
+  const lerArquivoDoOrcamento = async (arquivo: File) => {
+    if (!processo?.id) return;
+    setLendoArquivo(true);
+    try {
+      const r = await lerOrcamentoDoArquivo(processo.id, arquivo);
+      const d = r.data as LeituraOrcamento;
+      setLeitura(d);
+      // só preenche quando NÃO há divergência grave: com o paciente errado na tela, o
+      // valor certo é o de outro pedido, e preenchê-lo ajudaria a errar mais rápido
+      const grave = (d.alertas ?? []).some((a) => a.nivel === 'grave');
+      if (d.ok && d.valorTotal && !grave) setValorArquivo(d.valorTotal);
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { motivo?: string; detail?: string } } };
+      setLeitura({
+        ok: false,
+        motivo: err?.response?.data?.motivo ?? err?.response?.data?.detail
+          ?? 'não consegui ler este arquivo — preencha o valor à mão',
+      } as LeituraOrcamento);
+    } finally {
+      setLendoArquivo(false);
+    }
+  };
+
   return (
     <>
       <Dialog
@@ -746,7 +795,12 @@ export function EnviarOrcamentoDialog({
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => setArquivoSelecionado(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null;
+              setArquivoSelecionado(f);
+              setLeitura(null);
+              if (f) lerArquivoDoOrcamento(f);
+            }}
             style={{ width: '100%' }}
           />
           {arquivoSelecionado && (
@@ -756,6 +810,71 @@ export function EnviarOrcamentoDialog({
             </span>
           )}
         </div>
+
+        {/* O QUE A LEITURA ACHOU — e o que ela NÃO conseguiu.
+            Ausência é declarada (mesma lei da Ficha do Pedido): arquivo ilegível diz o
+            motivo, nunca fica em branco fazendo a pessoa achar que a tela quebrou. */}
+        {lendoArquivo && (
+          <div className="orc-leitura orc-leitura--lendo">
+            <i className="pi pi-spin pi-spinner" /> lendo o orçamento…
+          </div>
+        )}
+
+        {leitura && !lendoArquivo && (
+          <div className={`orc-leitura ${leitura.alertas?.some((a) => a.nivel === 'grave')
+            ? 'orc-leitura--grave' : leitura.ok ? 'orc-leitura--ok' : 'orc-leitura--falhou'}`}>
+            {!leitura.ok ? (
+              <p className="orc-leitura__motivo">
+                <i className="pi pi-exclamation-circle" /> {leitura.motivo} — preencha à mão.
+              </p>
+            ) : (
+              <>
+                <p className="orc-leitura__titulo">
+                  <i className="pi pi-eye" /> Li o documento
+                  <span className={`orc-conf orc-conf--${leitura.confianca}`}>
+                    confiança {leitura.confianca}
+                  </span>
+                </p>
+                <dl className="orc-leitura__campos">
+                  {leitura.paciente && (<><dt>Paciente</dt><dd>{leitura.paciente}</dd></>)}
+                  {leitura.medicoOuPrestador && (<><dt>Emitido por</dt><dd>{leitura.medicoOuPrestador}</dd></>)}
+                  {leitura.procedimento && (<><dt>Procedimento</dt><dd>{leitura.procedimento}</dd></>)}
+                  {leitura.dataDocumento && (
+                    <><dt>Data</dt><dd>
+                      {new Date(`${leitura.dataDocumento}T12:00:00`).toLocaleDateString('pt-BR')}
+                      {leitura.validadeDias ? ` · vale ${leitura.validadeDias} dias` : ''}
+                    </dd></>
+                  )}
+                </dl>
+
+                {leitura.itens?.length > 0 && (
+                  <details className="orc-leitura__itens">
+                    <summary>{leitura.itens.length} item(ns) no orçamento</summary>
+                    <ul>
+                      {leitura.itens.map((i, n) => (
+                        <li key={n}>
+                          <span>{i.descricao}</span>
+                          <strong>{i.valor?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+
+                {leitura.observacao && (
+                  <p className="orc-leitura__obs">Observação da leitura: {leitura.observacao}</p>
+                )}
+              </>
+            )}
+
+            {(leitura.alertas ?? []).map((a, n) => (
+              <p key={n} className={`orc-alerta orc-alerta--${a.nivel}`}>
+                <i className={a.nivel === 'grave' ? 'pi pi-times-circle' : 'pi pi-exclamation-triangle'} />
+                {a.texto}
+              </p>
+            ))}
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '8px 0 16px' }}>
           <p style={{ margin: 0, color: '#6b7280', fontSize: '0.95rem' }}>
@@ -773,7 +892,21 @@ export function EnviarOrcamentoDialog({
               locale="pt-BR"
               placeholder="R$ 0,00"
               style={{ width: '100%' }}
+              className={leitura?.valorTotal && valorArquivo === leitura.valorTotal
+                ? 'orc-valor--lido' : undefined}
             />
+            {/* a origem do número fica VISÍVEL: sem isto alguém confirma achando que
+                digitou, e o "confira" que a medição exige nunca acontece */}
+            {leitura?.ok && leitura.valorTotal && valorArquivo === leitura.valorTotal && (
+              <span className="orc-valor__origem">
+                <i className="pi pi-file-pdf" /> lido do arquivo · <strong>confira</strong> antes de confirmar
+              </span>
+            )}
+            {leitura?.ok && !leitura.valorTotal && (
+              <span className="orc-valor__origem orc-valor__origem--vazio">
+                não consegui ler o valor neste arquivo — digite
+              </span>
+            )}
           </div>
         </div>
 

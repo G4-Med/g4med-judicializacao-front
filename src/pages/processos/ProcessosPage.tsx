@@ -31,7 +31,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import './ProcessosPage.css';
-import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaOrigem } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaOrigem, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
@@ -319,7 +319,7 @@ export function ProcessosPage() {
     medico: { value: null, matchMode: FilterMatchMode.EQUALS },
     area: { value: '', matchMode: FilterMatchMode.CONTAINS },
     dataSolicitacao: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    dias: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    dias: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     status: { value: null, matchMode: FilterMatchMode.EQUALS },
     statusJuridico: { value: null, matchMode: FilterMatchMode.EQUALS },
     statusMedico: { value: null, matchMode: FilterMatchMode.EQUALS }
@@ -2107,6 +2107,7 @@ ${linhasAnexos}
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
           {colunaOrigem()}
+          {colunaSegredo()}
           {colunaRepedido()}
           {/* <Column
             field="idade"
@@ -2168,7 +2169,8 @@ ${linhasAnexos}
             header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')}
             sortable
             filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
+            dataType="numeric"
+            filterElement={filtroMaiorQue('mais de…')}
             body={diasBodyTemplate}
             style={{ minWidth: '7rem' }}
           />
@@ -2205,7 +2207,6 @@ ${linhasAnexos}
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}

@@ -3,7 +3,7 @@ import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
 import { TabView, TabPanel } from 'primereact/tabview';
-import { cabecalhoComHint } from '../ColunasIdentificacao/colunasIdentificacao';
+import { cabecalhoComHint, filtroOpcoes } from '../ColunasIdentificacao/colunasIdentificacao';
 import { getThreadPedido, postThreadVista, patchDossie } from '../../services/api/integracoes';
 import './anexosSES.css';
 
@@ -224,13 +224,24 @@ function CelulaAnexosSES({ r }: { r: any }) {
   );
 }
 
-/** Coluna "SES Anexos" — cola nas 9 telas ao lado da coluna "!". */
+/** As opções do filtro — os MESMOS valores que a célula renderiza (ESTADO acima), para o
+ *  que a pessoa escolhe e o que ela vê nunca divergirem. */
+const OPCOES_SES = Object.entries(ESTADO).map(([value, e]) => ({ label: e.rotulo, value }));
+
+/** Coluna "SES Anexos" — cola nas 9 telas ao lado da coluna "!".
+ *
+ *  FILTRO (@R 17/09): ⟦"SES Anexos que tenham anexos ou não tenham"⟧. São 4 estados, não 2
+ *  — "sem anexo" e "solicitado" são coisas diferentes (no segundo já pedimos à SES), e
+ *  juntá-los num sim/não esconderia justamente o que separa pedido parado de pedido em
+ *  cobrança. O dropdown oferece os 4. */
 export const colunaAnexosSES = () => (
   <Column
     key="sesAnexos"
     field="sesAnexos"
     header={cabecalhoComHint('SES Anexos', 'O que a SES mandou de documento: com anexo · sem anexo · solicitado (pedimos) · recebido (devolveram) · processando laudo (o robô está lendo a peça de inteiro teor; mostra há quanto tempo e a previsão — ~7 min por peça mais a espera do robô, que passa a cada 10 min; os exames/relatório aparecem quando terminar). O número no clipe é quantos documentos; o envelope é quantos e-mails novos. Clique para ver, baixar e ler a thread.')}
     sortable
+    filter filterMatchMode="equals" showFilterMenu={false}
+    filterElement={filtroOpcoes(OPCOES_SES, 'Todos')}
     style={{ width: '11rem' }}
     bodyStyle={{ textAlign: 'left' }}
     body={(r: any) => <CelulaAnexosSES r={r} />}

@@ -14,7 +14,7 @@ import { getPerdas, getOrders, getMedicosCompleto, reabrirPerda } from '../../se
 import { getStatusTagStyle } from '../../utils/statusTag';
 import './PerdasPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
-import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint} from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaOrigem, colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -70,7 +70,7 @@ export function PerdasPage() {
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     cliente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     valor: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    dias: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    dias: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     resultado: { value: '', matchMode: FilterMatchMode.CONTAINS },
     statusPerda: { value: '', matchMode: FilterMatchMode.CONTAINS },
     procedimento: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -413,6 +413,8 @@ export function PerdasPage() {
             filterElement={(options) => filterElement(options, 'Buscar')}
             style={{ minWidth: '16rem' }}
           />
+          {colunaOrigem()}
+          {colunaSegredo()}
           {colunaRepedido()}
           <Column field="procedimento" header={cabecalhoComHint('Procedimento', 'O que a decisão judicial determinou. É a chave para achar o preço histórico.')} sortable filter
             filterElement={(options: any) => (
@@ -444,7 +446,8 @@ export function PerdasPage() {
             header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')}
             sortable
             filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
+            dataType="numeric"
+            filterElement={filtroMaiorQue('mais de…')}
             body={diasBodyTemplate}
             style={{ minWidth: '7rem' }}
           />
@@ -483,7 +486,6 @@ export function PerdasPage() {
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}

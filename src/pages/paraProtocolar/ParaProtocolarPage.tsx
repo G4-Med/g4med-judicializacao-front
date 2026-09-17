@@ -25,7 +25,7 @@ import './ParaProtocolarPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { CabecalhoFase } from '../../components/CabecalhoFase/CabecalhoFase';
-import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaOrigem } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaOrigem, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -97,7 +97,7 @@ export function ParaProtocolarPage() {
     cliente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     valor: { value: '', matchMode: FilterMatchMode.CONTAINS },
     dataEnvioOrcamento: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    dias: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    dias: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     status: { value: '', matchMode: FilterMatchMode.CONTAINS }
   });
 
@@ -768,7 +768,8 @@ const handleConfirmarProtocolacao = async () => {
             header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')}
             sortable
             filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
+            dataType="numeric"
+            filterElement={filtroMaiorQue('mais de…')}
             body={diasBodyTemplate}
             style={{ minWidth: '7rem' }}
           />

@@ -30,7 +30,7 @@ import './SegredoJusticaPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { CabecalhoFase } from '../../components/CabecalhoFase/CabecalhoFase';
-import { colunaSolicitante, tagTipoPaciente, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar , cabecalhoComHint, colunaInteiroTeor, colunaOrigem, colunaSegredo } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, tagTipoPaciente, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar , cabecalhoComHint, colunaInteiroTeor, colunaOrigem, colunaSegredo, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -145,7 +145,7 @@ export function SegredoJusticaPage() {
     cliente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     valor: { value: '', matchMode: FilterMatchMode.CONTAINS },
     numeroProcesso: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    dias: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    dias: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     status: { value: '', matchMode: FilterMatchMode.CONTAINS },
     resultado: { value: '', matchMode: FilterMatchMode.CONTAINS }
   });
@@ -543,6 +543,7 @@ useEffect(() => { carregarDados(); }, [fila]);
             style={{ minWidth: '16rem' }}
            frozen alignFrozen="left" />
           {colunaOrigem()}
+          {colunaSegredo()}
           {colunaRepedido()}
           {/* @R 27/08 16:45: "quero saber a idade, se é pediatria e adulto (tipo do
               médico) e o nome do procedimento". Idade ausente = "—", nunca chute. */}
@@ -627,7 +628,8 @@ useEffect(() => { carregarDados(); }, [fila]);
             header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')}
             sortable
             filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
+            dataType="numeric"
+            filterElement={filtroMaiorQue('mais de…')}
             body={diasBodyTemplate}
             style={{ minWidth: '7rem' }}
           />
@@ -646,7 +648,6 @@ useEffect(() => { carregarDados(); }, [fila]);
           {colunaSei()}
           {colunaComarca()}
           {colunaCadastro()}
-          {colunaSegredo()}
           {colunaInteiroTeor()}
           {colunaSolicitante()}
           {colunaBaixarOrcamento()}

@@ -7,6 +7,11 @@ export const createMedico = (data: any) => api.post('/client/medicos/', data);
 export const updateMedico = (id: number, data: any) => api.patch(`/client/medicos/${id}/`, data);
 export const deleteMedico = (id: number) => api.delete(`/client/medicos/${id}/`);
 export const getMedicosCompleto = () => api.get('/client/medico-completo/lista/');
+
+/** A ÁREA do cliente (@R 17/09): taxa de resposta, perdas POR RESPONSABILIDADE, SLA,
+ *  experiência por subárea. `pacientes=1` inclui a lista nominal (PII, sob demanda). */
+export const getMetricasMedico = (id: number, comPacientes = false) =>
+  api.get(`/medicos/${id}/metricas/${comPacientes ? '?pacientes=1' : ''}`);
 export const getEspecialidades = () => api.get('/client/especialidades/');
 export const getSubespecialidades = () => api.get('/client/subespecialidades/');
 export const getHospitais = () => api.get('/client/hospitais/');
