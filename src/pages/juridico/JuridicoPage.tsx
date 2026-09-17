@@ -126,7 +126,8 @@ export function JuridicoPage() {
   const [previewNome, setPreviewNome] = useState<string>('')
   // Candidatos a CNJ (task #217 peça 3): o batch noturno extrai dos anexos e PROPÕE;
   // o humano confirma aqui vendo a origem — o sistema nunca grava CNJ sozinho (F1/G4).
-  const [candidatosCnj, setCandidatosCnj] = useState<{ cnj: string; origem?: string }[]>([])
+  const [candidatosCnj, setCandidatosCnj] = useState<{ cnj: string; origem?: string; documento?: string | null;
+                                            pagina?: number | null; sugeridoId?: number }[]>([])
   const [confirmandoCnj, setConfirmandoCnj] = useState(false)
   // Inteligência do pedido NA CHEGADA (/sc:desenho 28/08: "como estamos produzindo
   // inteligência para cada pedido que chega novo") — a memória de casos anteriores
@@ -691,11 +692,25 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
             {/* Campos editáveis */}
             {candidatosCnj.length > 0 && !nprocesso && (
               <div className="field field-span-4 candidato-cnj" role="region" aria-label="Candidato a número do processo">
-                <label>Nº do processo encontrado nos anexos — confirme antes de usar</label>
+                <label>
+                  {candidatosCnj.length > 1
+                    // @R 17/09: com mais de um número o sistema não escolhe — quem decide é
+                    // o jurídico. Dizer QUANTOS são muda a leitura: não é "o número", é uma
+                    // escolha entre candidatos (uma cópia integral cita outros processos).
+                    ? `${candidatosCnj.length} números de processo encontrados nos anexos — escolha o correto`
+                    : 'Nº do processo encontrado nos anexos — confirme antes de usar'}
+                </label>
                 {candidatosCnj.map((c) => (
                   <div key={c.cnj} className="candidato-cnj__linha">
                     <code className="juridico-numero">{c.cnj}</code>
-                    <small>origem: {c.origem === 'ocr' ? 'OCR do anexo escaneado' : 'texto do anexo'} · dígito verificador válido</small>
+                    <small>
+                      {/* documento + página só existem na fonte nova (CnjSugerido); o batch
+                          antigo só sabia dizer a origem. Mostrar o que houver, sem prometer. */}
+                      {c.documento
+                        ? <>em <strong>{c.documento}</strong>{c.pagina ? `, página ${c.pagina}` : ''}</>
+                        : <>origem: {c.origem === 'ocr' ? 'OCR do anexo escaneado' : 'texto do anexo'}</>}
+                      {' · dígito verificador válido'}
+                    </small>
                     <Button label="Confirmar este CNJ" size="small" icon="pi pi-check"
                       loading={confirmandoCnj} onClick={() => usarCandidatoCnj(c.cnj)} disabled={readOnly} />
                   </div>
