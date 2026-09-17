@@ -75,6 +75,9 @@ export function EnviadoSesPage() {
   const colunasCfg = useColunasVisiveis('enviado-ses');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
+    dataEnvio: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    valorOrcamento: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     ...FILTRO_PAGAMENTO,   // filtrar por exato · não exato · empenhado · sem pagamento
     ...FILTROS_IDENTIFICACAO,
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -258,7 +261,7 @@ export function EnviadoSesPage() {
           {colunaSegredo()}
           {colunaRepedido()}
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')} sortable style={{ minWidth: '5rem' }} />
-          <Column field="tipoPaciente" header={cabecalhoComHint('Tipo', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
+          <Column field="tipoPaciente" header={cabecalhoComHint('Grupo etário', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
             filter showFilterMenu={false} filterMatchMode="equals"
             filterElement={filtroOpcoes(OPCOES_TIPO_PACIENTE, 'Todos')}
             body={(r: LinhaEnviadoSes) => tagTipoPaciente(r.tipoPaciente)} />

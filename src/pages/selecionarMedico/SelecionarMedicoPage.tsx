@@ -19,7 +19,7 @@ import {
 } from '../../services/api/orders';
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
-import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes, OPCOES_TIPO_PACIENTE } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
 import './SelecionarMedicoPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
@@ -108,6 +108,7 @@ export function SelecionarMedicoPage() {
   const colunasCfg = useColunasVisiveis('selecionar-medico');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
     ...FILTRO_PAGAMENTO,   // @R 28/08: pedir cotação para caso JÁ PAGO é trabalho perdido
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -539,8 +540,10 @@ export function SelecionarMedicoPage() {
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento. Criança/recém-nascido recebe o e-mail pediátrico de exames.')}
             sortable filter filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '6rem' }}
             body={(r: any) => r.idade ?? <span className="sm-sla-vazio">—</span>} />
-          <Column field="tipoPaciente" header={cabecalhoComHint('Tipo', 'Recém-nascido (≤28 dias) · Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')}
-            sortable style={{ minWidth: '7rem' }} body={(r: any) => tagTipoPaciente(r.tipoPaciente)} />
+          <Column field="tipoPaciente" header={cabecalhoComHint('Grupo etário', 'Recém-nascido (≤28 dias) · Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')}
+            sortable style={{ minWidth: '9rem' }} body={(r: any) => tagTipoPaciente(r.tipoPaciente)}
+            filter showFilterMenu={false} filterMatchMode="equals"
+            filterElement={filtroOpcoes(OPCOES_TIPO_PACIENTE, 'Todos')} />
           <Column
             field="procedimento" className="col-procedimento-upper"
             header={cabecalhoComHint('Procedimento', 'O que a decisão judicial determinou. É a chave para achar o preço histórico.')}

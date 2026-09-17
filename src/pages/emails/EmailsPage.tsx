@@ -694,7 +694,7 @@ export function EmailsPage() {
 
           <Column
             field="tipoEmail"
-            header={cabecalhoComHint('Tipo', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')}
+            header={cabecalhoComHint('Grupo etário', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')}
             sortable
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}

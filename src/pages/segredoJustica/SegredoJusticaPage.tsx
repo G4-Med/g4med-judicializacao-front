@@ -139,6 +139,7 @@ export function SegredoJusticaPage() {
   const colunasCfg = useColunasVisiveis('segredo-justica');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     procedimento: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -556,7 +557,7 @@ useEffect(() => { carregarDados(); }, [fila]);
           />
           <Column
             field="tipoPaciente"
-            header={cabecalhoComHint('Tipo', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')}
+            header={cabecalhoComHint('Grupo etário', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')}
             sortable
             style={{ minWidth: '8rem' }}
             body={(r: any) => tagTipoPaciente(r.tipoPaciente)}

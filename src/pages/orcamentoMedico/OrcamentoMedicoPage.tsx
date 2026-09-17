@@ -150,6 +150,7 @@ export function OrcamentoMedicoPage() {
 
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
     ...FILTRO_PAGAMENTO,   // @R 28/08: pedir cotação para caso JÁ PAGO é trabalho perdido
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -650,7 +651,7 @@ ${blocos}
           {colunaRepedido()}
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')} sortable filter
             dataType="numeric" filterElement={filtroMaiorQue('a partir de…')} style={{ minWidth: '7rem' }} />
-          <Column field="tipoPaciente" header={cabecalhoComHint('Tipo', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
+          <Column field="tipoPaciente" header={cabecalhoComHint('Grupo etário', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
             body={(r: any) => tagTipoPaciente(r.tipoPaciente)} />
           {colunaProcedimento()}
           <Column field="area" header="Área" sortable filter

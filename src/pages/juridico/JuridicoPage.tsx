@@ -155,6 +155,8 @@ export function JuridicoPage() {
   const colunasCfg = useColunasVisiveis('analise-juridica');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
+    chegouEm: { value: null, matchMode: FilterMatchMode.CUSTOM },
     ...FILTRO_PAGAMENTO,   // já pago no CNJ? decide se vale cotar
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     idade: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
@@ -508,7 +510,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
             filterElement={(o) => filterElement(o, 'Buscar')}
             style={{ minWidth: '7rem' }}
           />
-          <Column field="tipoPaciente" header={cabecalhoComHint('Tipo', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
+          <Column field="tipoPaciente" header={cabecalhoComHint('Grupo etário', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
             body={(r: any) => tagTipoPaciente(r.tipoPaciente)} />
           {colunaProcedimento()}
           {/* @R 28/08: "a data que o pedido chegou e o horário e o tempo atual no funil" */}

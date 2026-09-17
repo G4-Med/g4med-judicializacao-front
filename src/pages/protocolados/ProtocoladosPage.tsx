@@ -95,6 +95,7 @@ export function ProtocoladosPage() {
   const colunasCfg = useColunasVisiveis('protocolados');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    diasSemAtualizacao: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     ...FILTRO_PAGAMENTO,   // filtrar por exato · não exato · empenhado · sem pagamento
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
