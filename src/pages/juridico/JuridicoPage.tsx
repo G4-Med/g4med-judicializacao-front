@@ -14,7 +14,7 @@ import { getJuridico, salvarJuridico, getStatusOrders, getAnexosOrder, getCnjCan
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import './JuridicoPage.css';
-import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaOrigem, colunaCadastro, colunaInteiroTeor } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaCnj } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { PainelPrecos } from '../../components/PainelPrecos/PainelPrecos';
@@ -533,11 +533,12 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
             }} />
           {colunaAnexosSES()}
           {/* CNJ e SEI nas colunas (@R 27/08 12:59): os dois números do pedido, buscáveis e copiáveis */}
-<Column field="nprocesso" header="Nº CNJ" sortable filter
-            filterElement={(o) => filterElement(o, 'Buscar CNJ')} style={{ minWidth: '14rem' }}
-            body={(r: ProcessoJuridicoRow) => r.nprocesso
-              ? <><code className="juridico-numero" title="Número CNJ do processo">{r.nprocesso}</code><BotaoCopiar valor={r.nprocesso} rotulo="número CNJ" /></>
-              : <span className="juridico-geo-vazio">—</span>} />
+            {/* 17/09/2026: esta tela tinha a SUA PRÓPRIA coluna de CNJ, cópia da compartilhada.
+                Resultado: quando o seletor de números lidos do documento entrou em `colunaCnj`,
+                ele apareceu em todas as listagens MENOS nesta — justamente a que o jurídico usa.
+                Consumir a compartilhada faz a melhoria chegar aqui e evita que a próxima mudança
+                precise ser feita em dois lugares (e seja esquecida num deles). */}
+            {colunaCnj('14rem', () => carregarDados())}
           <Column field="numeroSei" header="Nº SEI" sortable filter
             filterElement={(o) => filterElement(o, 'Buscar SEI')} style={{ minWidth: '12rem' }}
             body={(r: ProcessoJuridicoRow) => r.numeroSei
