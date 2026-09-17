@@ -2174,7 +2174,7 @@ ${linhasAnexos}
           /> */}
 <Column
             field="dias"
-            header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')}
+            header={cabecalhoComHint('Desde a chegada', 'Dias corridos desde que o pedido CHEGOU no sistema (não desde a entrada nesta fase). Compare com o SLA no cabeçalho.')}
             sortable
             filter
             dataType="numeric"

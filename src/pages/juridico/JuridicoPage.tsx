@@ -23,6 +23,7 @@ import { CabecalhoFase } from '../../components/CabecalhoFase/CabecalhoFase';
 import { BotaoCopiar } from '../../components/BotaoCopiar/BotaoCopiar';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { NovoPedidoManual } from '../../components/NovoPedidoManual/novoPedidoManual';
+import { TempoDecorrido } from '../../components/Tempo/tempo';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
 import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, colunaBaixarOrcamento } from '../../components/ColunasEmpenho/colunasEmpenho';
@@ -45,7 +46,15 @@ interface ProcessoJuridico {
   dataPedido: string;
   dias: number;
   chegouEm?: string | null;   // instante em que ENTROU no sistema (com hora)
-  horasNoFunil?: number;      // desde a data do e-mail — a métrica dos 5 dias
+  // tempos: duas medidas, cada uma com a precisão que o dado sustenta (backend _tempos)
+  chegadaEm?: string | null;
+  chegadaComHora?: boolean;
+  minutosDesdeChegada?: number | null;
+  diasDesdeChegada?: number | null;
+  faseDesde?: string | null;
+  faseComHora?: boolean;
+  minutosNaFase?: number | null;
+  diasNaFase?: number | null;
   statusJuridico: string;
   nprocesso: string;
   numeroSei: string | null;
@@ -536,18 +545,24 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                 {d.toLocaleDateString('pt-BR')} <small style={{ opacity: 0.7 }}>{d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small>
               </span>;
             }} />
-          <Column field="dias" header={cabecalhoComHint('Tempo no funil',
-              `Desde a data do e-mail do pedido. Teto: ${SLA_META_DIAS_TRIAGEM} dias — acima disso está errado (fica vermelho).`)}
+          {/* Duas colunas, ¬uma: "desde a chegada" e "nesta fase" respondem perguntas
+              diferentes e antes dividiam o mesmo rótulo. Ver src/components/Tempo. */}
+          <Column field="dias" header={cabecalhoComHint('Desde a chegada',
+              `Há quanto tempo o pedido ENTROU no sistema. Teto: ${SLA_META_DIAS_TRIAGEM} dias — acima disso está errado (fica vermelho). Onde a chegada tem hora registrada, mostra minutos/horas; onde só há a data, mostra dias.`)}
             sortable filter dataType="numeric" filterElement={filtroMaiorQue('mais de…')}
             style={{ minWidth: '9rem' }}
-            body={(r: ProcessoJuridicoRow) => {
-              const h = r.horasNoFunil ?? r.dias * 24;
-              const dias = Math.floor(h / 24), horas = h % 24;
-              const estourou = r.dias > SLA_META_DIAS_TRIAGEM;
-              return <Tag value={`${dias}d ${horas}h`} severity={estourou ? 'danger' : dias >= SLA_META_DIAS_TRIAGEM - 1 ? 'warning' : 'success'}
-                icon={estourou ? 'pi pi-exclamation-triangle' : 'pi pi-clock'}
-                title={estourou ? `Passou do teto de ${SLA_META_DIAS_TRIAGEM} dias` : `Dentro do teto de ${SLA_META_DIAS_TRIAGEM} dias`} />;
-            }} />
+            body={(r: ProcessoJuridicoRow) => (
+              <TempoDecorrido minutos={r.minutosDesdeChegada} dias={r.diasDesdeChegada ?? r.dias}
+                comHora={r.chegadaComHora} teto={SLA_META_DIAS_TRIAGEM}
+                oQueConta="Tempo desde a chegada do pedido" />
+            )} />
+          <Column field="diasNaFase" header={cabecalhoComHint('Nesta fase',
+              'Há quanto tempo o pedido está parado NESTA etapa. É outra conta: um pedido pode ter chegado há 60 dias e estar nesta fase há 2.')}
+            sortable style={{ minWidth: '8rem' }}
+            body={(r: ProcessoJuridicoRow) => (
+              <TempoDecorrido minutos={r.minutosNaFase} dias={r.diasNaFase}
+                comHora={r.faseComHora} oQueConta="Tempo parado nesta fase" />
+            )} />
           {colunaAnexosSES(dataComSequencial)}
           {/* CNJ e SEI nas colunas (@R 27/08 12:59): os dois números do pedido, buscáveis e copiáveis */}
             {/* 17/09/2026: esta tela tinha a SUA PRÓPRIA coluna de CNJ, cópia da compartilhada.

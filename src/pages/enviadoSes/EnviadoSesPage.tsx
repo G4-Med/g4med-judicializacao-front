@@ -291,7 +291,7 @@ export function EnviadoSesPage() {
             filterFunction={casaPeriodo}
             filterElement={filtroOpcoes(OPCOES_PERIODO, 'Todas')} header={cabecalhoComHint('Enviado em', 'Data em que o orçamento foi enviado ao Estado.')} sortable style={{ minWidth: '8rem' }}
             body={(r: LinhaEnviadoSes) => fmtData(r.dataEnvio)} />
-          <Column field="dias" header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')} sortable filter
+          <Column field="dias" header={cabecalhoComHint('Aguardando', 'Dias corridos desde o envio à SES — ou desde a chegada do pedido, quando ainda não houve envio.')} sortable filter
             dataType="numeric" filterElement={filtroMaiorQue('mais de…')} style={{ minWidth: '8rem' }}
             body={(r: LinhaEnviadoSes) => (r.dias >= SLA_VERIFICACAO_2
               ? <Tag value={`${r.dias}d`} severity="danger" icon="pi pi-exclamation-triangle"

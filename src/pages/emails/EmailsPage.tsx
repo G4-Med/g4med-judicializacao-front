@@ -683,7 +683,7 @@ export function EmailsPage() {
 
           <Column
             field="dias"
-            header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')}
+            header={cabecalhoComHint('Aguardando cadastro', 'Dias corridos desde que o e-mail chegou e ficou pendente de virar pedido.')}
             sortable
             filter
             dataType="numeric"

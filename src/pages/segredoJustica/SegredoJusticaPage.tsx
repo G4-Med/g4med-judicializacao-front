@@ -635,7 +635,7 @@ useEffect(() => { carregarDados(); }, [fila]);
           />
           <Column
             field="dias"
-            header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')}
+            header={cabecalhoComHint('Nesta fase', 'Dias corridos desde que o pedido ENTROU NESTA FASE. Não é o tempo total no sistema: um pedido pode ter chegado há 60 dias e estar nesta fase há 2.')}
             sortable
             filter
             dataType="numeric"
