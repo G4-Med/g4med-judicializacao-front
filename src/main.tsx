@@ -45,7 +45,9 @@ locale('pt');
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    {/* base do bundle: '/' no Netlify, '/app/' quando publicamos pelo nosso proprio
+        nginx. Ler do BASE_URL faz a MESMA build servir nos dois lugares. */}
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <App />
     </BrowserRouter>
   </React.StrictMode>
