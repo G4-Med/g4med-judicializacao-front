@@ -64,6 +64,7 @@ interface Cliente {
   takeRate: number | null;
   modoValidacao: string;
   origemCliente: string;
+  categoria: string;
   status: boolean;
   emailAcesso: string;
   contrato: boolean;
@@ -173,6 +174,7 @@ const clienteInicial: ClienteTableRow = {
   takeRate: null,
   modoValidacao: '',
   origemCliente: '',
+  categoria: '',
   status: true,
   emailAcesso: '',
   contrato: false,
@@ -285,7 +287,8 @@ export function ClientesPage() {
     status: { value: '', matchMode: FilterMatchMode.EQUALS },
     contrato: { value: '', matchMode: FilterMatchMode.EQUALS },
     procuracao: { value: '', matchMode: FilterMatchMode.EQUALS },
-    origemCliente: { value: '', matchMode: FilterMatchMode.EQUALS }
+    origemCliente: { value: '', matchMode: FilterMatchMode.EQUALS },
+    categoria: { value: '', matchMode: FilterMatchMode.EQUALS }
   });
 
 
@@ -329,6 +332,44 @@ export function ClientesPage() {
     { label: 'Instituto Mateus', value: 'INSTITUTO_MATEUS', icon: 'pi pi-circle-fill', cor: '#0F766E' },
     { label: 'G4MED', value: 'G4MED', icon: 'pi pi-circle-fill', cor: '#7C3AED' }
   ];
+
+  // CATEGORIA (@R 17/09): o QUE o cadastro é. Responde outra pergunta que a "Dono"
+  // (de qual marca veio) — um hospital pode vir de qualquer origem, e é a categoria que
+  // muda a conversa comercial.
+  const categoriaOptions = [
+    { label: 'Médico', value: 'MEDICO' },
+    { label: 'Hospital', value: 'HOSPITAL' },
+    { label: 'Clínica', value: 'CLINICA' },
+    { label: 'Prestador de serviço', value: 'PRESTADOR' }
+  ];
+
+  const CATEGORIA_COR: Record<string, string> = {
+    MEDICO: '#2563EB', HOSPITAL: '#B45309', CLINICA: '#0F766E',
+    PRESTADOR: '#7C3AED', SEM_PROFISSIONAL: '#6B7280'
+  };
+  const CATEGORIA_LABEL: Record<string, string> = {
+    MEDICO: 'Médico', HOSPITAL: 'Hospital', CLINICA: 'Clínica',
+    PRESTADOR: 'Prestador de serviço', SEM_PROFISSIONAL: 'Sem profissional'
+  };
+
+  const categoriaFiltroOpcoes = [
+    { label: 'Todas', value: null, icon: 'pi pi-list', cor: '#5b6b7a' },
+    ...Object.keys(CATEGORIA_LABEL).map((k) => ({
+      label: CATEGORIA_LABEL[k], value: k, icon: 'pi pi-circle-fill', cor: CATEGORIA_COR[k]
+    }))
+  ];
+
+  const getCategoriaTag = (value: string) => {
+    if (!value || !CATEGORIA_LABEL[value]) {
+      return <span className="mc-origem-vazio">— não definida</span>;
+    }
+    return (
+      <span className="mc-origem-tag">
+        <i className="pi pi-circle-fill" style={{ color: CATEGORIA_COR[value] }} />
+        {CATEGORIA_LABEL[value]}
+      </span>
+    );
+  };
 
   const getOrigemTag = (value: string) => {
     if (!value || !ORIGEM_COR[value]) {
@@ -381,6 +422,7 @@ export function ClientesPage() {
       grupoWhatsapp: m.grupoWhatsapp ?? '',
       takeRate: m.takeRate !== null && m.takeRate !== undefined ? Number(m.takeRate) : null,
       origemCliente: m.origemCliente ?? '',
+      categoria: m.categoria ?? '',
       status: m.status,
       createDate: m.createDate?.split('T')[0] ?? '',
       updateDate: m.updateDate?.split('T')[0] ?? '',
@@ -928,6 +970,7 @@ const handleSalvarCadastro = async () => {
       takeRate: novoCliente.takeRate,
       status: novoCliente.status,
       origemCliente: novoCliente.origemCliente || null,
+      categoria: novoCliente.categoria || null,
     });
 
     const idMedico = medico.id;
@@ -1037,6 +1080,7 @@ const handleSalvarEdicao = async () => {
       takeRate: clienteEditando.takeRate,
       status: clienteEditando.status,
       origemCliente: clienteEditando.origemCliente || null,
+      categoria: clienteEditando.categoria || null,
     });
 
     const [dadosMed, empresa, pessoais, bancarios] = await Promise.all([
@@ -1642,6 +1686,17 @@ const handleSalvarEdicao = async () => {
           />
 
           <Column
+            field="categoria"
+            header="Categoria"
+            sortable
+            filter
+            showFilterMenu={false}
+            filterElement={(options) => booleanFilterElement(options, categoriaFiltroOpcoes)}
+            body={(rowData: ClienteTableRow) => getCategoriaTag(rowData.categoria)}
+            style={{ minWidth: '12rem' }}
+          />
+
+          <Column
             field="origemCliente"
             header="Dono"
             sortable
@@ -1782,6 +1837,10 @@ const handleSalvarEdicao = async () => {
               <div className="field">
                 <label>Dono do cliente</label>
                 <Dropdown value={novoCliente.origemCliente} options={origemOptions} optionLabel="label" onChange={(e) => updateNovoCliente('origemCliente', e.value)} placeholder="Selecione" />
+              </div>
+              <div className="field">
+                <label>Categoria</label>
+                <Dropdown value={novoCliente.categoria} options={categoriaOptions} optionLabel="label" onChange={(e) => updateNovoCliente('categoria', e.value)} placeholder="Médico, hospital, clínica…" />
               </div>
 
               <div className="field field-span-4 cadastrar-usuario-row">
@@ -1959,6 +2018,7 @@ const handleSalvarEdicao = async () => {
                   </div>
                   <div className="field"><label>Status</label><Dropdown value={clienteEditando.status} options={statusOptions} optionLabel="label" onChange={(e) => updateClienteEditando('status', e.value)} itemTemplate={statusTemplate} valueTemplate={statusTemplate} placeholder="Selecione" /></div>
                   <div className="field"><label>Dono do cliente</label><Dropdown value={clienteEditando.origemCliente} options={origemOptions} optionLabel="label" onChange={(e) => updateClienteEditando('origemCliente', e.value)} placeholder="Selecione" /></div>
+                  <div className="field"><label>Categoria</label><Dropdown value={clienteEditando.categoria} options={categoriaOptions} optionLabel="label" onChange={(e) => updateClienteEditando('categoria', e.value)} placeholder="Médico, hospital, clínica…" /></div>
 
                   <div className="field field-span-4 cadastrar-usuario-row">
                     <Button

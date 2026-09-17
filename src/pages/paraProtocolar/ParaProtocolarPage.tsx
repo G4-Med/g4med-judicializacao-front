@@ -375,17 +375,32 @@ export function ParaProtocolarPage() {
     }
   };
 
-  const emailRecebimentoBodyTemplate = (rowData: ParaProtocolarTableRow) => (
-    <Button
-      icon="pi pi-envelope"
-      rounded
-      outlined
-      severity="help"
-      loading={baixandoEmailId === rowData.id}
-      aria-label={`Baixar e-mail de recebimento do pedido ${rowData.id}`}
-      onClick={() => baixarEmailRecebimento(rowData)}
-    />
-  );
+  // O BOTÃO SÓ EXISTE SE HOUVER E-MAIL (@R 17/09: "tem manual? em origem mas eles tem
+  // emails"). Ele aparecia em TODA linha, inclusive nas 8 de 9 que não têm e-mail nenhum
+  // guardado — e botão presente é afirmação: quem o vê conclui que o e-mail existe e que a
+  // origem "Manual?" está errada. Era o botão que mentia, não a origem.
+  // Desabilitado em vez de escondido: sumir deixaria a coluna vazia sem dizer por quê, e a
+  // pergunta ("cadê o e-mail deste?") voltaria igual.
+  const emailRecebimentoBodyTemplate = (rowData: ParaProtocolarTableRow) => {
+    const temEmail = (rowData as { temEmailOriginal?: boolean }).temEmailOriginal === true;
+    return (
+      <Button
+        icon={temEmail ? 'pi pi-envelope' : 'pi pi-envelope'}
+        rounded
+        outlined
+        severity={temEmail ? 'help' : 'secondary'}
+        disabled={!temEmail}
+        loading={baixandoEmailId === rowData.id}
+        aria-label={temEmail
+          ? `Baixar e-mail de recebimento do pedido ${rowData.id}`
+          : `Pedido ${rowData.id} não tem e-mail de recebimento guardado`}
+        title={temEmail
+          ? 'Baixar o e-mail original que criou este pedido.'
+          : 'Este pedido não tem e-mail de recebimento guardado — foi cadastrado à mão. O e-mail do solicitante que aparece na ficha foi digitado no cadastro, para se poder responder; não é o e-mail que criou o pedido.'}
+        onClick={() => temEmail && baixarEmailRecebimento(rowData)}
+      />
+    );
+  };
 
   const handleCopiar = async (rowData: ParaProtocolarTableRow) => {
     setCopiandoId(rowData.id);

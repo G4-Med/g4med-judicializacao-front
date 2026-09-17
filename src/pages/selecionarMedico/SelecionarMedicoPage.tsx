@@ -109,6 +109,9 @@ export function SelecionarMedicoPage() {
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
     vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    slaFaseHorasRestantes: { value: '', matchMode: FilterMatchMode.EQUALS },
+    // mesma classe: coluna com filter sem entrada no objeto = campo aceita e tabela ignora.
+    idade: { value: '', matchMode: FilterMatchMode.EQUALS },
     segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
     origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
     sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },

@@ -140,6 +140,8 @@ export function SegredoJusticaPage() {
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
     vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    // @R 17/09: a coluna pedia filter e não tinha entrada aqui — digitar não filtrava nada.
+    statusProcesso: { value: '', matchMode: FilterMatchMode.CONTAINS },
     segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
     origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
     sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },

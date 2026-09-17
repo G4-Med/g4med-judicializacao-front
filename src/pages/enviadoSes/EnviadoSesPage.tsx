@@ -88,6 +88,11 @@ export function EnviadoSesPage() {
     ...FILTROS_IDENTIFICACAO,
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     procedimento: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    // A coluna Médico pedia `filter` mas não tinha entrada AQUI. Numa tabela controlada
+    // (filters={filtros}) o PrimeReact não guarda o que você digita numa coluna ausente
+    // deste objeto: o campo aceita o texto, a tabela não muda, e nada acusa erro.
+    // @R 17/09: "filtro do médico nao está funcionando dropbox ou digitar".
+    medico: { value: '', matchMode: FilterMatchMode.CONTAINS },
     dias: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
   });
 
