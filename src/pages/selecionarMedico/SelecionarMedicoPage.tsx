@@ -119,17 +119,17 @@ export function SelecionarMedicoPage() {
     slaFaseHorasRestantes: { value: '', matchMode: FilterMatchMode.EQUALS },
     // mesma classe: coluna com filter sem entrada no objeto = campo aceita e tabela ignora.
     idade: { value: '', matchMode: FilterMatchMode.EQUALS },
-    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
-    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
-    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    segredo: { value: null, matchMode: 'custom' },
+    origemRegistro: { value: null, matchMode: 'custom' },
+    sesAnexos: { value: null, matchMode: 'custom' },
     cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
     temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
-    tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
+    tipoPaciente: { value: null, matchMode: 'custom' },
     ...FILTRO_PAGAMENTO,   // @R 28/08: pedir cotação para caso JÁ PAGO é trabalho perdido
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     procedimento: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    area: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    area: { value: '', matchMode: 'custom' },
     subarea: { value: '', matchMode: FilterMatchMode.CONTAINS },
     medico: { value: '', matchMode: FilterMatchMode.CONTAINS },
     dias: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },

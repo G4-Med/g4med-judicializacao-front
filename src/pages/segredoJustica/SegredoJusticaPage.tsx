@@ -142,12 +142,12 @@ export function SegredoJusticaPage() {
     vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
     // @R 17/09: a coluna pedia filter e não tinha entrada aqui — digitar não filtrava nada.
     statusProcesso: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
-    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
-    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    segredo: { value: null, matchMode: 'custom' },
+    origemRegistro: { value: null, matchMode: 'custom' },
+    sesAnexos: { value: null, matchMode: 'custom' },
     cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
     temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
-    tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
+    tipoPaciente: { value: null, matchMode: 'custom' },
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     procedimento: { value: '', matchMode: FilterMatchMode.CONTAINS },

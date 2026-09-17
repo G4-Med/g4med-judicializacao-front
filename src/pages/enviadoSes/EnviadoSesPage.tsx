@@ -76,12 +76,12 @@ export function EnviadoSesPage() {
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
     vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
-    segredo: { value: null, matchMode: FilterMatchMode.EQUALS },
-    origemRegistro: { value: null, matchMode: FilterMatchMode.EQUALS },
-    sesAnexos: { value: null, matchMode: FilterMatchMode.EQUALS },
+    segredo: { value: null, matchMode: 'custom' },
+    origemRegistro: { value: null, matchMode: 'custom' },
+    sesAnexos: { value: null, matchMode: 'custom' },
     cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
     temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
-    tipoPaciente: { value: null, matchMode: FilterMatchMode.EQUALS },
+    tipoPaciente: { value: null, matchMode: 'custom' },
     dataEnvio: { value: null, matchMode: FilterMatchMode.CUSTOM },
     valorOrcamento: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     ...FILTRO_PAGAMENTO,   // filtrar por exato · não exato · empenhado · sem pagamento
