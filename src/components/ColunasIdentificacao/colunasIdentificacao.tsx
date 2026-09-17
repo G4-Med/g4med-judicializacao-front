@@ -120,6 +120,44 @@ export const filtroMaiorQue = (placeholder = 'mais de…') => (options: any) => 
   />
 );
 
+/** Filtro de DATA por FAIXA DE TEMPO — nunca por data exata.
+ *
+ *  Ninguém procura "chegou em 14/03": procura "chegou esta semana" ou "está parado há mais
+ *  de um mês". Filtro de data exata exige a pessoa saber o dia que ela está procurando, que
+ *  é justamente o que ela não sabe quando abre o filtro.
+ *
+ *  `null` (sem data) NÃO entra em nenhuma faixa de tempo — tem opção própria. Não ter data
+ *  é diferente de ter uma data antiga, e juntar os dois esconde o pedido que nunca andou. */
+export const OPCOES_PERIODO = [
+  { label: 'Últimos 7 dias', value: '7' },
+  { label: 'Últimos 30 dias', value: '30' },
+  { label: 'Últimos 90 dias', value: '90' },
+  { label: 'Há mais de 90 dias', value: 'velho' },
+  { label: 'Sem data', value: 'sem' },
+];
+
+/** O casamento da opção com o dado. Usar com `filterMatchMode="custom"`. */
+export const casaPeriodo = (data: unknown, escolha: unknown): boolean => {
+  if (!escolha) return true;
+  if (!data) return escolha === 'sem';
+  if (escolha === 'sem') return false;
+  const dias = (Date.now() - new Date(data as string).getTime()) / 86400000;
+  if (Number.isNaN(dias)) return false;        // data ilegível ¬entra em faixa nenhuma
+  if (escolha === '7') return dias <= 7;
+  if (escolha === '30') return dias <= 30;
+  if (escolha === '90') return dias <= 90;
+  if (escolha === 'velho') return dias > 90;
+  return false;
+};
+
+/** Tipo de paciente — os 4 valores que `tagTipoPaciente` renderiza. */
+export const OPCOES_TIPO_PACIENTE = [
+  { label: 'Recém-nascido', value: 'Recém-nascido' },
+  { label: 'Pediátrico', value: 'Pediátrico' },
+  { label: 'Adulto', value: 'Adulto' },
+  { label: 'Idoso', value: 'Idoso' },
+];
+
 /** As opções de cada coluna, num lugar só — para a tela e o filtro nunca discordarem. */
 export const OPCOES_SEGREDO = [
   { label: 'Segredo', value: 'sim' },

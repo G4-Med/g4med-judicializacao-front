@@ -313,7 +313,7 @@ export function ProcessosPage() {
     ...FILTRO_PAGAMENTO,   // filtrar por exato · não exato · empenhado · sem pagamento
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: searchParams.get('paciente') ?? '', matchMode: FilterMatchMode.CONTAINS },
-    idade: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    idade: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     procedimento: { value: '', matchMode: FilterMatchMode.CONTAINS },
     refPreco: { value: '', matchMode: FilterMatchMode.CONTAINS },
     medico: { value: null, matchMode: FilterMatchMode.EQUALS },
@@ -2114,7 +2114,7 @@ ${linhasAnexos}
             header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')}
             sortable
             filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
+            dataType="numeric" filterElement={filtroMaiorQue('a partir de…')}
             style={{ minWidth: '7rem' }}
           /> */}
 <Column

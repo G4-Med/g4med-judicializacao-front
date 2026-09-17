@@ -14,7 +14,7 @@ import { getJuridico, salvarJuridico, getStatusOrders, getAnexosOrder, getCnjCan
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import './JuridicoPage.css';
-import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaSegredo, colunaProcedimento, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaCnj, colunaSei, colunaComarca, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaSegredo, colunaProcedimento, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaCnj, colunaSei, colunaComarca, filtroMaiorQue, casaPeriodo, OPCOES_PERIODO, filtroOpcoes } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { PainelPrecos } from '../../components/PainelPrecos/PainelPrecos';
@@ -157,7 +157,7 @@ export function JuridicoPage() {
   const [filters, setFilters] = useState<DataTableFilterMeta>({
     ...FILTRO_PAGAMENTO,   // já pago no CNJ? decide se vale cotar
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    idade: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    idade: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     procedimento: { value: '', matchMode: FilterMatchMode.CONTAINS },
     nprocesso: { value: '', matchMode: FilterMatchMode.CONTAINS },
     numeroSei: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -504,6 +504,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
             header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')}
             sortable
             filter
+            dataType="numeric"
             filterElement={(o) => filterElement(o, 'Buscar')}
             style={{ minWidth: '7rem' }}
           />
@@ -511,7 +512,10 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
             body={(r: any) => tagTipoPaciente(r.tipoPaciente)} />
           {colunaProcedimento()}
           {/* @R 28/08: "a data que o pedido chegou e o horário e o tempo atual no funil" */}
-<Column field="chegouEm" header={cabecalhoComHint('Chegou em',
+<Column field="chegouEm"
+            filter showFilterMenu={false} filterMatchMode="custom"
+            filterFunction={casaPeriodo}
+            filterElement={filtroOpcoes(OPCOES_PERIODO, 'Todas')} header={cabecalhoComHint('Chegou em',
               'Quando o pedido ENTROU no sistema (o monitor lê o e-mail a cada 10 min). Data e hora.')}
             sortable style={{ minWidth: '10rem' }}
             body={(r: ProcessoJuridicoRow) => {

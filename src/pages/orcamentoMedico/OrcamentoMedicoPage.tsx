@@ -24,7 +24,7 @@ import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { ContadorRegistros, contarPorCampo } from '../../components/ContadorRegistros/ContadorRegistros';
 import { CabecalhoFase } from '../../components/CabecalhoFase/CabecalhoFase';
-import { colunaSolicitante, tagTipoPaciente, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaProcedimento, colunaOrigem, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, tagTipoPaciente, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaProcedimento, colunaOrigem, filtroMaiorQue, casaPeriodo, OPCOES_PERIODO, filtroOpcoes } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -153,7 +153,7 @@ export function OrcamentoMedicoPage() {
     ...FILTRO_PAGAMENTO,   // @R 28/08: pedir cotação para caso JÁ PAGO é trabalho perdido
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
     paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
-    idade: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    idade: { value: null, matchMode: FilterMatchMode.GREATER_THAN_OR_EQUAL_TO },
     procedimento: { value: '', matchMode: FilterMatchMode.CONTAINS },
     medico: { value: null, matchMode: FilterMatchMode.EQUALS },
     area: { value: '', matchMode: FilterMatchMode.CONTAINS },
@@ -649,7 +649,7 @@ ${blocos}
               no campo de visão de quem vai pedir, ¬no fim da tabela. */}
           {colunaRepedido()}
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')} sortable filter
-            filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '7rem' }} />
+            dataType="numeric" filterElement={filtroMaiorQue('a partir de…')} style={{ minWidth: '7rem' }} />
           <Column field="tipoPaciente" header={cabecalhoComHint('Tipo', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
             body={(r: any) => tagTipoPaciente(r.tipoPaciente)} />
           {colunaProcedimento()}
@@ -657,9 +657,12 @@ ${blocos}
             filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '10rem' }} />
           <Column field="medico" header={cabecalhoComHint('Médico', 'Profissional da rede que cotou (ou vai cotar) este procedimento.')} sortable filter
             filterElement={(o) => dropdownFilterElement(o, medicosOptions)} style={{ minWidth: '14rem' }} />
-          <Column field="dataStatusJuridico" header="Data Solicitação"
-            body={(r) => formatarData(r.dataStatusJuridico)} sortable filter
-            filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '12rem' }} />
+          <Column field="dataStatusJuridico"
+            filter showFilterMenu={false} filterMatchMode="custom"
+            filterFunction={casaPeriodo}
+            filterElement={filtroOpcoes(OPCOES_PERIODO, 'Todas')} header="Data Solicitação"
+            body={(r) => formatarData(r.dataStatusJuridico)} sortable
+            style={{ minWidth: '12rem' }} />
           <Column field="dias" header="Dias em Aberto" sortable filter
             dataType="numeric" filterElement={filtroMaiorQue('mais de…')} style={{ minWidth: '10rem' }} />
           <Column field="statusOrcamento" header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}

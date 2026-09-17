@@ -20,7 +20,7 @@ import { CabecalhoFase } from '../../components/CabecalhoFase/CabecalhoFase';
 import { ContadorRegistros } from '../../components/ContadorRegistros/ContadorRegistros';
 import {
   colunaCnj, colunaSei, colunaComarca, colunaCadastro, colunaSegredo, colunaInteiroTeor,
-  colunaSolicitante, tagTipoPaciente, FILTROS_IDENTIFICACAO, nomeComCopiar, cabecalhoComHint, colunaOrigem, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+  colunaSolicitante, tagTipoPaciente, FILTROS_IDENTIFICACAO, nomeComCopiar, cabecalhoComHint, colunaOrigem, filtroMaiorQue, casaPeriodo, OPCOES_PERIODO, filtroOpcoes, OPCOES_TIPO_PACIENTE } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -259,6 +259,8 @@ export function EnviadoSesPage() {
           {colunaRepedido()}
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')} sortable style={{ minWidth: '5rem' }} />
           <Column field="tipoPaciente" header={cabecalhoComHint('Tipo', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
+            filter showFilterMenu={false} filterMatchMode="equals"
+            filterElement={filtroOpcoes(OPCOES_TIPO_PACIENTE, 'Todos')}
             body={(r: LinhaEnviadoSes) => tagTipoPaciente(r.tipoPaciente)} />
           <Column field="procedimento" header={cabecalhoComHint('Procedimento', 'O que a decisão judicial determinou. É a chave para achar o preço histórico.')} sortable filter
             filterElement={(o) => filterElement(o, 'BUSCAR')} style={{ minWidth: '18rem' }} />
@@ -270,9 +272,14 @@ export function EnviadoSesPage() {
               ? <Tag value="Segredo de Justiça" severity="danger" icon="pi pi-lock" />
               : <Tag value="Sem protocolo" severity="warning" icon="pi pi-file-excel"
                   title="Orçamento foi à SES, mas o protocolo nos autos ficou de fora (prazo)" />)} />
-          <Column field="valorOrcamento" header={cabecalhoComHint('Valor enviado', 'Valor do orçamento que enviamos ao Estado por este pedido.')} sortable style={{ minWidth: '9rem' }}
+          <Column field="valorOrcamento"
+            filter showFilterMenu={false} dataType="numeric"
+            filterElement={filtroMaiorQue('acima de…')} header={cabecalhoComHint('Valor enviado', 'Valor do orçamento que enviamos ao Estado por este pedido.')} sortable style={{ minWidth: '9rem' }}
             body={(r: LinhaEnviadoSes) => (r.valorOrcamento ? fmtBRL(r.valorOrcamento) : '—')} />
-          <Column field="dataEnvio" header={cabecalhoComHint('Enviado em', 'Data em que o orçamento foi enviado ao Estado.')} sortable style={{ minWidth: '8rem' }}
+          <Column field="dataEnvio"
+            filter showFilterMenu={false} filterMatchMode="custom"
+            filterFunction={casaPeriodo}
+            filterElement={filtroOpcoes(OPCOES_PERIODO, 'Todas')} header={cabecalhoComHint('Enviado em', 'Data em que o orçamento foi enviado ao Estado.')} sortable style={{ minWidth: '8rem' }}
             body={(r: LinhaEnviadoSes) => fmtData(r.dataEnvio)} />
           <Column field="dias" header={cabecalhoComHint('Dias', 'Dias corridos desde a entrada do pedido nesta fase. Compare com o SLA no cabeçalho.')} sortable filter
             dataType="numeric" filterElement={filtroMaiorQue('mais de…')} style={{ minWidth: '8rem' }}

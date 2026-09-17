@@ -637,6 +637,10 @@ export function ProtocoladosPage() {
             field="diasSemAtualizacao"
             header={cabecalhoComHint('Sem atualização', 'Dias desde o último acompanhamento registrado. SLA: atualizar a cada 15 dias.')}
             sortable
+            filter
+            showFilterMenu={false}
+            dataType="numeric"
+            filterElement={filtroMaiorQue('mais de…')}
             style={{ minWidth: '9rem' }}
             body={(r: any) => (r.diasSemAtualizacao >= 30
               ? <Tag value={`${r.diasSemAtualizacao}d`} severity="danger" icon="pi pi-exclamation-triangle"
