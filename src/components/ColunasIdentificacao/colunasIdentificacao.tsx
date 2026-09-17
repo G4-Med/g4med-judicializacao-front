@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
@@ -6,6 +6,7 @@ import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
 import { BotaoCopiar } from '../BotaoCopiar/BotaoCopiar';
+import { useFichaPedido } from '../FichaPedido/FichaPedidoContext';
 import { uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos } from '../../services/api/orders';
 import './colunasIdentificacao.css';
 
@@ -531,6 +532,36 @@ export function colunaComarca(largura = '11rem') {
  *  processo é segredo de justiça ou sem segredo em cada página"). 3 estados do backend:
  *  sim = marca confirmada · possivel = API DataJud sinalizou, aguardando confirmação
  *  humana (aba Candidatos do Segredo) · nao = sem marca nem sinal. */
+/** Torna uma etiqueta da tabela CLICÁVEL, abrindo a ficha do pedido (@R 17/09: "ao
+ *  clicar em sem segredo ou segredo deveria abrir a ficha com a justificativa,
+ *  observações e orçamentos e informações").
+ *
+ *  POR QUE ABRIR A FICHA E NÃO UM POPUP PRÓPRIO: a ficha JÁ mostra a decisão jurídica,
+ *  as observações, o orçamento e os arquivos de cada fase — é literalmente o que ele
+ *  pediu. Um popup novo ao lado seria uma segunda verdade para manter, e a próxima
+ *  melhoria teria que ser feita duas vezes.
+ *
+ *  Precisa ser um COMPONENTE (¬uma função que retorna JSX dentro do body da coluna)
+ *  porque `useFichaPedido` é um hook: chamá-lo dentro do `body={}` da coluna quebraria
+ *  as regras de hooks — o body roda por linha, em ordem que muda com filtro e ordenação.
+ */
+function AbreFicha({ id, children, titulo }: { id?: number; children: React.ReactNode; titulo?: string }) {
+  const { abrir, disponivel } = useFichaPedido();
+  if (!id || !disponivel) return <>{children}</>;   // fora do provider, segue só exibindo
+  return (
+    <span
+      className="ident-abre-ficha"
+      role="button"
+      tabIndex={0}
+      title={titulo ?? 'Abrir a ficha deste pedido'}
+      onClick={(e) => { e.stopPropagation(); abrir(id); }}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrir(id); } }}
+    >
+      {children}
+    </span>
+  );
+}
+
 export function colunaSegredo(largura = '9rem', dados?: any[]) {
   return (
     <Column key="col-segredo" field="segredo" header={cabecalhoComHint('Segredo', EXPLICA.segredo)} sortable
@@ -541,9 +572,9 @@ export function colunaSegredo(largura = '9rem', dados?: any[]) {
       body={(r: LinhaIdentificada) => {
         // @R 17/09: "encurtar o nome Segredo de Justiça para não quebrar linha". O texto
         // completo vai para o hover — encurta o que ocupa espaço, ¬o que informa.
-        if (r.segredo === 'sim') return <Tag value="Segredo" severity="danger" icon="pi pi-lock" title={`Segredo de Justiça — ${r.segredoFonte ?? 'marcado no sistema'}`} />;
-        if (r.segredo === 'possivel') return <Tag value="Possível" severity="warning" icon="pi pi-question-circle" title={`Possível segredo de justiça: sinal da API, ainda não confirmado. Confirme na tela Segredo de Justiça. ${r.segredoFonte ?? ''}`} />;
-        if (r.segredo === 'nao') return <Tag value="Sem segredo" severity="secondary" title={r.segredoFonte ?? 'Sem marca nem sinal da API'} />;
+        if (r.segredo === 'sim') return <AbreFicha id={(r as any).id} titulo="Abrir a ficha: decisão jurídica, observações, orçamento e arquivos"><Tag value="Segredo" severity="danger" icon="pi pi-lock" title={`Segredo de Justiça — ${r.segredoFonte ?? 'marcado no sistema'}`} /></AbreFicha>;
+        if (r.segredo === 'possivel') return <AbreFicha id={(r as any).id} titulo="Abrir a ficha: decisão jurídica, observações, orçamento e arquivos"><Tag value="Possível" severity="warning" icon="pi pi-question-circle" title={`Possível segredo de justiça: sinal da API, ainda não confirmado. Confirme na tela Segredo de Justiça. ${r.segredoFonte ?? ''}`} /></AbreFicha>;
+        if (r.segredo === 'nao') return <AbreFicha id={(r as any).id} titulo="Abrir a ficha: decisão jurídica, observações, orçamento e arquivos"><Tag value="Sem segredo" severity="secondary" title={r.segredoFonte ?? 'Sem marca nem sinal da API'} /></AbreFicha>;
         return <span className="ident-vazio">—</span>;
       }} />
   );
@@ -771,7 +802,10 @@ export function colunaOrigem(dados?: any[]) {
       body={(r: any) => r.origemRegistro === 'manual'
         ? <Tag value="Manual" severity="warning" icon="pi pi-user-edit" title="Cadastrado à mão pela equipe (sem e-mail de origem; nenhuma resposta automática saiu)." />
         : r.origemRegistro === 'email'
-        ? <Tag value="E-mail" severity="info" icon="pi pi-envelope" title="Cadastro automático a partir do e-mail da SES." />
+        // Clicar abre a ficha, que traz o e-mail original com o conteúdo (@R 17/09: "ao
+        // clicar em email na coluna Origem deveria abrir o email"). A ficha já busca o
+        // corpo sob demanda — só quem clica paga o download do .eml no R2.
+        ? <AbreFicha id={r.id} titulo="Abrir a ficha e ler o e-mail que criou este pedido"><Tag value="E-mail" severity="info" icon="pi pi-envelope" title="Cadastro automático a partir do e-mail da SES. Clique para ler o e-mail." /></AbreFicha>
         : r.origemRegistro === 'base_antiga'
         ? <Tag value="Base antiga" severity="secondary" icon="pi pi-history" title={`Lançamento anterior ao sistema, importado da base histórica (30/08).${r.statusLegado ? ' Status original: ' + r.statusLegado : ''}`} />
         : r.origemRegistro ? <Tag value={String(r.origemRegistro)} severity="secondary" />

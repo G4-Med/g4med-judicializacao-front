@@ -114,3 +114,10 @@ body.dark-theme .chip-cadastro--completo { background: rgba(28,122,72,0.16); bor
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase;
   font-size: .82rem;
 }
+
+/* Etiqueta que abre a ficha ao clique (@R 17/09). O cursor e o sublinhado tracejado no
+   hover existem porque etiqueta NÃO parece clicável: sem a dica, a função existe e
+   ninguém descobre — e feature que ninguém acha é igual a feature que não foi feita. */
+.ident-abre-ficha { cursor: pointer; display: inline-flex; border-radius: 6px; }
+.ident-abre-ficha:hover { filter: brightness(.94); text-decoration: underline dotted; text-underline-offset: 3px; }
+.ident-abre-ficha:focus-visible { outline: 2px solid var(--primary-color, #10b981); outline-offset: 2px; }
