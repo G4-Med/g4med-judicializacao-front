@@ -15,6 +15,7 @@ import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import './JuridicoPage.css';
 import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaCnj, colunaSei, colunaComarca } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { CardCnjAConfirmar } from '../../components/CardCnjAConfirmar/CardCnjAConfirmar';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { PainelPrecos } from '../../components/PainelPrecos/PainelPrecos';
@@ -410,6 +411,8 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
       </div>
       </PainelKpis>
 
+      {/* A fila de "alguem precisa escolher o numero" — some sozinha quando nao ha o que decidir. */}
+      <CardCnjAConfirmar />
       <div className="card">
         <h2 className="mc-tabela-titulo">
           <i className="pi pi-table" />Pedidos aguardando triagem jurídica

@@ -1,0 +1,10 @@
+.cnj-confirmar-card { margin-bottom: 1rem; border-left: 4px solid #f59e0b; }
+.cnj-confirmar-cabecalho {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  padding: .25rem 0; cursor: pointer;
+}
+.cnj-confirmar-titulo { font-weight: 600; font-size: 1rem; color: #92400e; display: flex; align-items: center; gap: .5rem; }
+.cnj-confirmar-tag { font-size: .75rem; }
+.cnj-confirmar-sub { display: block; font-size: .8rem; color: #64748b; margin-top: .2rem; }
+.cnj-confirmar-fase { color: #475569; }
+.cnj-confirmar-tabela { margin-top: .75rem; }

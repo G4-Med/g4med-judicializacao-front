@@ -308,3 +308,8 @@ export const decidirCnjSugerido = (orderId: number, sugeridoId: number,
  *  caminho para tentar de novo depois que a leitura melhorou. */
 export const extrairNumerosDosAnexos = (orderId: number) =>
   api.post(`/orders/${orderId}/extrair-numeros/`);
+
+/** Os pedidos que esperam alguém escolher o número do processo — de QUALQUER fase.
+ *  @R 17/09: a varredura gravou 163 sugestões e 65 dos 69 pedidos estão num status que
+ *  nenhuma tela lista. A fase é o que esconde; por isso esta fila não filtra por ela. */
+export const getCnjAConfirmar = () => api.get('/cnj-a-confirmar/');
