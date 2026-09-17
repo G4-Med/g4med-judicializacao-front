@@ -296,6 +296,15 @@ export const getFichaPedido = (orderId: number) =>
 export const getConteudoEmail = (orderId: number, anexoId: number) =>
   api.get(`/orders/${orderId}/emails/${anexoId}/conteudo/`);
 
+/** Lê o arquivo do orçamento com visão computacional e devolve os dados + os alertas de
+ *  conferência (@R 17/09). PROPÕE — o arquivo nem é salvo; quem grava é o envio, depois
+ *  que a pessoa confirma. */
+export const lerOrcamentoDoArquivo = (orderId: number, arquivo: File) => {
+  const form = new FormData();
+  form.append('arquivo', arquivo);
+  return api.post(`/orders/${orderId}/orcamento/ler/`, form);
+};
+
 export const getPreferencia = (chave: string) =>
   api.get(`/preferencias/${chave}/`);
 

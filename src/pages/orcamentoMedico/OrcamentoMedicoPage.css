@@ -735,3 +735,55 @@ body.dark-theme .secao-orcamento h3 { color: #e6eef6; }
 /* Alerta "Sem anexo" (task #192, 26/08) */
 .orcamento-paciente-cel { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .orcamento-tag-sem-anexo { font-size: 10.5px; }
+
+/* ── LEITURA DO ORÇAMENTO (@R 17/09) ────────────────────────────────────────────────
+   A cor da borda carrega o veredito: verde = li e bate · vermelho = divergência GRAVE
+   (provavelmente o arquivo errado) · cinza = não consegui ler.
+   O alerta grave fica em vermelho e o campo NÃO é preenchido nesse caso — com o paciente
+   errado na tela, o valor "certo" é o de outro pedido, e preenchê-lo ajudaria a errar
+   mais rápido. */
+.orc-leitura {
+  border: 1px solid #e2e8f0; border-left-width: 4px; border-radius: 8px;
+  padding: .75rem .9rem; margin: .75rem 0; background: #f8fafc; font-size: .88rem;
+}
+.orc-leitura--lendo  { border-left-color: #64748b; color: #475569; }
+.orc-leitura--ok     { border-left-color: #16a34a; }
+.orc-leitura--grave  { border-left-color: #b42318; background: rgba(180,35,24,.05); }
+.orc-leitura--falhou { border-left-color: #94a3b8; color: #475569; }
+
+.orc-leitura__titulo { display: flex; align-items: center; gap: .45rem; margin: 0 0 .5rem; font-weight: 600; }
+.orc-leitura__motivo { margin: 0; display: flex; align-items: center; gap: .45rem; }
+.orc-conf { font-size: .72rem; padding: .1rem .45rem; border-radius: 999px; font-weight: 700; }
+.orc-conf--alta  { background: #dcfce7; color: #166534; }
+.orc-conf--media { background: #fef3c7; color: #92400e; }
+.orc-conf--baixa { background: #fee2e2; color: #991b1b; }
+
+.orc-leitura__campos { display: grid; grid-template-columns: auto 1fr; gap: .2rem .8rem; margin: 0; }
+.orc-leitura__campos dt { color: #64748b; font-size: .78rem; }
+.orc-leitura__campos dd { margin: 0; font-weight: 500; }
+
+.orc-leitura__itens { margin-top: .5rem; }
+.orc-leitura__itens > summary { cursor: pointer; color: #475569; font-size: .82rem; }
+.orc-leitura__itens ul { list-style: none; padding: 0; margin: .35rem 0 0; }
+.orc-leitura__itens li {
+  display: flex; justify-content: space-between; gap: 1rem;
+  padding: .2rem 0; border-bottom: 1px solid rgba(0,0,0,.05); font-size: .82rem;
+}
+.orc-leitura__obs { margin: .5rem 0 0; font-style: italic; color: #64748b; font-size: .82rem; }
+
+.orc-alerta { display: flex; align-items: flex-start; gap: .45rem; margin: .5rem 0 0; font-size: .85rem; }
+.orc-alerta--grave { color: #b42318; font-weight: 600; }
+.orc-alerta--aviso { color: #b45309; }
+
+/* o campo preenchido pela leitura fica visualmente distinto do digitado */
+.orc-valor--lido .p-inputnumber-input { background: #f0fdf4; border-color: #86efac; }
+.orc-valor__origem {
+  display: inline-flex; align-items: center; gap: .3rem;
+  margin-top: .35rem; font-size: .78rem; color: #166534;
+}
+.orc-valor__origem--vazio { color: #92400e; }
+
+@media (prefers-color-scheme: dark) {
+  .orc-leitura { background: #0f172a; border-color: #1e293b; }
+  .orc-leitura__campos dt, .orc-leitura__obs { color: #94a3b8; }
+}
