@@ -164,3 +164,31 @@ body.dark-theme .mc-notif__head { color: #fff; border-color: #1f2937; }
 body.dark-theme .mc-notif__item { background: #0f172a; border-color: #1f2937; }
 body.dark-theme .mc-notif__item strong { color: #fff; }
 body.dark-theme .mc-notif__item span { color: #cbd5e1; }
+
+/* Selo de versão na barra (@R 17/09/2026). Discreto por desenho: quem precisa dele é quem
+   está PROCURANDO saber se a tela é a nova — não pode competir com a marca nem com o menu.
+   O hover carrega a explicação inteira; a barra carrega só o suficiente para bater o olho. */
+.mc-versao {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .35rem;
+  margin-left: .6rem;
+  padding: .12rem .45rem;
+  border: 1px solid var(--surface-border, #d9dee3);
+  border-radius: 999px;
+  font-size: .68rem;
+  line-height: 1.5;
+  color: var(--text-color-secondary, #6b7280);
+  white-space: nowrap;
+  cursor: help;
+  user-select: all;   /* selecionável: quando algo falha, a 1ª coisa pedida é "qual versão?" */
+}
+.mc-versao__num { font-weight: 600; letter-spacing: .02em; }
+.mc-versao__hora { opacity: .75; }
+.mc-versao:hover { border-color: var(--primary-color, #10b981); }
+
+@media (max-width: 640px) {
+  /* Em tela estreita a barra é disputada; o horário some antes do número, porque
+     "qual versão" ainda identifica o pacote e "que horas" sozinho não identifica nada. */
+  .mc-versao__hora { display: none; }
+}

@@ -16,6 +16,7 @@ import { chaveOnboardingHome } from '../onboarding/useHomeOnboarding'
 import logo from '../../assets/logo-g4med-preta.svg'
 import { AjudaModal } from '../../components/AjudaModal/AjudaModal'
 import './Header.css'
+import { VersaoDoSistema } from './VersaoDoSistema';
 
 interface MinhaSessao {
   username: string;
@@ -190,6 +191,7 @@ export function Header({ onMenuClick }: Props) {
         <span className="mc-brand__mark">
           <img src={logo} alt="G4MED" style={{ height: 40 }} />
         </span>
+        <VersaoDoSistema />
 
         
         </div>
