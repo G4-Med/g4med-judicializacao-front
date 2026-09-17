@@ -71,47 +71,17 @@ body.mc-tabelas-justificadas .mc-scroll-topo { display: none; }
    linha para sabermos"). Antes havia UMA cor para qualquer n>1: 2× e 3× ficavam iguais.
    A escala é âmbar → laranja → vermelho, e a barra lateral engrossa junto, para a
    diferença sobreviver a quem não distingue bem as duas primeiras. */
-.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-2 > td {
-  background: rgba(217, 119, 6, 0.09);
-  box-shadow: inset 3px 0 0 #d97706;
-}
-.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-2:hover > td { background: rgba(217, 119, 6, 0.16); }
-
-.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-3 > td {
-  background: rgba(194, 65, 12, 0.13);
-  box-shadow: inset 5px 0 0 #c2410c;
-}
-.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-3:hover > td { background: rgba(194, 65, 12, 0.20); }
-
-/* Cobrança por TELEFONE = urgência máxima: alguém ligou porque o e-mail não resolveu. */
-.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-max > td {
-  background: rgba(180, 35, 24, 0.16);
-  box-shadow: inset 6px 0 0 #b42318;
-}
-.p-datatable .p-datatable-tbody > tr.mc-linha-repedido-max:hover > td { background: rgba(180, 35, 24, 0.24); }
-
-.mc-repedido-badge {
-  display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .55rem; border-radius: 999px;
-  color: #fff; font-weight: 700; font-size: .78rem; letter-spacing: .02em; white-space: nowrap;
-}
-.mc-repedido-badge--dois   { background: #d97706; box-shadow: 0 0 0 3px rgba(217, 119, 6, .15); }
-.mc-repedido-badge--tres   { background: #c2410c; box-shadow: 0 0 0 3px rgba(194, 65, 12, .18); }
-.mc-repedido-badge--maximo { background: #b42318; box-shadow: 0 0 0 3px rgba(180, 35, 24, .22); }
-
-/* "Único pedido" (@R 17/09): estado NORMAL, e o estilo diz isso — texto discreto, sem
-   badge nem cor de alerta. Ele existe para AFIRMAR que chegou uma vez só; se competisse
-   visualmente com o badge de urgência, a tela inteira viraria ruído e o alerta que
-   importa se perderia no meio. */
-.mc-repedido-unico { color: #64748b; font-size: .8rem; white-space: nowrap; }
-
-.mc-repedido-cab { display: inline-flex; align-items: center; gap: .3rem; color: #b42318; font-weight: 700; }
-.mc-repedido-cab .pi { font-size: .95rem; }
-
-
-/* Barra de rolagem horizontal SEMPRE no rodapé da tabela (@R 29/08 14:23: "a barra de rolagem
+.p-datatable .p-datatable-tbody > tr.p-datatable .p-datatable-tbody > tr.p-datatable .p-datatable-tbody > tr.p-datatable .p-datatable-tbody > tr/* Cobrança por TELEFONE = urgência máxima: alguém ligou porque o e-mail não resolveu. */
+.p-datatable .p-datatable-tbody > tr.p-datatable .p-datatable-tbody > tr/* Barra de rolagem horizontal SEMPRE no rodapé da tabela (@R 29/08 14:23: "a barra de rolagem
    sempre tem que estar na parte do final dos registros, não em cima"). A DataTable scrollable do
    PrimeReact põe o overflow no wrapper; com o cabeçalho fixo (sticky) a barra sobe para o topo. */
 .p-datatable-wrapper { overflow-x: auto !important; overflow-y: visible !important; max-height: none !important; }
 .p-datatable-scrollable .p-datatable-thead > tr > th { position: sticky; top: 0; z-index: 2; }
 
-@media (prefers-color-scheme: dark) { .mc-repedido-unico { color: #94a3b8; } }
+@media (prefers-color-scheme: dark) { }
+
+
+/* ⚠ Este bloco mora AQUI e não em components/Repedido/repedido.css porque aquele
+   arquivo é ÓRFÃO: nenhum módulo o importa (medido 17/09 — grep por "repedido.css"
+   em src devolve zero). CSS em arquivo não-importado não dá erro, não aparece no
+   bundle, e some em silêncio; as classes irmãs (.p-datatable tr:hover 

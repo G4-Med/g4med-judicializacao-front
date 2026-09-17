@@ -418,3 +418,28 @@ body.dark-theme .selecionar-medico-resumo strong { color: #e6eef6; }
 .sm-sla--urgente { background: #fff4e0; color: #b45309; }
 .sm-sla--vencido { background: #fbe9ec; color: #8b2236; font-weight: 600; }
 .sm-sla-vazio { opacity: .5; }
+
+/* ── CANDIDATOS EM ORDEM (@R 17/09 · SPEC 3.1) ───────────────────────────────────
+   O primeiro é destacado, mas os outros NÃO são apagados: a ordem é conselho, e uma
+   lista em que só o topo se lê de verdade vira o mesmo "1 nome" que estávamos
+   substituindo. Os números de cada linha ficam legíveis — é neles que está o motivo. */
+.ia-candidatos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.ia-candidato { border: 1px solid var(--surface-300, #dee2e6); border-radius: 8px; padding: .6rem .75rem; }
+.ia-candidato--topo { border-color: var(--green-400, #22c55e); background: var(--green-50, #f0fdf4); }
+.ia-candidato__nome { font-weight: 600; display: flex; align-items: center; gap: .5rem; }
+.ia-candidato__selo { font-size: .7rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .03em; color: var(--green-700, #15803d); background: var(--green-100, #dcfce7);
+  border-radius: 999px; padding: .1rem .5rem; }
+.ia-candidato__porque { margin-top: .2rem; font-size: .9rem; line-height: 1.4; }
+.ia-candidato__numeros { margin-top: .35rem; display: flex; flex-wrap: wrap; gap: .35rem .75rem;
+  font-size: .8rem; opacity: .85; }
+.ia-candidato__numeros span::before { content: '· '; opacity: .5; }
+.ia-candidato__numeros span:first-child::before { content: ''; }
+/* lacuna declarada, ¬escondida: "não informado" é uma resposta, e some se for cinza demais */
+.ia-candidato__lacuna { font-style: italic; }
+.ia-candidato__unico { margin-top: .4rem; font-size: .85rem; opacity: .8; }
+
+@media (prefers-color-scheme: dark) {
+  .ia-candidato { border-color: var(--surface-600, #4b5563); }
+  .ia-candidato--topo { background: rgba(34,197,94,.10); }
+}

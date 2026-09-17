@@ -140,6 +140,13 @@ export interface SugestaoIAResposta {
   justificativa: string;
   confianca: 'alta' | 'media' | 'baixa';
   isFallback: boolean;
+  /** a ORDEM, ¬um nome: os adequados do melhor para o menos indicado (@R 17/09, SPEC 3.1) */
+  candidatos?: {
+    idMedico: number; nomeMedico: string; porque: string;
+    respondeOrcamento?: string | null; diasParaResponder?: number | null;
+    jaFezDestaSubarea?: number | null; atendePediatrico?: string | null;
+    cargaAtual?: string | null; cidade?: string | null;
+  }[];
   /** os números que sustentam a escolha — o motor já os calculava e descartava (@R 17/09) */
   dossieMedico?: {
     respondeOrcamento?: string;
@@ -158,6 +165,10 @@ export interface SugestaoIAResposta {
              statusProcesso: string; teveOrcamento: boolean; mesmoProcedimento: boolean }[];
   } | null;
 }
+
+/** A secretária LIGOU cobrando (@R 17/09). Incrementa — cobrança é evento, ¬estado. */
+export const registrarRepedidoManual = (orderId: number) =>
+  api.post(`/orders/${orderId}/repedido-manual/`);
 
 export const sugerirMedicoIA = (orderId: number) =>
   api.post(`/ia/sugerir-medico/${orderId}/`);

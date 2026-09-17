@@ -309,3 +309,56 @@ body.dark-theme .p-multiselect {
 .linha-sem-medico.linha-segredo > td { background: #f5f3ff !important; }
 .kpi-sem-medico .kpi-value { color: #c2410c; }
 .kpi-segredo .kpi-value { color: #6d28d9; }
+
+
+
+/* ── ESTILO DO RE-PEDIDO — movido do App.css em 17/09 ──────────────────────────
+   ACHADO: src/App.css NÃO é importado por nenhum módulo (medido: grep por
+   "App.css" em src devolve só um COMENTÁRIO). Era CSS morto — e a prova é que
+   `mc-repedido-badge` tinha 0 ocorrências no bundle enquanto `ia-candidato`,
+   escrito num CSS importado, tinha 13. O badge de urgência que entregamos hoje
+   de manhã estava aparecendo SEM ESTILO em produção, e ninguém erraria nada:
+   CSS em arquivo não-importado não quebra build, não emite aviso, só não existe.
+   Movidas só as regras do re-pedido — não importei o App.css inteiro para não
+   ressuscitar regras legadas que ninguém sabe se ainda valem. */
+.mc-linha-repedido-2 > td {
+  background: rgba(217, 119, 6, 0.09);
+  box-shadow: inset 3px 0 0 #d97706;
+}
+.mc-linha-repedido-2:hover > td { background: rgba(217, 119, 6, 0.16); }
+.mc-linha-repedido-3 > td {
+  background: rgba(194, 65, 12, 0.13);
+  box-shadow: inset 5px 0 0 #c2410c;
+}
+.mc-linha-repedido-3:hover > td { background: rgba(194, 65, 12, 0.20); }
+.mc-linha-repedido-max > td {
+  background: rgba(180, 35, 24, 0.16);
+  box-shadow: inset 6px 0 0 #b42318;
+}
+.mc-linha-repedido-max:hover > td { background: rgba(180, 35, 24, 0.24); }
+
+.mc-repedido-badge {
+  display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .55rem; border-radius: 999px;
+  color: #fff; font-weight: 700; font-size: .78rem; letter-spacing: .02em; white-space: nowrap;
+}
+.mc-repedido-badge--dois   { background: #d97706; box-shadow: 0 0 0 3px rgba(217, 119, 6, .15); }
+.mc-repedido-badge--tres   { background: #c2410c; box-shadow: 0 0 0 3px rgba(194, 65, 12, .18); }
+.mc-repedido-badge--maximo { background: #b42318; box-shadow: 0 0 0 3px rgba(180, 35, 24, .22); }
+/* "Único pedido" (@R 17/09): estado NORMAL, e o estilo diz isso — texto discreto, sem
+   badge nem cor de alerta. Ele existe para AFIRMAR que chegou uma vez só; se competisse
+   visualmente com o badge de urgência, a tela inteira viraria ruído e o alerta que
+   importa se perderia no meio. */
+.mc-repedido-unico { color: #64748b; font-size: .8rem; white-space: nowrap; }
+
+.mc-repedido-cab { display: inline-flex; align-items: center; gap: .3rem; color: #b42318; font-weight: 700; }
+.mc-repedido-cab .pi { font-size: .95rem; }
+.mc-repedido-unico { color: #94a3b8; }
+/* Botão "a secretária ligou cobrando" (@R 17/09) — discreto por padrão, porque a coluna
+   é de LEITURA e o botão é exceção; aparece de verdade no hover da linha. Nunca some
+   por completo: ação escondida é ação que ninguém usa. */
+.mc-repedido-cel { display: inline-flex; align-items: center; gap: .35rem; }
+.mc-repedido-ligou { border: none; background: transparent; cursor: pointer; opacity: .35;
+  padding: .15rem .3rem; border-radius: 4px; transition: opacity .15s, background .15s; }
+.mc-repedido-ligou:hover:not(:disabled) { opacity: 1; background: var(--surface-200, #e9ecef); }
+.p-datatable tr:hover .mc-repedido-ligou { opacity: .75; }
+.mc-repedido-ligou:disabled { cursor: progress; }

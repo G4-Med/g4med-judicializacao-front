@@ -749,12 +749,51 @@ export function SelecionarMedicoPage() {
       >
         {iaSugestao && (
           <div className="ia-sugestao-dialog">
-            <div className="ia-sugestao-dialog__bloco">
-              <div className="ia-sugestao-dialog__label">Médico sugerido</div>
-              <div className="ia-sugestao-dialog__valor">
-                {iaSugestao.nomeMedico ?? '(nenhum)'}
+            {/* A ORDEM, ¬um nome (@R 17/09: "central inteligente para atuar na escolha
+                do profissional" · SPEC 3.1). Um nome só escondia a pergunta que ele fazia:
+                "e quando tem mais de um da mesma especialidade?". Cada linha traz o número
+                que a sustenta — a ordem é CONSELHO, nunca trava: o jurídico escolhe
+                qualquer um, inclusive fora da lista, pela tela de sempre. */}
+            {(iaSugestao.candidatos && iaSugestao.candidatos.length > 1) ? (
+              <div className="ia-sugestao-dialog__bloco">
+                <div className="ia-sugestao-dialog__label">
+                  Candidatos em ordem ({iaSugestao.candidatos.length})
+                </div>
+                <ol className="ia-candidatos">
+                  {iaSugestao.candidatos.map((c, i) => (
+                    <li key={c.idMedico} className={i === 0 ? 'ia-candidato ia-candidato--topo' : 'ia-candidato'}>
+                      <div className="ia-candidato__nome">
+                        {c.nomeMedico}
+                        {i === 0 && <span className="ia-candidato__selo">recomendado</span>}
+                      </div>
+                      <div className="ia-candidato__porque">{c.porque}</div>
+                      <div className="ia-candidato__numeros">
+                        {c.jaFezDestaSubarea != null && <span>{c.jaFezDestaSubarea}× nesta subárea</span>}
+                        {c.respondeOrcamento && <span>responde {c.respondeOrcamento}</span>}
+                        {c.diasParaResponder != null && <span>{c.diasParaResponder}d para responder</span>}
+                        {c.cargaAtual && <span>{c.cargaAtual} na mão</span>}
+                        {c.atendePediatrico === 'SIM' && <span>atende pediátrico</span>}
+                        {c.atendePediatrico === 'NAO_INFORMADO' && <span className="ia-candidato__lacuna">pediátrico não informado</span>}
+                        {c.cidade && <span>{c.cidade}</span>}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
               </div>
-            </div>
+            ) : (
+              <div className="ia-sugestao-dialog__bloco">
+                <div className="ia-sugestao-dialog__label">Médico sugerido</div>
+                <div className="ia-sugestao-dialog__valor">
+                  {iaSugestao.nomeMedico ?? '(nenhum)'}
+                </div>
+                {iaSugestao.candidatos && iaSugestao.candidatos.length === 1 && (
+                  <div className="ia-candidato__unico">
+                    Só um da lista serve tecnicamente — a ordem não foi omitida, não há
+                    segundo candidato adequado.
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="ia-sugestao-dialog__bloco">
               <div className="ia-sugestao-dialog__label">Justificativa</div>

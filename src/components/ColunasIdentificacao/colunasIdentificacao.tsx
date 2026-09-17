@@ -482,9 +482,27 @@ export function colunaSei(largura = '12rem', aoRecarregar?: () => void) {
   return (
     <Column key="col-sei" field="numeroSei" header={cabecalhoComHint('Nº SEI', EXPLICA.sei)} sortable filter
       filterElement={filtro('Buscar SEI')} style={{ minWidth: largura }}
-      body={(r: LinhaIdentificada) => r.numeroSei
-        ? <><code className="ident-numero" title={r.familiaSei ? `Família ${r.familiaSei}` : 'Número SEI'}>{r.numeroSei}</code><BotaoCopiar valor={r.numeroSei} rotulo="número SEI" /></>
-        : <BotaoExtrair orderId={r.id} aoConcluir={aoRecarregar} />} />
+      body={(r: LinhaIdentificada) => {
+        if (!r.numeroSei) return <BotaoExtrair orderId={r.id} aoConcluir={aoRecarregar} />;
+        // O PAGADOR vai ETIQUETADO (@R 17/09): 1080.01.* é o protocolo administrativo do
+        // pedido; 1320.01.* é o do empenho de pagamento. São chaves diferentes, e copiar
+        // uma achando que é a outra manda a pessoa ao lugar errado. O backend já prefere
+        // o administrativo quando existem os dois — quando chega um pagador aqui é porque
+        // é o ÚNICO que temos, e dizer isso é melhor que mostrar o número mudo (ou, como
+        // era antes, deixar a célula vazia e parecer que a SES não mandou nada).
+        const pagador = r.familiaSei === 'PAGADOR';
+        return (
+          <>
+            <code className="ident-numero"
+              title={pagador
+                ? 'SEI do PAGAMENTO (empenho do depósito judicial) — não é o protocolo administrativo do pedido. É o único SEI que temos deste pedido.'
+                : r.familiaSei ? `Família ${r.familiaSei}` : 'Número SEI'}>{r.numeroSei}</code>
+            {pagador && <Tag value="pagador" severity="warning" className="ident-sei-familia"
+              title="Número do empenho de pagamento, ¬do protocolo do pedido" />}
+            <BotaoCopiar valor={r.numeroSei} rotulo="número SEI" />
+          </>
+        );
+      }} />
   );
 }
 

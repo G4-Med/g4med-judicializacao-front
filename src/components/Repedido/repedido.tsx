@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { Column } from 'primereact/column';
+import { registrarRepedidoManual } from '../../services/api/orders';
 import { cabecalhoComHint, casaOpcaoDosDados, filtroOpcoesDosDados }
   from '../ColunasIdentificacao/colunasIdentificacao';
 
@@ -66,7 +68,44 @@ export const rowClassRepedido = (r: any) => CLASSE[nivelRepedido(r)];
  *  Filtrar por número exigiria a pessoa saber que 1 significa "sem repetição" — conhecimento
  *  que só quem escreveu o código tem. O dropdown pergunta o que ela quer saber (tem urgência
  *  ou não) e o `filterFunction` traduz a escolha para a régua do dado. */
-export const colunaRepedido = (dados?: any[]) => (
+/**
+ * "A SECRETÁRIA LIGOU COBRANDO" (@R 17/09, autorizado via /sc:perguntas --rapha).
+ *
+ * `vezesPedido` conta o que o sistema LÊ — o e-mail que chega de novo. A cobrança por
+ * telefone não deixava rastro em lugar nenhum, e é o sinal MAIS forte de urgência que
+ * existe aqui: alguém parou o dia para ligar.
+ *
+ * INCREMENTA, não edita: cobrança é EVENTO. Quem ligou em dois dias diferentes cobrou
+ * duas vezes, e um campo que se digita perderia a segunda — porque quem edita
+ * sobrescreve. Por isso o botão pergunta antes (registro que não se desfaz por clique
+ * errado deve custar 1 confirmação).
+ */
+function BotaoCobrouPorTelefone({ orderId, aoRegistrar }: { orderId?: number; aoRegistrar?: () => void }) {
+  const [enviando, setEnviando] = useState(false);
+  if (!orderId) return null;
+  return (
+    <button type="button" className="mc-repedido-ligou" disabled={enviando}
+      title="Registrar que a secretária ligou cobrando este pedido — vai para urgência máxima"
+      onClick={async (e) => {
+        e.stopPropagation();
+        if (!window.confirm('Registrar uma cobrança por telefone neste pedido?\n\nEle vai para urgência máxima na lista.')) return;
+        setEnviando(true);
+        try {
+          await registrarRepedidoManual(orderId);
+          aoRegistrar?.();
+        } catch (err) {
+          console.error('Falha ao registrar cobrança por telefone:', err);
+          window.alert('Não consegui registrar. Tente de novo — nada foi gravado.');
+        } finally {
+          setEnviando(false);
+        }
+      }}>
+      <i className={enviando ? 'pi pi-spin pi-spinner' : 'pi pi-phone'} aria-hidden="true" />
+    </button>
+  );
+}
+
+export const colunaRepedido = (dados?: any[], aoRegistrar?: () => void) => (
   <Column
     key="vezesPedido"
     field="vezesPedido"
@@ -95,7 +134,12 @@ export const colunaRepedido = (dados?: any[]) => (
         // é ambígua (não sei? não se aplica? a tela quebrou?), e "Único pedido" AFIRMA que
         // o pedido chegou uma vez só. O que incomodava no "—" nunca foi haver texto, era
         // o traço não dizer nada.
-        return <span className="mc-repedido-unico" title="Este paciente foi pedido uma única vez pela SES.">Único pedido</span>;
+        return (
+          <span className="mc-repedido-cel">
+            <span className="mc-repedido-unico" title="Este paciente foi pedido uma única vez pela SES.">Único pedido</span>
+            <BotaoCobrouPorTelefone orderId={r?.id} aoRegistrar={aoRegistrar} />
+          </span>
+        );
       }
 
       const n = r?.vezesPedido ?? 1;
@@ -109,10 +153,13 @@ export const colunaRepedido = (dados?: any[]) => (
       ].filter(Boolean).join(' · ');
 
       return (
+        <span className="mc-repedido-cel">
         <span className={`mc-repedido-badge mc-repedido-badge--${nivel}`} title={titulo}
           aria-label={`Urgência: ${titulo}`}>
           <i className={porTelefone ? 'pi pi-phone' : 'pi pi-exclamation-triangle'} aria-hidden="true" />
-          Urgência {n}×
+          Urgência {n}×{manuais > 0 ? ` +${manuais}☎` : ''}
+        </span>
+        <BotaoCobrouPorTelefone orderId={r?.id} aoRegistrar={aoRegistrar} />
         </span>
       );
     }}
