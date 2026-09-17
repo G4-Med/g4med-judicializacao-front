@@ -31,6 +31,7 @@ import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, c
 import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
+import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 
 interface HistoricoAcompanhamento {
   id: number;
@@ -80,6 +81,10 @@ interface ProtocoladoTableRow extends Protocolado {
 type ResultadoType = 'ganho' | 'perda' | '';
 
 export function ProtocoladosPage() {
+  // A tabela recarrega quando a FICHA muda a situação de um pedido (@R 17/09:
+  // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
+  // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
+  const { versaoDados } = useFichaPedido();
   const { isReadOnly } = useAccess();
   // @R 28/08 02:1x: "vamos buscar os pagamentos do 5" — expander com os empenhos
   // pagos do Estado (base 548) também nos Protocolados.
@@ -219,7 +224,7 @@ export function ProtocoladosPage() {
     }
   };
 
-  useEffect(() => { void carregarDados(); }, []);
+  useEffect(() => { void carregarDados(); }, [versaoDados]);
 
   const handleSalvarAcompanhamento = async () => {
     if (!registroAtualizando) return;

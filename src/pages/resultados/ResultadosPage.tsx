@@ -39,6 +39,7 @@ import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, c
 import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
+import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 
 interface HistoricoAcompanhamento {
   id: number;
@@ -95,6 +96,10 @@ interface ResultadoProcessoTableRow extends ResultadoProcesso {
 }
 
 export function ResultadosPage() {
+  // A tabela recarrega quando a FICHA muda a situação de um pedido (@R 17/09:
+  // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
+  // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
+  const { versaoDados } = useFichaPedido();
   // @R 28/08 03:37: o painel do pedido abre ABAIXO da linha, em toda fase.
   const [expandidas, setExpandidas] = useState<any>(undefined);
   const [loading, setLoading] = useState(false);
@@ -196,7 +201,7 @@ const carregarDados = async (): Promise<ResultadoProcesso[]> => {
   return [];
 };
 
-useEffect(() => { void carregarDados(); }, []);
+useEffect(() => { void carregarDados(); }, [versaoDados]);
 
 const { isReadOnly } = useAccess();
 const readOnly = isReadOnly('resultados');

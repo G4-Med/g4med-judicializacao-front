@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { DataTable } from 'primereact/datatable';
+import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgencia';
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
@@ -29,6 +30,7 @@ import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasV
 import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, colunaBaixarOrcamento } from '../../components/ColunasEmpenho/colunasEmpenho';
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
+import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 
 // Meta desta fase (triagem jurídica) — espelha backend/funil.py FASES['triagem'].meta_dias.
 // "a análise sai no dia seguinte — libera para mim até meio-dia" (fala do @R na reunião).
@@ -105,6 +107,8 @@ const CONSULTAS_PROCESSO = [
 ];
 
 export function JuridicoPage() {
+  // Recarrega a tabela quando a ficha muda a situação de um pedido (@R 17/09).
+  const { versaoDados } = useFichaPedido();
   const { isReadOnly, profile } = useAccess();
   const readOnly = isReadOnly('juridico');
   // Gerente só consulta esta tela, mas também recebe pedidos fora do e-mail: pode cadastrar à mão.
@@ -218,7 +222,7 @@ export function JuridicoPage() {
         })
         .catch(() => console.error('Erro ao carregar jurídico'))
         .finally(() => setLoading(false));
-    }, []);
+    }, [versaoDados]);
 
   const dataComSequencial = useMemo<ProcessoJuridicoRow[]>(() => {
     return processos.map((item, index) => ({ ...item, sequencial: index + 1 }));
@@ -412,6 +416,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
 
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid">
+        <KpisValorEUrgencia linhas={visibleProcessos} valorDe={(p:any)=>p.refPreco ?? 0} />
         <div className="kpi-card">
           <div className="kpi-header"><span>Quantidade de Processos</span><i className="pi pi-list" /></div>
           <div className="kpi-value">{kpis.total}</div>

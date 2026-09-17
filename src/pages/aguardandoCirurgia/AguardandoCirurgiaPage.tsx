@@ -29,6 +29,7 @@ import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
+import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 
 interface Anexo {
   id: number;
@@ -236,6 +237,10 @@ function createXlsxBlob(rows: ExcelCell[][]) {
 }
 
 export function AguardandoCirurgiaPage() {
+  // A tabela recarrega quando a FICHA muda a situação de um pedido (@R 17/09:
+  // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
+  // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
+  const { versaoDados } = useFichaPedido();
   const [loading, setLoading] = useState(false);
   const [itens, setItens] = useState<AguardandoCirurgiaItem[]>([]);
   const [kpis, setKpis] = useState<AguardandoCirurgiaKpis>({ quantidade: 0, valorGanhos: 0, comissaoEsperada: 0 });
@@ -304,7 +309,7 @@ export function AguardandoCirurgiaPage() {
     }
   };
 
-  useEffect(() => { carregar(); }, []);
+  useEffect(() => { carregar(); }, [versaoDados]);
 
   const linhas = useMemo(
     () => itens.map((item, index) => ({ ...item, sequencial: index + 1 })),

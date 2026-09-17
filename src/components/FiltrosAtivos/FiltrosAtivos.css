@@ -9,10 +9,14 @@
 }
 .filtros-ativos .pi-filter-fill { font-size: .8rem; }
 .filtros-ativos__texto strong { font-weight: 700; }
-.filtros-ativos .p-button { color: #92400e; padding: .2rem .5rem; }
-.filtros-ativos .p-button:hover { background: rgba(146, 64, 14, .08); }
+/* @R 17/09: "cor do botão preto". O âmbar herdado do aviso deixava o "Limpar" quase
+   ilegível sobre o fundo claro do próprio aviso — texto de ação precisa de contraste com
+   o fundo em que está, não com a cor do alerta. */
+.filtros-ativos .p-button { color: #111827; font-weight: 600; padding: .2rem .5rem; }
+.filtros-ativos .p-button:hover { background: rgba(17, 24, 39, .08); color: #000; }
 
 @media (prefers-color-scheme: dark) {
   .filtros-ativos { background: rgba(252, 211, 77, .10); border-color: #b45309; color: #fcd34d; }
-  .filtros-ativos .p-button { color: #fcd34d; }
+  .filtros-ativos .p-button { color: #f9fafb; font-weight: 600; }
+  .filtros-ativos .p-button:hover { background: rgba(249, 250, 251, .12); }
 }

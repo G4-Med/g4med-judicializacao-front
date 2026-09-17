@@ -1,5 +1,7 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { DataTable } from 'primereact/datatable';
+import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgencia';
+import { CelulaMedico } from '../../components/TrocarMedico/CelulaMedico';
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
@@ -32,6 +34,7 @@ import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
 import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, colunaBaixarOrcamento } from '../../components/ColunasEmpenho/colunasEmpenho';
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
+import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 
 // Meta desta fase (orçamento) — espelha backend/funil.py FASES['orcamento'].meta_dias.
 // "96 horas — é o prazo que sustenta o contrato com o Estado".
@@ -95,6 +98,10 @@ function calcularIdade(dataNascimento: string | null): number {
 
 
 export function OrcamentoMedicoPage() {
+  // A tabela recarrega quando a FICHA muda a situação de um pedido (@R 17/09:
+  // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
+  // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
+  const { versaoDados } = useFichaPedido();
   // @R 28/08 03:37: painel do pedido abre ABAIXO da linha, em toda fase.
   const [expandidas, setExpandidas] = useState<any>(undefined);
   const { isReadOnly } = useAccess();
@@ -177,9 +184,11 @@ export function OrcamentoMedicoPage() {
   // `hospital` e `nomeHospital` nunca estiveram na resposta, então as linhas que os liam
   // caíam sempre no fallback. A rota desta tela passou a devolver `idMedico` (e já
   // devolvia `medico`, o nome, por `_identificacao_por_order`), e a chamada pesada saiu.
+  // devolve a Promise: quem troca o médico pela tabela precisa saber QUANDO a linha
+  // já reflete a troca — sem isso o "await" de quem chama retorna antes do dado chegar.
   const carregarDados = () => {
     setLoading(true);
-    Promise.all([getOrcamentoMedico(), getMedicosCompleto()])
+    return Promise.all([getOrcamentoMedico(), getMedicosCompleto()])
       .then(([orcamentoResponse, medicosResponse]) => {
         setMedicos(medicosResponse.data);
 
@@ -192,7 +201,7 @@ export function OrcamentoMedicoPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { carregarDados(); }, []);
+  useEffect(() => { carregarDados(); }, [versaoDados]);
 
   const dataComSequencial = useMemo<ProcessoOrcamentoRow[]>(() => {
     return processos.map((item, index) => ({ ...item, sequencial: index + 1 }));
@@ -566,6 +575,7 @@ ${blocos}
 
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid">
+        <KpisValorEUrgencia linhas={visibleProcessos} valorDe={(p:any)=>p.refPreco ?? 0} />
         <div className="kpi-card">
           <div className="kpi-header"><span>Quantidade de Processos</span><i className="pi pi-list" /></div>
           <div className="kpi-value">{kpis.total}</div>
@@ -667,7 +677,11 @@ ${blocos}
             filterMatchMode="custom" showFilterMenu={false}
             filterFunction={casaOpcaoDosDados}
             filterElement={filtroOpcoesDosDados(dataComMedico, (l: any) => l?.area, 'Todas as áreas')} style={{ minWidth: '10rem' }} />
-          <Column field="medico" header={cabecalhoComHint('Médico', 'Profissional da rede que cotou (ou vai cotar) este procedimento.')} sortable filter
+          <Column field="medico" header={cabecalhoComHint('Médico', 'Profissional da rede que cotou (ou vai cotar) este procedimento. O lápis troca o médico sem abrir o pedido.')} sortable filter
+            body={(r) => (
+              <CelulaMedico row={r} medicos={medicos} somenteLeitura={readOnly}
+                aoTrocar={async () => { await carregarDados(); }} />
+            )}
             filterElement={(o) => dropdownFilterElement(o, medicosOptions)} style={{ minWidth: '14rem' }} />
           <Column field="dataStatusJuridico"
             filter showFilterMenu={false} filterMatchMode="custom"

@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { DataTable } from 'primereact/datatable';
+import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgencia';
 import type { DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -33,6 +34,7 @@ import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
 import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, colunaBaixarOrcamento } from '../../components/ColunasEmpenho/colunasEmpenho';
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
+import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 
 interface ProcessoResumo {
   id: number;
@@ -80,6 +82,10 @@ interface MedicoOption {
 }
 
 export function SelecionarMedicoPage() {
+  // A tabela recarrega quando a FICHA muda a situação de um pedido (@R 17/09:
+  // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
+  // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
+  const { versaoDados } = useFichaPedido();
   // @R 28/08 03:37: o painel do pedido abre ABAIXO da linha, em toda fase.
   const [expandidas, setExpandidas] = useState<any>(undefined);
   const { isReadOnly, filterMedicosByAccess } = useAccess();
@@ -205,7 +211,7 @@ export function SelecionarMedicoPage() {
 
   useEffect(() => {
     void carregarDados();
-  }, []);
+  }, [versaoDados]);
 
   const dataComCamposCalculados = useMemo<ProcessoResumoTableRow[]>(() => {
     return processos.map((item, index) => {
@@ -445,6 +451,7 @@ export function SelecionarMedicoPage() {
 
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid">
+        <KpisValorEUrgencia linhas={visibleProcessos} valorDe={(p:any)=>p.refPreco ?? 0} />
         <div className="kpi-card">
           <div className="kpi-header">
             <span>Total de Processos</span>

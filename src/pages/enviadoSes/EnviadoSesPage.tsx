@@ -28,6 +28,7 @@ import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
 import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, colunaBaixarOrcamento, kpisEmpenho } from '../../components/ColunasEmpenho/colunasEmpenho';
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
+import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 
 /**
  * Enviado à SES (task #235, @R 28/08 00:2x): SÓ os pedidos cujo orçamento foi ao
@@ -67,6 +68,8 @@ const SLA_VERIFICACAO_2 = 180;
 type Resultado = 'ganho' | 'perda' | '';
 
 export function EnviadoSesPage() {
+  // Recarrega a tabela quando a ficha muda a situação de um pedido (@R 17/09).
+  const { versaoDados } = useFichaPedido();
   const { isReadOnly } = useAccess();
   const readOnly = isReadOnly('protocolados');
   const [loading, setLoading] = useState(false);
@@ -139,7 +142,7 @@ export function EnviadoSesPage() {
       .catch(() => setLinhas([]))
       .finally(() => setLoading(false));
   };
-  useEffect(carregar, []);
+  useEffect(carregar, [versaoDados]);
   useEffect(() => { setVisiveis(linhas); }, [linhas]);
 
   // @R 28/08 02:03: "falta o marcar todos e a numeração dos pedidos" + "a opção de

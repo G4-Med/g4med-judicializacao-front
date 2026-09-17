@@ -78,3 +78,14 @@ body.dark-theme .painel-kpis__cabecalho:hover {
 body.dark-theme .painel-kpis__titulo {
   color: var(--mc-ink, #e6eef6);
 }
+
+/* O "· 3 pedidos" ao lado do valor em urgência: a contagem explica o número
+   (R$ 40 mil de 1 pedido e de 8 pedidos pedem ações diferentes), mas não pode
+   competir com ele — por isso menor e mais claro, ¬uma segunda linha. */
+.kpi-value .kpi-sub {
+  font-size: .72em;
+  font-weight: 500;
+  color: #6b7280;
+  white-space: nowrap;
+}
+body.dark-theme .kpi-value .kpi-sub { color: #9aa7b6; }

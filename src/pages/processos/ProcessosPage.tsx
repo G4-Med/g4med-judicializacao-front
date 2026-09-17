@@ -222,6 +222,10 @@ const escapeHtml = (value: string | number | null | undefined) =>
     .replace(/'/g, '&#39;');
 
 export function ProcessosPage() {
+  // A tabela recarrega quando a FICHA muda a situação de um pedido (@R 17/09:
+  // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
+  // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
+  const { versaoDados } = useFichaPedido();
   // @R 28/08 03:37: o painel do pedido abre ABAIXO da linha, em toda fase.
   const [expandidas, setExpandidas] = useState<any>(undefined);
   const { isReadOnly, profile } = useAccess();
@@ -653,7 +657,7 @@ ${linhasAnexos}
   // No useEffect, carregue junto com os processos:
   useEffect(() => {
     carregarDados();
-  }, []);
+  }, [versaoDados]);
 
 
   function calcularIdade(dataNascimento: string): number {

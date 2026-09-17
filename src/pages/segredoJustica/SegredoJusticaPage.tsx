@@ -34,6 +34,7 @@ import { colunaSolicitante, tagTipoPaciente, colunaCnj, colunaSei, colunaComarca
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
+import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 
 interface DocumentoProcesso {
   label: string;
@@ -122,6 +123,10 @@ function useCandidatosSegredoJustica() {
 }
 
 export function SegredoJusticaPage() {
+  // A tabela recarrega quando a FICHA muda a situação de um pedido (@R 17/09:
+  // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
+  // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
+  const { versaoDados } = useFichaPedido();
   const { isReadOnly } = useAccess();
   const readOnly = isReadOnly('segredoJustica');
   const candidatosHook = useCandidatosSegredoJustica();
@@ -209,7 +214,7 @@ const carregarDados = () => {
     .finally(() => setLoading(false));
 };
 
-useEffect(() => { carregarDados(); }, [fila]);
+useEffect(() => { carregarDados(); }, [fila, versaoDados]);
 
   const dataComCamposCalculados = useMemo<SegredoJusticaTableRow[]>(() => {
     const hoje = new Date();

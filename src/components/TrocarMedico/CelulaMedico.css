@@ -1,0 +1,15 @@
+/* O lápis acompanha o nome, some quando ninguém está mexendo naquela linha e
+   reaparece no hover, no foco por teclado e sempre no toque (que não tem hover). */
+.mc-celula-medico { display: inline-flex; align-items: center; gap: .25rem; }
+.mc-celula-medico__lapis.p-button.p-button-text {
+  width: 1.75rem; height: 1.75rem; padding: 0;
+  opacity: 0; transition: opacity .12s ease;
+}
+tr:hover .mc-celula-medico__lapis.p-button.p-button-text,
+.mc-celula-medico:hover .mc-celula-medico__lapis.p-button.p-button-text,
+.mc-celula-medico__lapis.p-button.p-button-text:focus-visible { opacity: 1; }
+@media (hover: none) {
+  .mc-celula-medico__lapis.p-button.p-button-text { opacity: .7; }
+}
+.mc-celula-medico__atual { margin: 0 0 1rem; color: #4b5563; }
+body.dark-theme .mc-celula-medico__atual { color: #9aa7b6; }
