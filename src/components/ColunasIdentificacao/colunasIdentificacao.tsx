@@ -817,7 +817,7 @@ export function colunaOrigem(dados?: any[]) {
     <Column key="col-origem" field="origemRegistro" sortable style={{ minWidth: '7.5rem' }}
       filter filterMatchMode="custom" filterFunction={casaOpcaoDosDados} showFilterMenu={false}
       filterElement={filtroOpcoesDosDados(dados, (r: any) => r?.origemRegistro, 'Todas',
-        (v) => ({ email: 'E-mail', manual: 'Manual', base_antiga: 'Base antiga' } as Record<string, string>)[v] ?? String(v))}
+        (v) => ({ email: 'E-mail (monitor)', email_ses: 'E-mail da SES', manual: 'Manual', base_antiga: 'Base antiga' } as Record<string, string>)[v] ?? String(v))}
       header={cabecalhoComHint('Origem', 'Como o pedido entrou: E-mail = cadastro automático a partir do e-mail da SES · Manual = alguém da equipe cadastrou à mão · — = pedido antigo, origem não registrada.')}
       body={(r: any) => r.origemRegistro === 'manual'
         ? <Tag value="Manual" severity="warning" icon="pi pi-user-edit" title="Cadastrado à mão pela equipe (sem e-mail de origem; nenhuma resposta automática saiu)." />
@@ -826,6 +826,16 @@ export function colunaOrigem(dados?: any[]) {
         // clicar em email na coluna Origem deveria abrir o email"). A ficha já busca o
         // corpo sob demanda — só quem clica paga o download do .eml no R2.
         ? <AbreFicha id={r.id} titulo="Abrir a ficha e ler o e-mail que criou este pedido"><Tag value="E-mail" severity="info" icon="pi pi-envelope" title="Cadastro automático a partir do e-mail da SES. Clique para ler o e-mail." /></AbreFicha>
+        // GRAVADO, ¬inferido (@R 17/09: "preencher a origem nos que têm e-mail, em todos
+        // os registros no banco"). 546 pedidos vieram por e-mail da SES e foram DIGITADOS
+        // a partir dele — o pedido não é manual, a digitação é. Ficou com valor próprio
+        // em vez de 'email' porque gravar 'email' faria o banco afirmar que o monitor os
+        // processou, e a taxa de captura dele passaria a incluir 546 que ele nunca viu.
+        : r.origemRegistro === 'email_ses'
+        ? <AbreFicha id={r.id} titulo="Abrir a ficha deste pedido">
+            <Tag value="E-mail" severity="info" icon="pi pi-envelope"
+              title={`Pedido recebido por e-mail da SES (${r.emailSolicitante ?? 'endereço registrado'}) e cadastrado pela equipe a partir dele. O e-mail original não ficou guardado porque o cadastro é anterior ao monitor automático.`} />
+          </AbreFicha>
         : r.origemRegistro === 'base_antiga'
         ? <Tag value="Base antiga" severity="secondary" icon="pi pi-history" title={`Lançamento anterior ao sistema, importado da base histórica (30/08).${r.statusLegado ? ' Status original: ' + r.statusLegado : ''}`} />
         : r.origemRegistro ? <Tag value={String(r.origemRegistro)} severity="secondary" />
