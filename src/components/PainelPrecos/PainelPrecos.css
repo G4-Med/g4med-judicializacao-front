@@ -46,19 +46,32 @@
   border-radius: 999px;
 }
 
-/* @R 27/08 12:58: "grid de uma linha, um do lado do outro" — linha | barras | números+tabela,
-   alturas reduzidas. Em tela estreita cai para 2 linhas (gráficos em cima, lateral embaixo). */
+/* DE TRÊS COLUNAS PARA DUAS (@R 17/09: "não ficar tão largo, mais compacto, para caber
+   dentro da visualização; pode ficar maior, 2 itens, grid 2x3").
+ *
+ * O desenho de 27/08 punha linha | barras | números+tabela lado a lado. Três colunas numa
+ * tela larga dão a cada peça um terço do espaço: o gráfico de linha (24 meses) espremia 24
+ * rótulos num terço da largura e a tabela de pagamentos ficava com colunas apertadas — o
+ * painel ocupava a tela inteira e mesmo assim nada dentro dele cabia.
+ *
+ * Agora: a linha do tempo ocupa a LARGURA TODA (é a peça que mais precisa de eixo X), e
+ * embaixo dela barras | números+tabela dividem duas colunas. O painel fica mais alto e
+ * menos largo — que é a direção certa numa tela de computador, onde rolar é barato e
+ * espremer na horizontal não é.
+ *
+ * O `max-width` existe porque monitor ultralargo esticava o painel até a linha de leitura
+ * virar um varal: o conteúdo não melhora depois de ~1500px, só afasta o olho do dado. */
 .painel-precos__corpo {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 14px;
   align-items: start;
+  max-width: 1500px;
 }
 
-@media (max-width: 1500px) {
-  .painel-precos__corpo { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .painel-precos__lateral { grid-column: 1 / -1; }
-}
+/* a linha do tempo atravessa as duas colunas */
+.painel-precos__grafico--linha { grid-column: 1 / -1; }
+
 @media (max-width: 900px) {
   .painel-precos__corpo { grid-template-columns: 1fr; }
 }
@@ -78,10 +91,17 @@
   min-width: 0;
 }
 
+/* 2 colunas × 3 linhas para os seis números (@R 17/09). O `auto-fit` anterior decidia a
+   forma pela largura sobrando — em tela larga virava uma fileira de 6 cartões finos, com
+   "R$ 133.600–R$ 242.787" quebrando no meio. Seis itens têm uma forma natural (2x3) e ela
+   não depende de quanto espaço sobrou. */
 .painel-precos__numeros {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(88px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+@media (max-width: 520px) {
+  .painel-precos__numeros { grid-template-columns: 1fr; }
 }
 
 .ppc-numero {

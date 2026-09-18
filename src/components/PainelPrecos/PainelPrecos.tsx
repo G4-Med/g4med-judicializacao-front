@@ -328,7 +328,11 @@ export function PainelPrecos({ orderId, procedimento, nossoPreco }: {
 
   const numeros = [
     { rotulo: 'Mediana', valor: e.mediana, nota: 'o valor-guia (metade pagou menos)', destaque: true },
-    { rotulo: 'Miolo 50%', valor: null, nota: e.p25 != null && e.p75 != null ? `${moeda(e.p25)} – ${moeda(e.p75)}` : 'amostra pequena (<4)', textoLivre: e.p25 != null && e.p75 != null ? `${moeda(e.p25)}–${moeda(e.p75)}` : '—' },
+    // a nota dizia o MESMO intervalo do valor, duas vezes no mesmo cartão — ocupava
+    // largura e não acrescentava nada. Agora ela explica o que o intervalo significa.
+    { rotulo: 'Miolo 50%', valor: null,
+      nota: e.p25 != null && e.p75 != null ? 'onde caem metade dos pagamentos' : 'amostra pequena (<4)',
+      textoLivre: e.p25 != null && e.p75 != null ? `${moeda(e.p25)}–${moeda(e.p75)}` : '—' },
     { rotulo: 'Moda', valor: e.moda, nota: e.moda ? `${e.moda_frequencia}× repetido` : 'nenhum valor se repete' },
     { rotulo: 'Média', valor: e.media, nota: e.media_suspeita ? '⚠ 2× acima da mediana — possível agregado na amostra' : 'puxada por valores extremos' },
     { rotulo: 'Mínimo', valor: e.minimo, nota: 'menor pago' },
@@ -357,11 +361,11 @@ export function PainelPrecos({ orderId, procedimento, nossoPreco }: {
               <div className="ppc-grafico-titulo">
                 Casos por mês · {meses.length} meses · clique num ponto para filtrar o painel
               </div>
-              <Chart type="line" data={dadosLinha} options={opcoesLinha} style={{ height: '190px' }} />
+              <Chart type="line" data={dadosLinha} options={opcoesLinha} style={{ height: '220px' }} />
             </div>
           )}
           <div className="painel-precos__grafico">
-            <Chart type="bar" data={dadosGrafico} options={opcoesGrafico} style={{ height: '210px' }} />
+            <Chart type="bar" data={dadosGrafico} options={opcoesGrafico} style={{ height: '280px' }} />
           </div>
         </div>
 
