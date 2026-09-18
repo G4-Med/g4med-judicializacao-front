@@ -1,0 +1,25 @@
+.cc-celula { background: none; border: 1px solid var(--surface-border, #dee2e6); border-radius: 6px;
+  padding: 2px 8px; cursor: pointer; font-size: .85rem; display: inline-flex; gap: .3rem; align-items: center; }
+.cc-celula:hover { background: var(--surface-hover, #f1f5f9); }
+.cc-celula__n { font-weight: 600; }
+.cc-celula__sep { opacity: .5; }
+.cc-celula__ok { color: #15803d; }
+.cc-celula__esperando { color: #b45309; }
+.cc-celula__tag { transform: scale(.82); }
+.cc-cabecalho { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center;
+  padding-bottom: .5rem; border-bottom: 1px solid var(--surface-border, #dee2e6); margin-bottom: .75rem; }
+.cc-ref { font-size: .85rem; opacity: .75; }
+.cc-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .6rem; }
+.cc-item { border: 1px solid var(--surface-border, #dee2e6); border-radius: 8px; padding: .6rem .75rem; }
+.cc-item--vencedor { border-color: #16a34a; background: rgba(22,163,74,.06); }
+.cc-item__topo { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.cc-item__nome { font-weight: 600; }
+.cc-item__valor { font-size: 1.05rem; margin-top: .25rem; }
+.cc-item__vsref { font-size: .8rem; opacity: .7; }
+.cc-item__rastro { font-size: .78rem; opacity: .75; margin-top: .25rem; }
+.cc-item__acoes { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin-top: .5rem; }
+.cc-item__input { max-width: 11rem; }
+.cc-motivo { margin-top: .9rem; display: flex; flex-direction: column; gap: .3rem; }
+.cc-motivo label { font-size: .82rem; opacity: .8; }
+.cc-nota { font-size: .82rem; opacity: .8; margin-top: .9rem; }
+.cc-vazio { font-size: .9rem; opacity: .85; }

@@ -2,6 +2,7 @@
 import { DataTable } from 'primereact/datatable';
 import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgencia';
 import { CelulaMedico } from '../../components/TrocarMedico/CelulaMedico';
+import { CelulaCotacaoConcorrente, DialogCotacaoConcorrente } from '../../components/CotacaoConcorrente/CotacaoConcorrente';
 import { registrarCotacaoPedida } from '../../services/api/orders';
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -142,6 +143,11 @@ export function OrcamentoMedicoPage() {
   const [novoStatusNome, setNovoStatusNome] = useState('');
   const [statusManualSelecionado, setStatusManualSelecionado] = useState<string | null>(null);
   const [aplicandoStatusManual, setAplicandoStatusManual] = useState(false);
+  /* Qual pedido está com o painel de cotação concorrente aberto. Guardo o ID e releio a
+     linha da lista a cada render — guardar a linha inteira congelaria o que foi visto na
+     hora da abertura, e depois de registrar uma resposta o painel mostraria o estado
+     velho como se fosse o atual. */
+  const [ccOrderId, setCcOrderId] = useState<number | null>(null);
   const [trocarMedicoVisible, setTrocarMedicoVisible] = useState(false);
   const [novoMedicoId, setNovoMedicoId] = useState<number | null>(null);
   const [trocandoMedico, setTrocandoMedico] = useState(false);
@@ -456,7 +462,14 @@ const copiarParaWhatsapp = async (rowData: ProcessoOrcamentoRow, recarregar?: ()
     RECEITA: 'Receita',
     PRESCRICAO: 'Prescrição',
   }
-  let linhasAnexos = 'Nenhum documento anexado a este pedido'
+  /* O QUE NÃO VAI PARA O MÉDICO, e é de propósito: o mapa acima é LISTA BRANCA — só
+     entra o que ele precisa para cotar. Ficam de fora, medidos na produção em 18/09:
+     ORCAMENTO (295) — é a cotação de OUTRO médico; mandar junto entrega o preço do
+     concorrente a quem ainda vai fazer o seu; EMAIL_ORIGINAL (82) — a mensagem interna
+     do órgão, com dados e conversa que não são dele; PROTOCOLO (322) e ACOMPANHAMENTO —
+     rastro processual nosso, posterior à cotação. Tipo novo que apareça no banco NÃO
+     entra sozinho: precisa ser escrito aqui, e essa fricção é a proteção. */
+  let linhasAnexos = 'Nenhum documento clínico anexado a este pedido ainda'
   try {
     const res: any = await getAnexosOrder(rowData.id)
     const todos: any[] = (res.data.anexos || []).filter(
@@ -844,6 +857,17 @@ ${blocos}
               );
             }} />
 
+          {/* COTAÇÃO CONCORRENTE (@R 18/09) — quem mais foi convidado a cotar este mesmo
+              pedido, o que cada um respondeu, e qual orçamento valeu. */}
+          <Column key="col-cotacao-concorrente" field="cotacaoConcorrente"
+            header={cabecalhoComHint('Cotação concorrente',
+              'Outros médicos convidados a cotar o MESMO pedido. Clique para ver o que cada um respondeu e marcar qual orçamento vale.')}
+            style={{ minWidth: '12rem' }}
+            body={(r: any) => (
+              <CelulaCotacaoConcorrente candidatos={r.cotacaoConcorrente}
+                onAbrir={() => setCcOrderId(r.id)} />
+            )} />
+
           <Column key="col-dias-pedido" field="diasDesdeCotacaoPedida" header={cabecalhoComHint(
               'Dias desde o pedido', 'Quantos dias desde a última vez que pedimos ao médico. Contado no servidor — o relógio é um só para todo mundo.')}
             sortable dataType="numeric" filter showFilterMenu={false}
@@ -1131,6 +1155,23 @@ ${blocos}
       </Dialog>
 
       {/* Trocar médico do pedido */}
+      {(() => {
+        const linha: any = dataComMedico.find((x: any) => x.id === ccOrderId) || null;
+        return (
+          <DialogCotacaoConcorrente
+            visible={ccOrderId != null}
+            onHide={() => setCcOrderId(null)}
+            orderId={ccOrderId}
+            paciente={linha?.paciente}
+            refPreco={linha?.refPreco}
+            candidatos={linha?.cotacaoConcorrente ?? []}
+            readOnly={readOnly}
+            onMudou={carregarDados}
+            onCopiarPedido={linha ? () => copiarParaWhatsapp(linha, carregarDados) : undefined}
+          />
+        );
+      })()}
+
       <Dialog header="Trocar médico" visible={trocarMedicoVisible} style={{ width: '28rem', maxWidth: '96vw' }} onHide={() => setTrocarMedicoVisible(false)} modal>
         <div className="field">
           <label>Novo médico</label>

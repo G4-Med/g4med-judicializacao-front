@@ -206,8 +206,20 @@ export const aplicarSugestaoIA = (sugestaoId: number, idMedico: number) =>
 export const listarCandidatosCotacao = (orderId: number) =>
   api.get(`/orders/${orderId}/candidatos-cotacao/`);
 
-export const convidarCandidatoCotacao = (orderId: number, idMedico: number) =>
-  api.post(`/orders/${orderId}/candidatos-cotacao/`, { idMedico });
+export const convidarCandidatoCotacao = (
+  orderId: number,
+  idMedico: number,
+  extra?: { situacao?: string; valorRespondido?: number | string; observacao?: string },
+) => api.post(`/orders/${orderId}/candidatos-cotacao/`, { idMedico, ...(extra ?? {}) });
+
+/** Este orçamento é o que vale. O sistema NÃO elege sozinho (decisão 6d831a5fa8):
+ *  quando a escolha não é a mais barata, o backend exige o motivo — é a pergunta que
+ *  alguém faz depois ("por que pagamos mais?"), e ela merece resposta registrada. */
+export const elegerVencedorCotacao = (
+  orderId: number,
+  idMedico: number,
+  opts?: { motivo?: string; desfazer?: boolean },
+) => api.post(`/orders/${orderId}/candidatos-cotacao/vencedor/`, { idMedico, ...(opts ?? {}) });
 
 export interface AnalisarEmpenhoResposta {
   encontrado: boolean;
