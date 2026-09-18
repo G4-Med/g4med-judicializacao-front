@@ -6,6 +6,7 @@ import '../../styles/global.css'
 import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Header } from './Header'
+import { BarraDeCarregamento } from './BarraDeCarregamento'
 import { Menu } from './Menu'                // ← trocar MenuSidebar por Menu
 import { MenuControlProvider, useMenuControl } from './MenuControlContext'
 import { FichaPedidoProvider } from '../../components/FichaPedido/FichaPedidoContext'
@@ -92,6 +93,7 @@ function MainLayoutInner() {
 
   return (
     <div style={{ minHeight: '100vh' }}>
+      <BarraDeCarregamento />
       <Header onMenuClick={menu.toggle} />
 
       <Menu

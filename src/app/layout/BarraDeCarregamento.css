@@ -1,0 +1,16 @@
+/* Fica colada no topo, acima de tudo, e usa o verde da marca: é o mesmo sistema
+   falando, não um elemento estranho. Fina de propósito — informa sem roubar a tela. */
+.mc-carregando {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  z-index: 2000;
+  background: transparent;
+  pointer-events: none;
+}
+.mc-carregando__barra {
+  height: 100%;
+  background: linear-gradient(90deg, var(--mc-green-500, #00a651), var(--mc-navy-700, #0a3d62));
+  transition: width .18s ease-out;
+  box-shadow: 0 0 8px rgba(0, 166, 81, .5);
+}
