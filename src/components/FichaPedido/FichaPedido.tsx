@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { getFichaPedido, getLogAuditoria, reverterHistorico, getConteudoEmail, moverSituacao } from '../../services/api/orders';
+import { criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { Dropdown } from 'primereact/dropdown';
 import './FichaPedido.css';
 
@@ -179,6 +180,49 @@ export function FichaPedido({
     }
   };
 
+  /**
+   * CRIAR UM STATUS NOVO PARA A FASE (@R 17/09: "ao lado de status podemos ter um lápis
+   * para criarmos um novo status para a fase, ou trocar o status possível naquela fase").
+   *
+   * POR QUE SÓ AQUI, NO ORÇAMENTO: os status das outras linhas são o VOCABULÁRIO do
+   * funil — cada um dispara (ou marca) um fluxo do sistema, e um nome inventado na tela
+   * criaria um estado que nenhum código sabe tratar, aparecendo como fase fantasma nos
+   * relatórios. O status de orçamento já tinha, desde 26/08, um cadastro de ETIQUETA
+   * MANUAL: rótulo sem automação nenhuma. É esse cadastro que o botão alimenta — nada
+   * novo é inventado, o que era uma tela separada passou a caber no lugar onde a decisão
+   * acontece.
+   *
+   * A etiqueta nasce PRESA À FASE em que foi criada, porque foi ali que ela fez sentido;
+   * quem quiser uma que valha em todas cadastra pela tela de cadastro, sem fase.
+   */
+  const criarStatusDaFase = async () => {
+    const nome = window.prompt(
+      'Nome do novo status de orçamento (é só uma etiqueta — não dispara e-mail nem automação):',
+    )?.trim();
+    if (!nome) return;
+    try {
+      setMudandoCampo('statusOrcamento');
+      // a tela conhece a FASE pelo rótulo que o usuário vê (statusProcesso); o servidor
+      // traduz para a chave do canon. Mandar o rótulo daqui evita a tela ter a sua
+      // própria cópia do vocabulário de fases — a cópia é que envelhece calada.
+      const faseAtual = (dados?.situacao as Record<string, string | null> | undefined)?.statusProcesso ?? undefined;
+      await criarStatusOrcamentoPersonalizado(nome, faseAtual ?? undefined);
+      await moverSituacao(orderId!, 'statusOrcamento', nome);
+      const r = await getFichaPedido(orderId!);
+      setDados(r.data);
+      aoMudarSituacao?.();
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { error?: string; nome?: string[] } } };
+      alert(
+        err?.response?.data?.error
+        ?? (err?.response?.data?.nome?.[0] ? `Status: ${err.response.data.nome[0]}` : null)
+        ?? 'Não foi possível criar este status.',
+      );
+    } finally {
+      setMudandoCampo(null);
+    }
+  };
+
   const abrirEmail = async (anexoId: number) => {
     if (!orderId || corpos[anexoId]?.texto !== undefined || corpos[anexoId]?.carregando) return;
     setCorpos((c) => ({ ...c, [anexoId]: { carregando: true } }));
@@ -240,6 +284,17 @@ export function FichaPedido({
                       />
                     ) : (
                       <strong>{atual ?? '— não definido'}</strong>
+                    )}
+                    {podeVoltarFase && campo === 'statusOrcamento' && (
+                      <button
+                        type="button"
+                        className="fic__situacao-novo"
+                        onClick={criarStatusDaFase}
+                        disabled={mudandoCampo !== null}
+                        title="Criar um status novo para esta fase e aplicá-lo agora"
+                      >
+                        <i className="pi pi-pencil" /> novo status
+                      </button>
                     )}
                   </div>
                 );

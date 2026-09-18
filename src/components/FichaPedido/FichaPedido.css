@@ -83,3 +83,14 @@
 }
 .fic__situacao-drop { width: 100%; }
 .fic__situacao-nota { display: block; margin-top: .55rem; color: var(--text-color-secondary, #6b7280); font-size: .74rem; }
+
+/* "novo status" fica discreto ao lado do campo: é uma saída rara (criar vocabulário),
+   e competir com o dropdown faria parecer a ação principal — que é escolher, ¬criar. */
+.fic__situacao-novo {
+  margin-top: .25rem;
+  background: none; border: 0; padding: 0;
+  font-size: .78rem; color: #2563eb; cursor: pointer;
+}
+.fic__situacao-novo:hover:not(:disabled) { text-decoration: underline; }
+.fic__situacao-novo:disabled { opacity: .5; cursor: default; }
+body.dark-theme .fic__situacao-novo { color: #7fb2ff; }
