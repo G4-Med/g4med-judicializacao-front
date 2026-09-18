@@ -68,3 +68,11 @@ body.dark-theme .ce-coorte__item--aberto { color: #cbd5e1; }
 .ce-serie__semdata td { color: #92400e; background: #fffbeb; }
 body.dark-theme .ce-serie__total td { border-color: #334155; }
 body.dark-theme .ce-serie__semdata td { color: #fbbf24; background: rgba(180, 83, 9, .14); }
+
+/* A explicação de por que valor ≠ contagem fica DENTRO da tabela, na linha antes do
+   total: é ali que o olho compara os dois e estranha. */
+.ce-serie__semvalor td {
+  padding: 8px; font-size: .75rem; color: #64748b;
+  background: #f8fafc; border-top: 1px solid #e2e8f0; line-height: 1.5;
+}
+body.dark-theme .ce-serie__semvalor td { background: #0d1b2a; color: #94a3b8; border-color: #1e2d42; }

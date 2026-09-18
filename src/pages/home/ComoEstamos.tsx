@@ -38,6 +38,8 @@ type Linha = {
   /** quando o ganho aconteceu — ¬quando o pedido entrou (ver `medir`) */
   dataResultado?: string | null;
   statusProcesso?: string | null;
+  /** veredito do 548 sobre o pagamento deste processo (já vem no listar_orders) */
+  empenho548?: { pago?: number | null; sinal?: string | null; ultimoPagamento?: string | null } | null;
   valorOrcamento?: number | string | null;
   valorGanho?: number | string | null;
 };
@@ -177,15 +179,15 @@ function Comparacao({ rotulo, atual, base }: { rotulo: string; atual: number; ba
 const MES_DE_CARGA = '2026-04';
 
 function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) => string }) {
-  const meses = new Map<string, { rec: number; env: number; per: number; gan: number; n: number }>();
-  const zero = () => ({ rec: 0, env: 0, per: 0, gan: 0, n: 0 });
+  const meses = new Map<string, { rec: number; env: number; per: number; gan: number; pago: number; n: number }>();
+  const zero = () => ({ rec: 0, env: 0, per: 0, gan: 0, pago: 0, n: 0 });
   const chave = (iso?: string | null) => {
     if (!iso) return null;
     const d = new Date(iso);
     return Number.isNaN(d.getTime())
       ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   };
-  const por = (iso: string | null | undefined, campo: 'rec' | 'env' | 'per' | 'gan', v: number) => {
+  const por = (iso: string | null | undefined, campo: 'rec' | 'env' | 'per' | 'gan' | 'pago', v: number) => {
     const k = chave(iso);
     if (!k || !v) return;
     if (!meses.has(k)) meses.set(k, zero());
@@ -211,6 +213,18 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
     por(l.dataStatusOrcamento, 'env', num(l.valorOrcamento));
     if (l.statusProcesso === 'Perda') por(l.dataStatusPerda, 'per', num(l.valorOrcamento));
     if (l.statusProcesso === 'Ganho') por(l.dataResultado, 'gan', num(l.valorGanho) || num(l.valorOrcamento));
+    /* PAGO PELO ESTADO (@R 18/09: "os pagos temos que classificar com o que foi pago de
+       orçamentos nossos, não vamos por ganhos, concorda").
+       Concordo, e a medição sustenta: 19 ganhos MARCADOS na tela contra 345 pedidos com
+       sinal PAGO_APOS_O_PEDIDO no 548 (R$ 18,8 mi), dos quais 240 têm orçamento nosso.
+       'Ganho' depende de alguém lembrar de marcar; 'pago' é fato no dado do Estado.
+       As duas colunas convivem de propósito: a distância entre elas É a informação —
+       ela mede o quanto a marcação manual está atrasada em relação ao dinheiro real.
+       SÓ o sinal forte entra: PAGO_APOS_O_PEDIDO. Pagamento anterior ao pedido é de
+       outro item do processo, e contá-lo nos daria crédito por dinheiro que não é nosso. */
+    if (l.empenho548?.sinal === 'PAGO_APOS_O_PEDIDO' && num(l.valorOrcamento) > 0) {
+      por(l.empenho548.ultimoPagamento, 'pago', num(l.empenho548.pago));
+    }
   }
 
   const ordenados = [...meses.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 18);
@@ -219,8 +233,17 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
   // linhas cabem na tela)
   const totais = [...meses.values()].reduce(
     (a, m) => ({ rec: a.rec + m.rec, env: a.env + m.env, per: a.per + m.per,
-                 gan: a.gan + m.gan, n: a.n + m.n }),
-    { rec: 0, env: 0, per: 0, gan: 0, n: 0 });
+                 gan: a.gan + m.gan, pago: a.pago + m.pago, n: a.n + m.n }),
+    { rec: 0, env: 0, per: 0, gan: 0, pago: 0, n: 0 });
+
+  /* QUEM NÃO TEM VALOR (@R 18/09: "o valor recebido não tá somando todos os pedidos e
+     enviados não tá somando todos os orçamentos, por quê").
+     Resposta medida: 442 dos 1.158 não têm valor de REFERÊNCIA (421 deles são carga
+     histórica) e 555 nunca foram COTADOS. Os totais estão certos — o que falta é dado
+     nos pedidos. Sem esta linha, quem compara "1.158 pedidos" com um valor que soma 716
+     conclui que a soma está quebrada, e a soma é justamente a parte que está certa. */
+  const semReferencia = linhas.filter((l) => !num(l.refPreco)).length;
+  const semOrcamento = linhas.filter((l) => !num(l.valorOrcamento)).length;
 
   const semDataLinhas = linhas.filter((l) => num(l.valorOrcamento) > 0 && !l.dataStatusOrcamento);
   const semData = {
@@ -240,7 +263,9 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
           <tr>
             <th>Mês</th><th>Pedidos</th><th>Recebido</th><th>Enviado</th>
             <th title="Enviado ÷ recebido no mesmo mês. Pode passar de 100%: o orçamento enviado em setembro costuma ser de pedido que entrou antes — não é a mesma coorte.">Taxa envio</th>
-            <th>Perdido</th><th>Ganho</th>
+            <th>Perdido</th>
+            <th title="Ganho MARCADO na tela por alguém. Medido em 18/09: 19 marcados — contra 345 pedidos com pagamento de sinal forte no dado do Estado.">Ganho (marcado)</th>
+            <th title="PAGO pelo Estado DEPOIS do nosso pedido, no dado do 548 (sinal PAGO_APOS_O_PEDIDO). É fato medido, não marcação de tela. Entra no mês do pagamento.">Pago (548)</th>
           </tr>
         </thead>
         <tbody>
@@ -267,6 +292,7 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
               </td>
               <td className="ce-num ce-perda">{m.per ? moeda(m.per) : '—'}</td>
               <td className="ce-num ce-ganho">{m.gan ? moeda(m.gan) : '—'}</td>
+              <td className="ce-num ce-ganho">{m.pago ? moeda(m.pago) : '—'}</td>
             </tr>
           ))}
         </tbody>
@@ -293,6 +319,23 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
               <td className="ce-num">—</td>
               <td className="ce-num">—</td>
               <td className="ce-num">—</td>
+              <td className="ce-num">—</td>
+            </tr>
+          )}
+          {(semReferencia > 0 || semOrcamento > 0) && (
+            <tr className="ce-serie__semvalor">
+              <td colSpan={7}>
+                <strong>Por que o valor não acompanha a contagem:</strong>{' '}
+                {semReferencia > 0 && (
+                  <>{semReferencia} pedido{semReferencia === 1 ? '' : 's'} sem valor de
+                    referência (entram em Pedidos, não em Recebido)</>
+                )}
+                {semReferencia > 0 && semOrcamento > 0 && ' · '}
+                {semOrcamento > 0 && (
+                  <>{semOrcamento} nunca foram cotados (não entram em Enviado)</>
+                )}
+                . Os totais estão certos — o que falta é o valor nesses pedidos.
+              </td>
             </tr>
           )}
           <tr className="ce-serie__total">
@@ -305,6 +348,7 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
             </td>
             <td className="ce-num ce-perda">{moeda(totais.per)}</td>
             <td className="ce-num ce-ganho">{moeda(totais.gan)}</td>
+            <td className="ce-num ce-ganho">{moeda(totais.pago)}</td>
           </tr>
         </tfoot>
       </table>
