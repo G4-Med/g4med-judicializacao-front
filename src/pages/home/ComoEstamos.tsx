@@ -89,7 +89,20 @@ function medir(linhas: Linha[], dentro: (d: Date) => boolean, vidaToda = false) 
      Por isso: nas lentes de período, filtra pela data do evento (é o que "neste mês"
      significa); em VIDA TODA, não filtra — vida toda é tudo, e exigir uma data que
      metade dos registros não tem transformaria a lente mais ampla na mais cega. */
-  const recebidos = entraram.filter((l) => num(l.refPreco) > 0);
+  /* O VALOR DA OPORTUNIDADE, EM CASCATA (@R 18/09: "a estimativa dos pedidos que temos
+     não está entrando para totalizar o recebido").
+     ⚠ O QUE A MEDIÇÃO MOSTROU, e que muda o diagnóstico: dos 443 pedidos sem `refPreco`,
+     307 TÊM `valorOrcamento` — valor REAL, R$ 20,7 milhões que a tela simplesmente não
+     lia porque olhava um campo só. Não era falta de dado, era o campo errado medindo o
+     construto "quanto vale esta oportunidade".
+     A ordem importa: `refPreco` primeiro (é a referência do pedido, anterior à cotação);
+     `valorOrcamento` como segunda fonte (o que de fato foi cotado). Nunca soma os dois —
+     são o mesmo dinheiro visto em momentos diferentes.
+     NÃO IMPLEMENTADO de propósito: estimar por mediana do procedimento cobriria mais 13
+     pedidos (R$ 220.934 = 0,3% do total) e exigiria trazer `procedimento` ao payload.
+     O ganho não paga misturar número estimado com número medido nesta tela. */
+  const valorOportunidade = (l: Linha) => num(l.refPreco) || num(l.valorOrcamento);
+  const recebidos = entraram.filter((l) => valorOportunidade(l) > 0);
   const enviados = linhas.filter((l) => num(l.valorOrcamento) > 0
     && (vidaToda || noPeriodo(l.dataStatusOrcamento, dentro)));
   const perdidos = linhas.filter((l) => l.statusProcesso === 'Perda' && num(l.valorOrcamento) > 0
@@ -97,7 +110,7 @@ function medir(linhas: Linha[], dentro: (d: Date) => boolean, vidaToda = false) 
 
   const soma = (lista: Linha[], campo: (l: Linha) => number) =>
     lista.reduce((a, l) => a + campo(l), 0);
-  const valorRecebido = soma(recebidos, (l) => num(l.refPreco));
+  const valorRecebido = soma(recebidos, valorOportunidade);
 
   /* A COORTE — "o valor em setembro tem que contabilizar só os processos ENTRADOS em
      setembro" (@R 18/09). Aqui a pergunta muda: não é "o que aconteceu no mês", é "o que
@@ -242,7 +255,9 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
      histórica) e 555 nunca foram COTADOS. Os totais estão certos — o que falta é dado
      nos pedidos. Sem esta linha, quem compara "1.158 pedidos" com um valor que soma 716
      conclui que a soma está quebrada, e a soma é justamente a parte que está certa. */
-  const semReferencia = linhas.filter((l) => !num(l.refPreco)).length;
+  // ¬"sem refPreco" (que contava 443 e incluía 307 com valor real), e sim SEM VALOR NENHUM:
+  // é esse o conjunto que de fato não entra no Recebido. Medido 18/09: 136.
+  const semReferencia = linhas.filter((l) => !num(l.refPreco) && !num(l.valorOrcamento)).length;
   const semOrcamento = linhas.filter((l) => !num(l.valorOrcamento)).length;
 
   const semDataLinhas = linhas.filter((l) => num(l.valorOrcamento) > 0 && !l.dataStatusOrcamento);
@@ -327,8 +342,8 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
               <td colSpan={7}>
                 <strong>Por que o valor não acompanha a contagem:</strong>{' '}
                 {semReferencia > 0 && (
-                  <>{semReferencia} pedido{semReferencia === 1 ? '' : 's'} sem valor de
-                    referência (entram em Pedidos, não em Recebido)</>
+                  <>{semReferencia} pedido{semReferencia === 1 ? '' : 's'} sem valor
+                    nenhum — nem referência, nem orçamento (entram em Pedidos, não em Recebido)</>
                 )}
                 {semReferencia > 0 && semOrcamento > 0 && ' · '}
                 {semOrcamento > 0 && (
