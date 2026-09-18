@@ -801,3 +801,7 @@ body.dark-theme .secao-orcamento h3 { color: #e6eef6; }
 .om-dias--tarde { color: #b45309; font-weight: 700; }
 body.dark-theme .om-pedido__cancelar { color: #64748b; }
 body.dark-theme .om-dias--tarde { color: #fbbf24; }
+
+/* Faixa de preço lida das peças (@R 18/09). */
+.om-orcpeca { display: inline-flex; gap: .35rem; align-items: baseline; font-size: .85rem; }
+.om-orcpeca__n { font-size: .72rem; opacity: .6; }

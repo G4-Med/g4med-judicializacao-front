@@ -42,6 +42,16 @@ type Situacao = {
 };
 type SituacaoOpcoes = Record<string, string[]>;
 
+interface OrcamentoDaPeca {
+  id: number; valorTotal: number | null; prestador?: string | null;
+  procedimento?: string | null; categoria?: string | null; dataOrcamento?: string | null;
+  anexoOrigemId?: number | null; anexoOrigemNome?: string | null; paginaOrigem?: number | null;
+  linkArquivo?: string | null; fonte?: string; confirmado?: boolean; confirmadoPor?: string | null;
+}
+interface PecaLida {
+  anexoId: number; nome?: string | null; status?: string | null; mensagem?: string | null;
+}
+
 type Emails = {
   origem: 'COM_CONTEUDO' | 'SEM_ORIGINAL' | 'NAO_VEIO_POR_EMAIL';
   explicacao: string | null;
@@ -88,6 +98,7 @@ export function FichaPedido({
   const [dados, setDados] = useState<{
     blocos: Bloco[]; trilha: Trilha[]; statusAtual: string; totalArquivos: number;
     urgencia?: Urgencia; emails?: Emails;
+    orcamentosDaPeca?: OrcamentoDaPeca[]; pecasLidas?: PecaLida[];
     situacao?: Situacao; situacaoOpcoes?: SituacaoOpcoes;
   } | null>(null);
   const [mudandoCampo, setMudandoCampo] = useState<string | null>(null);
@@ -368,6 +379,69 @@ export function FichaPedido({
               )}
             </section>
           ))}
+
+          {/* ═══ O QUE AS PEÇAS DISSERAM SOBRE PREÇO (@R 18/09) ═══
+              ⟦"processamento das peças para ganhar a área na ficha técnica e dos
+              orçamentos, para termos os orçamentos para enviar corretamente"⟧
+
+              A extração já rodava e já gravava — 683 orçamentos vindos de peça de inteiro
+              teor na base (medido 18/09). O que faltava era exatamente isto: aparecer.
+              Enquanto não aparecia, a equipe reabria o PDF de 300 páginas para procurar
+              um número que o sistema já tinha lido e guardado.
+
+              CADA LINHA CARREGA DE ONDE VEIO (documento + página). Valor sem origem é
+              boato: quem for usá-lo para julgar uma cotação precisa poder abrir a página
+              e ver com os próprios olhos. */}
+          {dados.orcamentosDaPeca && dados.orcamentosDaPeca.length > 0 && (
+            <section className="fic__bloco fic__orcpeca">
+              <header className="fic__fase">
+                <strong>Orçamentos encontrados nas peças ({dados.orcamentosDaPeca.length})</strong>
+                <small>
+                  Lidos automaticamente da decisão de inteiro teor — são <em>proposta de
+                  leitura</em>, não valor conferido. Servem para julgar a cotação que chegar
+                  e montar o que vai à SES; não são enviados ao médico que vai cotar (o
+                  número ancoraria o preço dele).
+                </small>
+              </header>
+              <ul className="fic__orcpeca-lista">
+                {dados.orcamentosDaPeca.map((o) => (
+                  <li key={o.id} className="fic__orcpeca-item">
+                    <span className="fic__orcpeca-valor">
+                      {o.valorTotal != null
+                        ? o.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                        : 'valor não lido'}
+                    </span>
+                    <span className="fic__orcpeca-quem">{o.prestador || 'prestador não identificado'}</span>
+                    {o.procedimento && <span className="fic__orcpeca-proc">{o.procedimento}</span>}
+                    <span className="fic__orcpeca-origem">
+                      {o.anexoOrigemNome || 'peça'}
+                      {o.paginaOrigem != null ? ` · pág. ${o.paginaOrigem}` : ''}
+                      {o.linkArquivo && (
+                        <>
+                          {' · '}
+                          <a href={o.linkArquivo} target="_blank" rel="noreferrer">abrir</a>
+                        </>
+                      )}
+                      {!o.confirmado && <em className="fic__orcpeca-prop"> · não conferido</em>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {/* A COBERTURA anda junto: "3 orçamentos" parece o total da peça quando
+                  pode ser o total das páginas que deu para ler. A frase honesta é a do
+                  processador, com os números dele. */}
+              {dados.pecasLidas && dados.pecasLidas.length > 0 && (
+                <ul className="fic__orcpeca-cobertura">
+                  {dados.pecasLidas.map((p) => (
+                    <li key={p.anexoId}>
+                      <strong>{p.nome}</strong> · {p.status || 'não processada'}
+                      {p.mensagem ? ` — ${p.mensagem}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
 
           {dados.emails && (
             <section className="fic__bloco fic__emails">

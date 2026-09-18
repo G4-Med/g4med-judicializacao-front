@@ -100,3 +100,15 @@ body.dark-theme .fic__situacao-novo { color: #7fb2ff; }
 .fic__fase--com-acao {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
+
+/* Orçamentos lidos das peças (@R 18/09). */
+.fic__orcpeca-lista { list-style: none; margin: .5rem 0 0; padding: 0; display: flex; flex-direction: column; gap: .4rem; }
+.fic__orcpeca-item { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline;
+  padding: .4rem .6rem; border: 1px solid var(--surface-border, #dee2e6); border-radius: 6px; }
+.fic__orcpeca-valor { font-weight: 700; font-size: 1.02rem; }
+.fic__orcpeca-quem { font-size: .9rem; }
+.fic__orcpeca-proc { font-size: .82rem; opacity: .8; flex-basis: 100%; }
+.fic__orcpeca-origem { font-size: .76rem; opacity: .7; flex-basis: 100%; }
+.fic__orcpeca-prop { color: #b45309; font-style: italic; }
+.fic__orcpeca-cobertura { list-style: none; margin: .6rem 0 0; padding: 0; font-size: .74rem; opacity: .7; }
+.fic__orcpeca-cobertura li { margin-bottom: .2rem; }

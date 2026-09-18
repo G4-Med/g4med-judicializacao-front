@@ -857,6 +857,29 @@ ${blocos}
               );
             }} />
 
+          {/* O PREÇO QUE A PEÇA JÁ REVELOU (@R 18/09). A extração das decisões de inteiro
+              teor grava os orçamentos que constam nos autos — 683 na base, e até hoje
+              invisíveis em tela. Aqui vira a resposta de "temos referência de preço para
+              este procedimento?" ANTES de pedir a cotação. O detalhe (prestador, página,
+              link para conferir) fica na ficha do pedido; na lista, a faixa basta. */}
+          <Column key="col-orc-peca" field="orcamentosDaPeca"
+            header={cabecalhoComHint('Orçamento na peça',
+              'Valores de orçamento encontrados na decisão de inteiro teor deste processo. É leitura automática (proposta), não valor conferido — e não vai na mensagem ao médico, porque ancoraria o preço dele.')}
+            style={{ minWidth: '11rem' }}
+            body={(r: any) => {
+              const o = r.orcamentosDaPeca;
+              if (!o || !o.n) {
+                return <span className="ident-vazio" title="Nenhum orçamento lido das peças deste pedido — pode ser que não haja peça anexada, ou que a peça não traga valores.">—</span>;
+              }
+              const f = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+              return (
+                <span className="om-orcpeca" title={`${o.n} orçamento(s) lido(s) das peças · abra a ficha do pedido para ver prestador, página e link`}>
+                  {o.menor === o.maior ? f(o.menor) : `${f(o.menor)} – ${f(o.maior)}`}
+                  <span className="om-orcpeca__n">{o.n}×</span>
+                </span>
+              );
+            }} />
+
           {/* COTAÇÃO CONCORRENTE (@R 18/09) — quem mais foi convidado a cotar este mesmo
               pedido, o que cada um respondeu, e qual orçamento valeu. */}
           <Column key="col-cotacao-concorrente" field="cotacaoConcorrente"
