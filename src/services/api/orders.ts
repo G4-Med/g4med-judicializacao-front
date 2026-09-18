@@ -154,6 +154,9 @@ export interface SugestaoIAResposta {
     respondeOrcamento?: string | null; diasParaResponder?: number | null;
     jaFezDestaSubarea?: number | null; atendePediatrico?: string | null;
     cargaAtual?: string | null; cidade?: string | null;
+    /** subáreas que ele JÁ ORÇOU, com a contagem — a prova de capacidade quando o
+     *  cadastro é pobre (keywords vazia é a regra, ¬a exceção) */
+    jaCotou?: string | null;
   }[];
   /** os números que sustentam a escolha — o motor já os calculava e descartava (@R 17/09) */
   dossieMedico?: {

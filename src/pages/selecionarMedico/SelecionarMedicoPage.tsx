@@ -860,6 +860,13 @@ export function SelecionarMedicoPage() {
                         {c.atendePediatrico === 'NAO_INFORMADO' && <span className="ia-candidato__lacuna">pediátrico não informado</span>}
                         {c.cidade && <span>{c.cidade}</span>}
                       </div>
+                      {/* O QUE ELE JÁ COTOU (@R 17/09, caso #629): a prova de que o
+                          candidato opera aquilo. O cadastro é pobre — keywords quase
+                          sempre vazia —, então quem lê precisa ver o histórico para
+                          discordar da ordem com base em algo. */}
+                      {c.jaCotou && (
+                        <div className="ia-candidato__jacotou">já cotou: {c.jaCotou}</div>
+                      )}
                     </li>
                   ))}
                 </ol>
