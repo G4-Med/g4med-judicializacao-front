@@ -68,6 +68,10 @@ export const enviarEmailsPendentesLote = (ids: number[]) => api.post('/orders/em
  *  Não apaga: marca CANCELADO com quem e por quê — e-mail já ENVIADO devolve 409. */
 /** Quanto ESTE médico vem cobrando, comparado à referência do pedido (razão orçado÷ref).
  *  Camadas: subárea → área → geral; a resposta diz em qual parou e com que n. */
+/** Marca que pedimos o orçamento a este médico (o clique em copiar). `cancelar` desfaz:
+ *  zera o contador e apaga a data — a marca nasce de um proxy, então é reversível. */
+export const registrarCotacaoPedida = (orderId: number, cancelar = false) =>
+  api.post(`/orders/${orderId}/cotacao-pedida/`, cancelar ? { cancelar: true } : {});
 export const getPrecosDoMedico = (orderId: number, medicoId: number) =>
   api.get(`/orders/${orderId}/precos-medico/${medicoId}/`);
 /** Escreve um e-mail ao solicitante em qualquer fase. Passa pela FILA (fica no

@@ -185,17 +185,29 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
     return Number.isNaN(d.getTime())
       ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
   };
-  const por = (iso: string | null | undefined, campo: 'rec' | 'env' | 'per' | 'gan', v: number, conta = false) => {
+  const por = (iso: string | null | undefined, campo: 'rec' | 'env' | 'per' | 'gan', v: number) => {
     const k = chave(iso);
     if (!k || !v) return;
     if (!meses.has(k)) meses.set(k, zero());
-    const m = meses.get(k)!;
-    m[campo] += v;
-    if (conta) m.n += 1;
+    meses.get(k)![campo] += v;
+  };
+
+  /* CONTAR O PEDIDO É SEPARADO DE SOMAR O VALOR (@R 18/09: "tá faltando pedidos, a base
+     de processos tem 1156 uai").
+     Estava errado: a contagem vinha junto da soma do valor, então um pedido SEM valor de
+     referência não era contado como pedido. Resultado: a coluna Pedidos somava 716 (os
+     que têm refPreco) quando a base tem 1.158 — 442 pedidos existiam e não apareciam em
+     lugar nenhum. Pedido sem preço continua sendo um pedido; o que falta nele é o preço. */
+  const contar = (iso: string | null | undefined) => {
+    const k = chave(iso);
+    if (!k) return;
+    if (!meses.has(k)) meses.set(k, zero());
+    meses.get(k)!.n += 1;
   };
 
   for (const l of linhas) {
-    por(l.dataPedido, 'rec', num(l.refPreco), true);
+    contar(l.dataPedido);
+    por(l.dataPedido, 'rec', num(l.refPreco));
     por(l.dataStatusOrcamento, 'env', num(l.valorOrcamento));
     if (l.statusProcesso === 'Perda') por(l.dataStatusPerda, 'per', num(l.valorOrcamento));
     if (l.statusProcesso === 'Ganho') por(l.dataResultado, 'gan', num(l.valorGanho) || num(l.valorOrcamento));
@@ -226,7 +238,9 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
       <table>
         <thead>
           <tr>
-            <th>Mês</th><th>Pedidos</th><th>Recebido</th><th>Enviado</th><th>Perdido</th><th>Ganho</th>
+            <th>Mês</th><th>Pedidos</th><th>Recebido</th><th>Enviado</th>
+            <th title="Enviado ÷ recebido no mesmo mês. Pode passar de 100%: o orçamento enviado em setembro costuma ser de pedido que entrou antes — não é a mesma coorte.">Taxa envio</th>
+            <th>Perdido</th><th>Ganho</th>
           </tr>
         </thead>
         <tbody>
@@ -244,6 +258,13 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
               <td className="ce-num">{m.n || '—'}</td>
               <td className="ce-num">{m.rec ? moeda(m.rec) : '—'}</td>
               <td className="ce-num">{m.env ? moeda(m.env) : '—'}</td>
+              {/* @R 18/09: "a taxa de orçamento enviado". Enviado ÷ recebido no MESMO
+                  mês — e por isso pode passar de 100%: o que se orça em setembro entrou
+                  meses antes. O título da coluna diz isso, porque um 630% sem explicação
+                  parece erro de conta. */}
+              <td className="ce-num">
+                {m.rec && m.env ? `${Math.round((m.env / m.rec) * 100)}%` : '—'}
+              </td>
               <td className="ce-num ce-perda">{m.per ? moeda(m.per) : '—'}</td>
               <td className="ce-num ce-ganho">{m.gan ? moeda(m.gan) : '—'}</td>
             </tr>
@@ -271,6 +292,7 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
               <td className="ce-num">{moeda(semData.env)}</td>
               <td className="ce-num">—</td>
               <td className="ce-num">—</td>
+              <td className="ce-num">—</td>
             </tr>
           )}
           <tr className="ce-serie__total">
@@ -278,6 +300,9 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
             <td className="ce-num">{totais.n}</td>
             <td className="ce-num">{moeda(totais.rec)}</td>
             <td className="ce-num">{moeda(totais.env + semData.env)}</td>
+            <td className="ce-num">
+              {totais.rec ? `${Math.round(((totais.env + semData.env) / totais.rec) * 100)}%` : '—'}
+            </td>
             <td className="ce-num ce-perda">{moeda(totais.per)}</td>
             <td className="ce-num ce-ganho">{moeda(totais.gan)}</td>
           </tr>

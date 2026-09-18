@@ -2,6 +2,7 @@
 import { DataTable } from 'primereact/datatable';
 import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgencia';
 import { CelulaMedico } from '../../components/TrocarMedico/CelulaMedico';
+import { registrarCotacaoPedida } from '../../services/api/orders';
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
@@ -425,7 +426,10 @@ const abrirDetalhe = (rowData: ProcessoOrcamentoRow) => {
   };
 
 
-const copiarParaWhatsapp = async (rowData: ProcessoOrcamentoRow) => {
+// `recarregar` vem de fora porque esta função vive FORA do componente e não enxerga o
+// carregarDados dele — sem isso, a marca de "pedido" gravaria no banco e a linha só
+// mostraria na próxima abertura da tela (a cicatriz de 17/09: peça provada, ¬instalada).
+const copiarParaWhatsapp = async (rowData: ProcessoOrcamentoRow, recarregar?: () => void) => {
   let linhasAnexos = 'Nenhum anexo'
   try {
     const res: any = await getAnexosOrder(rowData.id, 'RELATORIO')
@@ -483,7 +487,23 @@ ${linhasAnexos}
 
   try {
     await copiar(texto)
-    alert('Copiado! Cole no WhatsApp.')
+    /* COPIAR CONTA COMO PEDIDO (@R 18/09: "ao clicar em copiar conta como coleta do
+       pedido"). É o mais perto que o sistema chega do ato: o envio sai do WhatsApp,
+       fora daqui — medido em 18/09, ZERO e-mails de cotação foram gerados, porque o
+       canal real é outro.
+
+       O registro vem DEPOIS do copiar dar certo: marcar antes contaria um pedido que
+       falhou na área de transferência. E a falha do registro NÃO derruba o copiar —
+       quem precisa da mensagem já a tem; o que se perde é a marca, e ela é recuperável
+       (basta copiar de novo). O contrário — perder a mensagem por causa da marca —
+       seria trocar o essencial pelo acessório. */
+    try {
+      await registrarCotacaoPedida(rowData.id)
+      recarregar?.()
+    } catch {
+      // silêncio proposital: ver o comentário acima
+    }
+    alert('Copiado! Cole no WhatsApp.\n\nRegistrado como pedido ao médico — se não for enviar, use o ✕ na coluna "Pedido ao médico".')
   } catch {
     alert('Não foi possível copiar.')
   }
@@ -647,7 +667,7 @@ ${blocos}
                   icon="pi pi-copy"
                   outlined
                   severity="secondary"
-                  onClick={() => copiarParaWhatsapp(rowData)}
+                  onClick={() => copiarParaWhatsapp(rowData, carregarDados)}
                 />
               )) as any)(r)}</>, excluir: carregarDados })}
           <Column field="paciente" header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')} filter
@@ -664,6 +684,65 @@ ${blocos}
           {/* @R 17/09: segredo ao lado de origem — "para sabermos". Nesta fase a
               informação decide O MOLDE do pedido de orçamento, então precisa estar
               no campo de visão de quem vai pedir, ¬no fim da tabela. */}
+          {/* PEDIMOS A ESTE MÉDICO? (@R 18/09) — as duas colunas que respondem "quem
+              pedimos, quem não pedimos, quando e há quantos dias". Antes disso, a fila
+              inteira parecia igual: 37 dos 45 estavam como "Solicitado ao Medico", um
+              ESTADO que não diz se foi ontem ou há 40 dias. */}
+          <Column key="col-pedido-medico" field="cotacoesPedidas" sortable
+            header={cabecalhoComHint('Pedido ao médico',
+              'Marcado quando alguém copia a mensagem para o WhatsApp do médico. ATENÇÃO: copiar não é enviar — se copiou e não mandou, use o ✕ para desfazer. Mostra desde quando e quantas vezes pedimos.')}
+            filter filterMatchMode="custom" filterFunction={casaOpcaoDosDados} showFilterMenu={false}
+            filterElement={filtroOpcoesDosDados(
+              dataComMedico,
+              (r: any) => (r?.cotacoesPedidas > 0 ? 'sim' : 'nao'),
+              'Todos',
+              (v) => (v === 'sim' ? 'Já pedimos' : 'Ainda não pedimos'))}
+            style={{ minWidth: '13rem' }}
+            body={(r: any) => {
+              if (!r.cotacoesPedidas) {
+                return <Tag value="Não pedimos" severity="warning" icon="pi pi-clock"
+                  title="Ninguém copiou a mensagem para este médico ainda." />;
+              }
+              return (
+                <span className="om-pedido">
+                  <Tag value={formatarData((r.ultimaCotacaoPedidaEm || '').slice(0, 10))}
+                    severity="info" icon="pi pi-send"
+                    title={`Pedido ao médico ${r.cotacoesPedidas}× — último em ${formatarDataHora(r.ultimaCotacaoPedidaEm)}`} />
+                  {r.cotacoesPedidas > 1 && (
+                    <span className="om-pedido__n" title={`Pedimos ${r.cotacoesPedidas} vezes`}>
+                      {r.cotacoesPedidas}×
+                    </span>
+                  )}
+                  {!readOnly && (
+                    <button type="button" className="om-pedido__cancelar"
+                      title="Cancelar: apaga a data e a contagem (use quando copiou e não enviou)"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!window.confirm(
+                          `Cancelar o pedido ao médico?\n\nApaga a data e as ${r.cotacoesPedidas} vez(es) registradas — este pedido volta a contar como "não pedimos".`)) return;
+                        try {
+                          await registrarCotacaoPedida(r.id, true);
+                          await carregarDados();
+                        } catch {
+                          alert('Não foi possível cancelar.');
+                        }
+                      }}>✕</button>
+                  )}
+                </span>
+              );
+            }} />
+
+          <Column key="col-dias-pedido" field="diasDesdeCotacaoPedida" header={cabecalhoComHint(
+              'Dias desde o pedido', 'Quantos dias desde a última vez que pedimos ao médico. Contado no servidor — o relógio é um só para todo mundo.')}
+            sortable dataType="numeric" filter showFilterMenu={false}
+            filterElement={filtroMaiorQue('mais de…')}
+            style={{ minWidth: '10rem' }}
+            body={(r: any) => (r.diasDesdeCotacaoPedida == null
+              ? <span className="ident-vazio">—</span>
+              : <span className={r.diasDesdeCotacaoPedida >= 7 ? 'om-dias om-dias--tarde' : 'om-dias'}>
+                  {r.diasDesdeCotacaoPedida}
+                </span>)} />
+
           {colunaRepedido(dataComMedico)}
           <Column field="idade" header={cabecalhoComHint('Idade', 'Idade do paciente hoje, calculada da data de nascimento.')} sortable filter
             dataType="numeric" filterElement={filtroMaiorQue('a partir de…')} style={{ minWidth: '7rem' }} />

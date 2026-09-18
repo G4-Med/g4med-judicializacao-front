@@ -787,3 +787,17 @@ body.dark-theme .secao-orcamento h3 { color: #e6eef6; }
   .orc-leitura { background: #0f172a; border-color: #1e293b; }
   .orc-leitura__campos dt, .orc-leitura__obs { color: #94a3b8; }
 }
+
+/* Pedido ao médico: a data manda, a contagem e o cancelar ficam discretos ao lado. */
+.om-pedido { display: inline-flex; align-items: center; gap: 6px; }
+.om-pedido__n { font-size: .78rem; font-weight: 700; color: #b45309; }
+.om-pedido__cancelar {
+  border: 0; background: none; color: #94a3b8; cursor: pointer;
+  font-size: .9rem; line-height: 1; padding: 2px 4px; border-radius: 4px;
+}
+.om-pedido__cancelar:hover { color: #b91c1c; background: rgba(185, 28, 28, .08); }
+/* 7 dias sem resposta do médico: a partir daí o número deixa de ser informação e vira
+   pendência — a cor diz isso sem precisar de outra coluna. */
+.om-dias--tarde { color: #b45309; font-weight: 700; }
+body.dark-theme .om-pedido__cancelar { color: #64748b; }
+body.dark-theme .om-dias--tarde { color: #fbbf24; }
