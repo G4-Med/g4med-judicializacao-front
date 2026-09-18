@@ -32,6 +32,9 @@ import './ComoEstamos.css';
 
 type Linha = {
   dataPedido?: string | null;
+  dataStatusOrcamento?: string | null;
+  dataStatusPerda?: string | null;
+  refPreco?: number | string | null;
   /** quando o ganho aconteceu — ¬quando o pedido entrou (ver `medir`) */
   dataResultado?: string | null;
   statusProcesso?: string | null;
@@ -69,14 +72,44 @@ const noPeriodo = (iso: string | null | undefined, dentro: (d: Date) => boolean)
  *  conversão de coorte (não são as mesmas pedidos), então ela sai do card. Fingir
  *  conversão cruzando dois períodos diferentes é o erro clássico — e o mais difícil de
  *  perceber depois, porque o número parece razoável. */
-function medir(linhas: Linha[], dentro: (d: Date) => boolean) {
+function medir(linhas: Linha[], dentro: (d: Date) => boolean, vidaToda = false) {
   const entraram = linhas.filter((l) => noPeriodo(l.dataPedido, dentro));
   const ganhos = linhas.filter(
     (l) => l.statusProcesso === 'Ganho' && noPeriodo(l.dataResultado, dentro));
+
+  /* DINHEIRO — três eventos, três datas (@R 18/09: "valor em oportunidades recebidas,
+     valor enviado em orçamento, valor perdido, e a média do valor da oportunidade").
+
+     ⚠ O ACHADO QUE MUDOU ESTE CÓDIGO: 308 dos 603 orçamentos (51%) NÃO têm
+     `dataStatusOrcamento` preenchida. Filtrar por data do evento na lente VIDA TODA
+     esconderia R$ 21,6 milhões — o total cairia de R$ 46,5 mi para R$ 24,9 mi sem
+     ninguém perceber, porque o número menor também parece plausível.
+     Por isso: nas lentes de período, filtra pela data do evento (é o que "neste mês"
+     significa); em VIDA TODA, não filtra — vida toda é tudo, e exigir uma data que
+     metade dos registros não tem transformaria a lente mais ampla na mais cega. */
+  const recebidos = entraram.filter((l) => num(l.refPreco) > 0);
+  const enviados = linhas.filter((l) => num(l.valorOrcamento) > 0
+    && (vidaToda || noPeriodo(l.dataStatusOrcamento, dentro)));
+  const perdidos = linhas.filter((l) => l.statusProcesso === 'Perda' && num(l.valorOrcamento) > 0
+    && (vidaToda || noPeriodo(l.dataStatusPerda, dentro)));
+
+  const soma = (lista: Linha[], campo: (l: Linha) => number) =>
+    lista.reduce((a, l) => a + campo(l), 0);
+  const valorRecebido = soma(recebidos, (l) => num(l.refPreco));
+
   return {
     pedidos: entraram.length,
     ganhos: ganhos.length,
     valorGanho: ganhos.reduce((a, l) => a + (num(l.valorGanho) || num(l.valorOrcamento)), 0),
+    valorRecebido,
+    // o denominador é quem TEM referência, ¬todos os pedidos: dividir por quem não tem
+    // preço rebaixaria a média por ausência de dado, ¬por oportunidade menor
+    nComReferencia: recebidos.length,
+    mediaOportunidade: recebidos.length ? valorRecebido / recebidos.length : 0,
+    valorEnviado: soma(enviados, (l) => num(l.valorOrcamento)),
+    nEnviados: enviados.length,
+    valorPerdido: soma(perdidos, (l) => num(l.valorOrcamento)),
+    nPerdidos: perdidos.length,
   };
 }
 
@@ -122,7 +155,7 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
     const anoPassado = medir(linhas, (d) =>
       d.getFullYear() === ano - 1 && d <= new Date(ano - 1, mes, dia, 23, 59, 59));
 
-    const vida = medir(linhas, () => true);
+    const vida = medir(linhas, () => true, true);
     return { mesAtual, mesAnterior, mesAnoPassado, anoAtual, anoPassado, vida, dia, ano };
   }, [linhas, hoje.getDate(), hoje.getMonth(), hoje.getFullYear()]);
 
@@ -167,6 +200,29 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
         </div>
 
         <div className="ce__card">
+          <span className="ce__rotulo">Valor recebido em oportunidades</span>
+          <strong className="ce__valor">{moeda(foco.valorRecebido)}</strong>
+          <span className="ce__nota">
+            média de {moeda(foco.mediaOportunidade)} por pedido
+            {foco.nComReferencia !== foco.pedidos && (
+              <> · {foco.nComReferencia} de {foco.pedidos} com valor de referência</>
+            )}
+          </span>
+        </div>
+
+        <div className="ce__card">
+          <span className="ce__rotulo">Valor enviado em orçamento</span>
+          <strong className="ce__valor">{moeda(foco.valorEnviado)}</strong>
+          <span className="ce__nota">{foco.nEnviados} orçamento{foco.nEnviados === 1 ? '' : 's'}</span>
+        </div>
+
+        <div className="ce__card">
+          <span className="ce__rotulo">Valor perdido</span>
+          <strong className="ce__valor ce__valor--perda">{moeda(foco.valorPerdido)}</strong>
+          <span className="ce__nota">{foco.nPerdidos} pedido{foco.nPerdidos === 1 ? '' : 's'} com orçamento</span>
+        </div>
+
+        <div className="ce__card">
           <span className="ce__rotulo">Valor ganho</span>
           <strong className="ce__valor">{moeda(foco.valorGanho)}</strong>
           {lente === 'mes' && dados.mesAnoPassado.valorGanho > 0 && (
@@ -178,13 +234,22 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
       </div>
 
       <p className="ce__regua">
-        {lente === 'vida'
-          ? 'Toda a base, desde o primeiro pedido registrado. Conta pela data do pedido.'
-          : `Comparação pró-rata: os dois lados contam do dia 1 ao dia ${dados.dia}, para não
-             comparar um período pela metade com um período inteiro. Conta pela data do pedido;
-             Pedido conta pela data de entrada; ganho conta pela data do resultado — são
-             eventos diferentes, cada um no mês em que aconteceu. Por isso os dois não
-             formam uma taxa de conversão: não se referem aos mesmos processos.`}
+        {lente === 'vida' ? (
+          <>
+            Toda a base, desde o primeiro pedido registrado. Aqui os valores <strong>não</strong>{' '}
+            são filtrados por data do evento: metade dos orçamentos não tem essa data preenchida,
+            e exigi-la esconderia R$ 21,6 milhões justamente na lente mais ampla.
+          </>
+        ) : (
+          <>
+            Comparação pró-rata: os dois lados contam do dia 1 ao dia {dados.dia}, para não
+            comparar um período pela metade com um período inteiro. Cada número entra pela data
+            do SEU evento — pedido pela entrada, orçamento pelo envio, perda pela data da perda,
+            ganho pelo resultado. Por isso eles <strong>não se somam nem se subtraem entre si</strong>:
+            uma perda deste mês costuma ser de um pedido que entrou meses atrás, e orçamento
+            sem data de envio não aparece no recorte.
+          </>
+        )}
       </p>
     </section>
   );

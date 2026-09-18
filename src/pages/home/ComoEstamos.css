@@ -23,3 +23,8 @@ body.dark-theme .ce__lentes { background: #0d1b2a; }
 body.dark-theme .ce__lente.is-ativa { background: #16283f; color: #e6eef6; }
 body.dark-theme .ce__card { border-color: #1e2d42; }
 body.dark-theme .ce__valor { color: #e6eef6; }
+
+/* Valor perdido em tom de alerta — é o único dos quatro que é notícia ruim, e lê-lo
+   junto dos outros em preto faz o olho passar batido. */
+.ce__valor--perda { color: #b45309; }
+body.dark-theme .ce__valor--perda { color: #fbbf24; }
