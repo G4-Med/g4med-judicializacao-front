@@ -683,7 +683,7 @@ const handleConfirmarProtocolacao = async () => {
 
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid kpi-grid-3">
-        <KpisValorEUrgencia linhas={visibleProcessos} valorDe={(p:any)=>p.valor ?? 0} />
+        <KpisValorEUrgencia linhas={visibleProcessos} todas={dataComCamposCalculados} valorDe={(p:any)=>p.valor ?? 0} />
         <div className="kpi-card">
           <div className="kpi-header">
             <span>Quantidade de Processos</span>

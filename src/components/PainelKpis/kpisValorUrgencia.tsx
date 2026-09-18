@@ -21,23 +21,39 @@ import './PainelKpis.css';
  */
 export function KpisValorEUrgencia({
   linhas,
+  todas,
   valorDe,
 }: {
+  /** o que está VISÍVEL na tabela (pós-filtro/paginação) */
   linhas: any[];
+  /** a fase INTEIRA. Sem isto, cai em `linhas` — e aí o número é o da página. */
+  todas?: any[];
   valorDe: (linha: any) => number;
 }) {
-  const total = linhas.reduce((acc, l) => acc + (valorDe(l) || 0), 0);
-  const comUrgencia = linhas.filter((l) => nivelRepedido(l) !== 'nenhum');
-  const valorUrgencia = comUrgencia.reduce((acc, l) => acc + (valorDe(l) || 0), 0);
+  // @R 17/09: "as fases tem que ter o valor da oportunidade, para sabermos em cada fase
+  // do funil quanto cada um está representando, para podermos priorizar por valor".
+  // Priorizar ENTRE fases exige comparar fases inteiras — um número que encolhe quando
+  // alguém filtra a tela não serve para isso. Por isso o valor é o da FASE; o que está
+  // filtrado aparece embaixo, como recorte, quando for diferente.
+  const base = todas && todas.length ? todas : linhas;
+  const soma = (lista: any[]) => lista.reduce((acc, l) => acc + (valorDe(l) || 0), 0);
+  const total = soma(base);
+  const totalVisivel = soma(linhas);
+  const filtrado = base.length !== linhas.length;
+  const comUrgencia = base.filter((l) => nivelRepedido(l) !== 'nenhum');
+  const valorUrgencia = soma(comUrgencia);
 
   const moeda = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   return (
     <>
-      <div className="kpi-card" title="Soma do valor de todos os pedidos visíveis nesta fase">
-        <div className="kpi-header"><span>Valor total na fase</span><i className="pi pi-wallet" /></div>
-        <div className="kpi-value">{moeda(total)}</div>
+      <div className="kpi-card" title="Quanto esta fase do funil representa em dinheiro — a oportunidade parada aqui">
+        <div className="kpi-header"><span>Oportunidade nesta fase</span><i className="pi pi-wallet" /></div>
+        <div className="kpi-value">
+          {moeda(total)}
+          {filtrado && <span className="kpi-sub"> · filtrado {moeda(totalVisivel)}</span>}
+        </div>
       </div>
       <div
         className="kpi-card"

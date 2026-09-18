@@ -416,7 +416,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
 
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid">
-        <KpisValorEUrgencia linhas={visibleProcessos} valorDe={(p:any)=>p.refPreco ?? 0} />
+        <KpisValorEUrgencia linhas={visibleProcessos} todas={dataComSequencial} valorDe={(p:any)=>p.refPreco ?? 0} />
         <div className="kpi-card">
           <div className="kpi-header"><span>Quantidade de Processos</span><i className="pi pi-list" /></div>
           <div className="kpi-value">{kpis.total}</div>

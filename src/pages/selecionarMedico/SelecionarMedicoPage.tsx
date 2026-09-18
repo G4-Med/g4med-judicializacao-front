@@ -451,13 +451,22 @@ export function SelecionarMedicoPage() {
 
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid">
-        <KpisValorEUrgencia linhas={visibleProcessos} valorDe={(p:any)=>p.refPreco ?? 0} />
-        <div className="kpi-card">
+        <KpisValorEUrgencia linhas={visibleProcessos} todas={dataComCamposCalculados} valorDe={(p:any)=>p.refPreco ?? 0} />
+        {/* @R 17/09: "colocar o total possível de processos aqui na fase". O número
+            sozinho era o da PÁGINA — quem via "15" com 47 na fase concluía que a fila
+            tinha acabado. Agora o total da fase é o número grande (é ele que diz o
+            tamanho do trabalho) e o visível aparece ao lado, só quando os dois diferem. */}
+        <div className="kpi-card" title="Pedidos nesta fase · e quantos estão visíveis com os filtros atuais">
           <div className="kpi-header">
             <span>Total de Processos</span>
             <i className="pi pi-list" />
           </div>
-          <div className="kpi-value">{kpis.total}</div>
+          <div className="kpi-value">
+            {dataComCamposCalculados.length}
+            {dataComCamposCalculados.length !== kpis.total && (
+              <span className="kpi-sub"> · {kpis.total} visíve{kpis.total === 1 ? 'l' : 'is'}</span>
+            )}
+          </div>
         </div>
 
         {/* Contadores da PÁGINA (¬do total): acompanham filtro e paginação. */}
