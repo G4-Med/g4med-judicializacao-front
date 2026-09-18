@@ -8,7 +8,7 @@ import type {
 } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
-import { getParaProtocolar, salvarProtocolar, uploadAnexoOrder, getOrders, getMedicosCompleto, getAnexosOrder, getOrcamentoConsolidado, getEmailRecebimentoPdf } from '../../services/api/orders';
+import { getParaProtocolar, salvarProtocolar, uploadAnexoOrder, getOrders, getMedicosCompleto, getAnexosOrder, getOrcamentoConsolidado, getEmailRecebimentoPdf, atualizarOrder } from '../../services/api/orders';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -85,7 +85,10 @@ export function ParaProtocolarPage() {
   const [arquivoExtra1, setArquivoExtra1] = useState<File | null>(null)
   const [arquivoExtra2, setArquivoExtra2] = useState<File | null>(null)
   const [enviandoProtocolo, setEnviandoProtocolo] = useState(false)
-  const [, setMedicos] = useState<any[]>([]);
+  // a lista era buscada e JOGADA FORA (só o setter existia) — o campo Cliente do modal
+  // precisava dela para virar uma escolha em vez de texto livre (@R 17/09)
+  const [medicos, setMedicos] = useState<any[]>([]);
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [anexosOrcamento, setAnexosOrcamento] = useState<any[]>([]);
   const [loadingAnexosOrcamento, setLoadingAnexosOrcamento] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -559,10 +562,37 @@ export function ParaProtocolarPage() {
     });
   };
 
-  const handleSalvarEdicao = () => {
+  /* O BOTÃO SALVAR NÃO SALVAVA (@R 17/09: "não to conseguindo colocar o médico aqui como
+     cliente"). Ele fazia `console.log` e fechava o diálogo — sem erro, sem aviso, sem
+     gravar. Quem editava via a janela fechar e ia embora achando que tinha gravado; ao
+     reabrir, o campo estava vazio de novo.
+
+     É a pior forma de falhar: uma tela que MENTE sucesso. Erro visível manda a pessoa
+     tentar outro caminho; sucesso falso a faz confiar e seguir.
+
+     O endpoint sempre existiu e funciona — provado em produção hoje (PATCH
+     orders/<id>/atualizar/, pedido 361: idMedico 19 → 23, com controle positivo no campo
+     `procedimento` para garantir que o 200 não era vazio). Faltava a chamada. */
+  const handleSalvarEdicao = async () => {
     if (!registroEditando) return;
-    console.log('Salvar edição:', registroEditando);
-    setEditDialogVisible(false);
+    setSalvandoEdicao(true);
+    try {
+      await atualizarOrder(registroEditando.id, {
+        paciente: registroEditando.paciente,
+        // Cliente É o médico/estabelecimento do pedido: grava o VÍNCULO (idMedico), ¬um
+        // texto solto. Antes era campo livre — o que se digitasse ali não viraria vínculo
+        // nenhum, mesmo que o salvar funcionasse.
+        idMedico: registroEditando.idMedico ?? undefined,
+        valorOrcamento: registroEditando.valor ?? undefined,
+        nprocesso: registroEditando.numeroProcesso || undefined,
+      });
+      setEditDialogVisible(false);
+      await carregarDados();
+    } catch (e: any) {
+      alert(e?.response?.data?.error ?? 'Não foi possível salvar as alterações deste pedido.');
+    } finally {
+      setSalvandoEdicao(false);
+    }
   };
 
 const handleConfirmarProtocolacao = async () => {
@@ -857,10 +887,18 @@ const handleConfirmarProtocolacao = async () => {
             </div>
 
             <div className="field field-span-2">
-              <label>Cliente</label>
-              <InputText
-                value={registroEditando.cliente}
-                onChange={(e) => updateRegistroEditando('cliente', e.target.value)}
+              <label>Cliente (médico ou estabelecimento)</label>
+              <Dropdown
+                value={registroEditando.idMedico ?? null}
+                options={medicos.map((m: any) => ({
+                  label: m.nomeSistema || m.nomeCompleto || m.razaoSocial,
+                  value: m.id,
+                }))}
+                onChange={(e) => updateRegistroEditando('idMedico', e.value)}
+                placeholder="Escolha o cliente"
+                filter
+                showClear
+                style={{ width: '100%' }}
               />
             </div>
 
@@ -982,7 +1020,8 @@ const handleConfirmarProtocolacao = async () => {
 
         {!readOnly && <div className="dialog-footer-actions">
           <Button label="Cancelar" outlined onClick={() => setEditDialogVisible(false)} />
-          <Button label="Salvar" icon="pi pi-check" onClick={handleSalvarEdicao} />
+          <Button label="Salvar" icon="pi pi-check" onClick={handleSalvarEdicao}
+            loading={salvandoEdicao} disabled={salvandoEdicao} />
         </div>}
       </Dialog>
 
