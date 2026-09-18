@@ -10,6 +10,9 @@ import { useFichaPedido } from '../FichaPedido/FichaPedidoContext';
 import { uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos } from '../../services/api/orders';
 import './colunasIdentificacao.css';
 
+// mesma fonte que services/api.ts usa — `define` do Vite não vale no dev (cicatriz 10/09)
+const API_BASE = import.meta.env.VITE_API_URL;
+
 /**
  * Colunas de IDENTIFICAÇÃO do pedido, reutilizáveis em toda tabela (task #214, @R 27/08 13:23:
  * "para todas as tabelas: CNJ/SEI com botões de copiar e a comarca").
@@ -603,8 +606,21 @@ function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
   const [enviando, setEnviando] = useState(false);
 
   if (linha.temInteiroTeor || enviado) {
-    return <Tag value="Inteiro teor ✓" severity="success" icon="pi pi-file-check"
+    /* O BADGE BAIXA (@R 18/09: "não estamos conseguindo baixar a peça clicando na tabela").
+       Antes era um Tag informativo — ¬havia o que clicar. E o link direto do R2 também não
+       resolveria: o bucket não manda Content-Disposition, então o Chrome ABRE o PDF (8,8 MB
+       no #1252) em vez de baixar, e o atributo `download` é ignorado em cross-origin.
+       Por isso aponta para a rota do backend, que força o attachment. */
+    const tag = <Tag value="Inteiro teor ✓" severity="success" icon="pi pi-file-check"
       title="A peça de inteiro teor já está anexada a este pedido" />;
+    if (!linha.id) return tag;
+    return (
+      <a className="inteiro-teor-baixar"
+         href={`${API_BASE}/orders/${linha.id}/baixar-tipo/DECISAO_INTEIRO_TEOR/`}
+         title="Baixar a peça de inteiro teor (PDF)">
+        {tag}
+      </a>
+    );
   }
   if (!linha.id) return <span className="ident-vazio">—</span>;
   const declarado = !!linha.semPecaInteiroTeor;
