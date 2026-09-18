@@ -317,9 +317,26 @@ export function HomePage() {
     ).length;
     const pedidosRecusadosVida = perdas.length;
 
+    /* "EM ABERTO" SÓ CONTA QUEM ESTÁ MESMO EM ALGUMA FASE (@R 17/09: "isso aqui tá
+       errado também").
+       A régua antiga era por SUBTRAÇÃO: tudo que não é Ganho nem Perda. Medido em
+       produção 17/09 isso dava 775 de 1.158 — e dentro desses 775 estavam 371
+       "Histórico - Base Antiga" + 195 "Histórico - Sem Rastro", 566 registros de carga
+       histórica que não estão em fase nenhuma e ninguém vai trabalhar. O número real de
+       pedidos vivos é 209.
+       Régua por INCLUSÃO: está em aberto quem está numa das fases do funil. Assim um
+       status novo (ou um legado que apareça amanhã) não entra por acidente — para
+       entrar, alguém precisa listá-lo aqui, de propósito. */
+    const FASES_EM_ABERTO = [
+      'Aguardando Juridico',
+      'Aguardando Orçamento',
+      'Aguardando Protocolar',
+      'Aguardando Resposta',
+      'Aguardando Resposta - Segredo de Justiça',
+      'Enviado à SES - Sem Protocolo',
+    ];
     const pedidosEmAberto = orders.filter(
-      (item) =>
-        item.statusProcesso !== STATUS_PROCESSO_GANHO && item.statusProcesso !== STATUS_PROCESSO_PERDA
+      (item) => FASES_EM_ABERTO.includes(item.statusProcesso ?? '')
     );
     const pedidosEmAbertoComOrcamento = pedidosEmAberto.filter(
       (item) => toNumber(item.valorOrcamento) > 0
@@ -330,13 +347,20 @@ export function HomePage() {
       0
     );
 
-    const ganhos = resultados.filter((item) => item.statusProcesso === STATUS_PROCESSO_GANHO);
+    /* GANHOS E PERDAS SAÍRAM DE `resultados` E VIERAM PARA `orders` (@R 17/09).
+       As duas listas chegam de rotas diferentes, com recortes diferentes — e estavam
+       lado a lado na mesma faixa da tela, como se falassem da mesma coisa. Medido:
+       a tela mostrava 19/44 enquanto o banco tem 19 Ganho e 364 Perda. O 19 batia por
+       coincidência (todos os ganhos estão nos dois recortes); o 44 era outro universo.
+       Dois números vizinhos precisam vir da MESMA fonte, senão o leitor faz a conta
+       entre eles e a conta mente. */
+    const ganhos = orders.filter((item) => item.statusProcesso === STATUS_PROCESSO_GANHO);
     const valorGanho = ganhos.reduce(
       (acc, item) => acc + (toNumber(item.valorGanho) || toNumber(item.valorOrcamento)),
       0
     );
 
-    const perdasResultado = resultados.filter((item) => item.statusProcesso === STATUS_PROCESSO_PERDA);
+    const perdasResultado = orders.filter((item) => item.statusProcesso === STATUS_PROCESSO_PERDA);
     const valorPerda = perdasResultado.reduce(
       (acc, item) => acc + (toNumber(item.valorOrcamento) || 0),
       0
@@ -675,7 +699,8 @@ export function HomePage() {
             <strong>Mês atual</strong>
             <span>{indicadores.mesAtualLabel}</span>
           </div>
-          <div className="home-hero__metric">
+          <div className="home-hero__metric"
+            title="Pedidos que estão em alguma fase do funil (jurídico, orçamento, protocolar, aguardando resposta, enviado à SES). NÃO inclui ganho, perda, nem os registros de carga histórica — esses não são trabalho em aberto.">
             <strong>Pedidos em aberto</strong>
             <span>{loading ? '--' : indicadores.pedidosAbertosQtd}</span>
           </div>
@@ -701,8 +726,9 @@ export function HomePage() {
                     : `⚠ régua 548 parada há ${Math.round(saudeDados.regua.idadeHoras ?? 0)}h`}
             </span>
           </div>
-          <div className="home-hero__metric">
-            <strong>Ganhos x perdas</strong>
+          <div className="home-hero__metric"
+            title="Vida toda, mesma fonte para os dois lados: pedidos com statusProcesso Ganho e Perda. Registros de carga histórica não entram em nenhum dos dois.">
+            <strong>Ganhos x perdas <small>(vida toda)</small></strong>
             <span>
               {loading
                 ? '--'
