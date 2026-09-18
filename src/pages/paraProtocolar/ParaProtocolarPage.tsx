@@ -514,10 +514,15 @@ export function ParaProtocolarPage() {
   const excluirBodyTemplate = (rowData: ParaProtocolarTableRow) => {
     return (
       <Button
-        label="Não protocolar"
+        /* "Não protocolar" quebrava em duas linhas e empurrava a altura da célula
+           (@R 18/09). "Recusar" cabe numa linha e diz a mesma ação — o que o rótulo
+           perde em literalidade, o tooltip devolve inteiro logo abaixo, com os quatro
+           motivos possíveis. Encurtar o que ocupa espaço, ¬o que informa. */
+        label="Recusar"
         icon="pi pi-times"
         severity="danger"
         outlined
+        className="pp-btn-recusar"
         tooltip="Não protocolar: perda, orientação da diretoria, sem protocolo ou segredo de justiça"
         tooltipOptions={{ position: 'top' }}
         onClick={() => {

@@ -459,3 +459,7 @@ body.dark-theme .pp-form-grid .radio-group {
 }
 body.dark-theme .pp-form-grid .radio-item label { color: #e6eef6; }
 body.dark-theme .pp-form-grid .radio-item:hover { background: rgba(0, 166, 81, 0.12); }
+
+/* O rótulo do Recusar não quebra: a coluna de ações é estreita e uma quebra empurra a
+   altura de TODA a linha, desalinhando a tabela inteira. */
+.pp-btn-recusar .p-button-label { white-space: nowrap; }
