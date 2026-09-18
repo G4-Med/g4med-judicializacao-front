@@ -215,6 +215,13 @@ export const convidarCandidatoCotacao = (
 /** Este orçamento é o que vale. O sistema NÃO elege sozinho (decisão 6d831a5fa8):
  *  quando a escolha não é a mais barata, o backend exige o motivo — é a pergunta que
  *  alguém faz depois ("por que pagamos mais?"), e ela merece resposta registrada. */
+/** Baixa um arquivo do R2 PELO NOSSO domínio (same-origin) — @R/Yago 18/09.
+ *  O bucket só libera CORS para o domínio antigo (Netlify), e desde 17/09 o front é
+ *  servido pelo domínio da API: o fetch direto é bloqueado pelo browser. Passando por
+ *  aqui não existe cross-origin, e nenhuma troca futura de domínio volta a quebrar. */
+export const baixarArquivoR2 = (url: string) =>
+  api.get('/arquivo-r2/', { params: { url }, responseType: 'arraybuffer' });
+
 /** "Abri a página e confirmei que este número está certo" (@R 18/09).
  *  Aceita correção junto: quem abre e vê errado precisa de caminho que não seja
  *  deixar como está. O valor lido pela máquina vai para a observação, nunca some. */

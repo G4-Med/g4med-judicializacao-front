@@ -805,3 +805,7 @@ body.dark-theme .om-dias--tarde { color: #fbbf24; }
 /* Faixa de preço lida das peças (@R 18/09). */
 .om-orcpeca { display: inline-flex; gap: .35rem; align-items: baseline; font-size: .85rem; }
 .om-orcpeca__n { font-size: .72rem; opacity: .6; }
+
+/* Falha ao carregar o papel timbrado — antes isto era só console (@R/Yago 18/09). */
+.orcamento-erro-base { margin: .75rem 1rem 0; padding: .6rem .8rem; border-radius: 8px;
+  background: rgba(220,38,38,.08); border: 1px solid #dc2626; color: #991b1b; font-size: .88rem; }

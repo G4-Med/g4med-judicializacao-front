@@ -6,6 +6,7 @@ import { InputText } from 'primereact/inputtext';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
+import { baixarArquivoR2 } from '../../services/api/orders';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { getBaseOrcamento, getDadosMedico, type TipoBaseOrcamento } from '../../services/api/client';
 import { salvarOrcamentoMedico, uploadAnexoOrder, getInteligenciaPedido, lerOrcamentoDoArquivo } from '../../services/api/orders';
@@ -182,6 +183,7 @@ export function EnviarOrcamentoDialog({
   const [baseOrcamento, setBaseOrcamento] = useState<BaseOrcamento>(baseOrcamentoInicial);
   const [loadingBaseOrcamento, setLoadingBaseOrcamento] = useState(false);
   const [basePdfCaptureReady, setBasePdfCaptureReady] = useState(false);
+  const [erroBasePdf, setErroBasePdf] = useState('');
   const [hospitalMedico, setHospitalMedico] = useState('');
 
   const previewDocumentoRef = useRef<HTMLDivElement>(null);
@@ -332,6 +334,7 @@ export function EnviarOrcamentoDialog({
       if (!ctx) return;
 
       setBasePdfCaptureReady(false);
+      setErroBasePdf('');
 
       if (!baseOrcamento.linkBaseOrcamento) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -339,12 +342,14 @@ export function EnviarOrcamentoDialog({
       }
 
       try {
-        const response = await fetch(baseOrcamento.linkBaseOrcamento);
-        if (!response.ok) {
-          throw new Error(`Falha ao baixar PDF base: ${response.status}`);
-        }
-
-        const buffer = await response.arrayBuffer();
+        /* PELO NOSSO DOMÍNIO, ¬direto no R2 (@R/Yago 18/09 — produção parada).
+           O `fetch` direto era bloqueado pelo browser desde 17/09: o front saiu do
+           Netlify e o CORS do bucket só conhece a origem antiga. Medido com controle:
+           Origin novo → sem Access-Control-Allow-Origin; Origin antigo → com.
+           O sintoma não parecia CORS: o preview aparecia (`<object>` não passa por
+           CORS) e só o botão de enviar ficava morto. */
+        const resposta = await baixarArquivoR2(baseOrcamento.linkBaseOrcamento);
+        const buffer = resposta.data as ArrayBuffer;
         const loadingTask = getDocument({ data: buffer });
         const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
@@ -368,6 +373,17 @@ export function EnviarOrcamentoDialog({
         console.error('[EnviarOrcamentoDialog] erro ao renderizar PDF base', error);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         setBasePdfCaptureReady(false);
+        /* O SILÊNCIO ERA O PIOR DO BUG (18/09). Sem esta linha, a falha só existia no
+           console: a tela mostrava o preview e o botão desabilitado, e quem estava
+           operando não tinha como saber que faltava algo nem o que fazer. Botão que
+           não funciona PRECISA dizer por quê — senão a pessoa clica, não acontece
+           nada, e ela conclui que o sistema está quebrado (e está, mas de um jeito
+           que ninguém consegue reportar). */
+        setErroBasePdf(
+          'Não consegui carregar o papel timbrado deste médico, então não dá para gerar '
+          + 'o PDF final. Tente de novo em alguns segundos; se continuar, avise que o '
+          + 'arquivo-base do médico não está abrindo.',
+        );
       }
     };
 
@@ -1086,6 +1102,12 @@ export function EnviarOrcamentoDialog({
           </div>
         </div>
 
+        {erroBasePdf && (
+          <div className="orcamento-erro-base" role="alert">
+            <i className="pi pi-exclamation-triangle" /> {erroBasePdf}
+          </div>
+        )}
+
         <div className="dialog-footer-actions">
           <Button label="Voltar" outlined onClick={() => setModo('escolha')} />
           <Button
@@ -1094,6 +1116,12 @@ export function EnviarOrcamentoDialog({
             onClick={handleEnviarOrcamentoManual}
             loading={enviandoManual}
             disabled={enviandoManual || (Boolean(baseOrcamento.linkBaseOrcamento) && !basePdfCaptureReady)}
+            tooltip={
+              !enviandoManual && Boolean(baseOrcamento.linkBaseOrcamento) && !basePdfCaptureReady
+                ? 'Aguardando o papel timbrado do médico carregar — sem ele o PDF final sai sem o timbre.'
+                : undefined
+            }
+            tooltipOptions={{ position: 'top' }}
           />
         </div>
       </Dialog>
