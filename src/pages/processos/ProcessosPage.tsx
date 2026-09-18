@@ -386,7 +386,10 @@ export function ProcessosPage() {
       dataSituacao: o.dataSituacao ?? '',
       valorGanho: o.valorGanho,
       nprocesso: o.nprocesso ?? '',
-      empresa: medicosData.find((m: any) => m.id === o.idMedico)?.razaoSocial ?? '',
+      empresa: (() => { const m = medicosData.find((x: any) => x.id === o.idMedico);
+        // 5 de 29 cadastros têm empresa sem razão social — sem este fallback a coluna
+        // fica vazia com o vínculo existindo (caso FRASSINETE, @R 18/09)
+        return m?.razaoSocial || m?.nomeSistema || m?.nomeCompleto || ''; })(),
       statusPerda: o.statusPerda ?? '',
       dataStatusPerda: o.dataStatusPerda ?? '',
       idMedico: o.idMedico ?? null,
@@ -2824,7 +2827,11 @@ ${linhasAnexos}
                       ...prev,
                       idMedico: e.value,
                       medico: medicoSelecionado?.nomeSistema ?? '',
-                      empresa: medicoSelecionado?.razaoSocial ?? '',
+                      // mesmo fallback do carregamento: vínculo existindo, a tela diz
+                      // QUEM é, mesmo sem razão social no cadastro da empresa
+                      empresa: medicoSelecionado?.razaoSocial
+                        || medicoSelecionado?.nomeSistema
+                        || medicoSelecionado?.nomeCompleto || '',
                     } : null);
                   }}
                   placeholder="Selecione"

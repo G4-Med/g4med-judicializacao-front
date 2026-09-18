@@ -166,7 +166,19 @@ export function ParaProtocolarPage() {
               valorOrcamento: o.valorOrcamento ?? 0,
               dataStatusOrcamento: o.dataStatusOrcamento,
               solicitacao: o.solicitacao ?? '',
-              cliente: medico?.razaoSocial ?? '',
+              /* CLIENTE EM BRANCO COM VÍNCULO EXISTINDO (@R 18/09, caso FRASSINETE).
+                 A célula lia SÓ a razão social da empresa do médico. Medido em produção:
+                 5 dos 29 cadastros têm empresa sem razão social preenchida (Guilherme
+                 Bicalho, Thiago Mattos, Luiz Henrique Abad, Instituto Mateus, Luiz Felipe
+                 Caputo) — nesses, a coluna ficava VAZIA mesmo com o médico corretamente
+                 vinculado (o pedido 563 tinha idMedico=23 gravado, e a tela mostrava nada).
+
+                 Vazio ali é indistinguível de "não tem cliente", que é o oposto do que
+                 acontece. Agora cai para o nome do médico: o vínculo existe, então a tela
+                 diz QUEM é. Falta o nome da empresa — isso é lacuna de cadastro, e o
+                 lugar de resolver é o cadastro, não escondendo o vínculo. */
+              cliente: medico?.razaoSocial
+                || medico?.nomeSistema || medico?.nomeCompleto || '',
               valor: o.valorOrcamento ?? o.refPreco ?? 0,
               dataEnvioOrcamento: o.dataStatusOrcamento ?? '',
               observacoes: o.solicitacao ?? '',

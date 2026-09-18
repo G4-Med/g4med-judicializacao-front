@@ -121,7 +121,7 @@ export function PerdasPage() {
               justificativaPerda: o.justificativaPerda ?? '',
               motivoPerdaCategoria: o.motivoPerdaCategoria ?? null,
               analiseJuridicaFinal: o.analiseJuridicaFinal ?? '',
-              cliente: medico?.razaoSocial ?? '',
+              cliente: medico?.razaoSocial || medico?.nomeSistema || medico?.nomeCompleto || '',
               valor: valorOrcamento || o.refPreco || 0,
               resultado: 'Perda',
               idMedico: medicoId

@@ -170,7 +170,7 @@ const carregarDados = async (): Promise<ResultadoProcesso[]> => {
           historico: o.historico ?? [],
           idMedico: medicoId,
           // legados
-          cliente: medico?.razaoSocial ?? '',
+          cliente: medico?.razaoSocial || medico?.nomeSistema || medico?.nomeCompleto || '',
           valor: valorOrcamento,
           numeroProcesso: o.nprocesso ?? '',
           dataProtocolo: o.dataProtocolo ?? o.dataResultado ?? '',
