@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { getOrders, getPerdas, getResultados, getSaudeDados, type SaudeDados } from '../../services/api/orders';
+import { estaEmAberto } from '../../services/reguaFases';
 import { ComoEstamos } from './ComoEstamos';
 import { Button } from 'primereact/button'
 import { Chart } from 'primereact/chart';
@@ -328,17 +329,10 @@ export function HomePage() {
        Régua por INCLUSÃO: está em aberto quem está numa das fases do funil. Assim um
        status novo (ou um legado que apareça amanhã) não entra por acidente — para
        entrar, alguém precisa listá-lo aqui, de propósito. */
-    const FASES_EM_ABERTO = [
-      'Aguardando Juridico',
-      'Aguardando Orçamento',
-      'Aguardando Protocolar',
-      'Aguardando Resposta',
-      'Aguardando Resposta - Segredo de Justiça',
-      'Enviado à SES - Sem Protocolo',
-    ];
-    const pedidosEmAberto = orders.filter(
-      (item) => FASES_EM_ABERTO.includes(item.statusProcesso ?? '')
-    );
+    /* A lista de fases mora em services/reguaFases — a mesma que a dashboard usa. Ela
+       nasceu aqui como cópia local e durou 20 minutos: duas cópias da mesma régua é
+       exatamente como a home e a dashboard passaram a discordar sem ninguém notar. */
+    const pedidosEmAberto = orders.filter((item) => estaEmAberto(item.statusProcesso));
     const pedidosEmAbertoComOrcamento = pedidosEmAberto.filter(
       (item) => toNumber(item.valorOrcamento) > 0
     );

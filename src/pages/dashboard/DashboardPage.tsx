@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { Chart } from 'primereact/chart';
+import { estaEmAberto, ehHistorico } from '../../services/reguaFases';
 import { Dropdown } from 'primereact/dropdown';
 import { DatePickerPeriodo, type PeriodoSelecionado } from '../../components/DatePicker/DatePicker';
 import { getMedicosCompleto, getOrders, getPerdas, getResultados } from '../../services/api/orders';
@@ -365,11 +366,17 @@ export function DashboardPage() {
     const totalPerdas = basePerdas.length;
     const totalPerdasPeriodo = periodPerdas.length;
 
-    const clientesAtivosTotal = new Set(baseOrders.filter((i) => i.statusProcesso !== 'Perda' && i.statusProcesso !== 'Ganho').map((i) => i.idMedico).filter(Boolean)).size;
-    const clientesAtivosPeriodo = new Set(periodOrders.filter((i) => i.statusProcesso !== 'Perda' && i.statusProcesso !== 'Ganho').map((i) => i.idMedico).filter(Boolean)).size;
+    /* "EM ABERTO" E "CLIENTES ATIVOS" passaram da régua por SUBTRAÇÃO para a régua
+       canônica (services/reguaFases). A antiga — "não é Perda nem Ganho" — contava os
+       566 registros de carga histórica (49% da base, medido 17/09) como trabalho vivo, e
+       os médicos deles como clientes ativos. A mesma régua agora vale aqui e na home:
+       enquanto eram duas cópias, divergiam sem ninguém perceber. */
+    const clientesAtivosTotal = new Set(baseOrders.filter((i) => estaEmAberto(i.statusProcesso)).map((i) => i.idMedico).filter(Boolean)).size;
+    const clientesAtivosPeriodo = new Set(periodOrders.filter((i) => estaEmAberto(i.statusProcesso)).map((i) => i.idMedico).filter(Boolean)).size;
 
-    const emAbertoTotal = baseOrders.filter((i) => i.statusProcesso !== 'Perda' && i.statusProcesso !== 'Ganho' && toNumber(i.valorOrcamento) > 0);
-    const emAbertoPeriodo = periodOrders.filter((i) => i.statusProcesso !== 'Perda' && i.statusProcesso !== 'Ganho' && toNumber(i.valorOrcamento) > 0);
+    const emAbertoTotal = baseOrders.filter((i) => estaEmAberto(i.statusProcesso) && toNumber(i.valorOrcamento) > 0);
+    const emAbertoPeriodo = periodOrders.filter((i) => estaEmAberto(i.statusProcesso) && toNumber(i.valorOrcamento) > 0);
+    const historicosNaBase = baseOrders.filter((i) => ehHistorico(i.statusProcesso)).length;
 
     const ganhosTotal = baseResultados.filter((i) => i.statusProcesso === 'Ganho');
     const ganhosPeriodo = periodResultados.filter((i) => i.statusProcesso === 'Ganho');
@@ -411,6 +418,9 @@ export function DashboardPage() {
       qtdeGanho: { periodo: qtdeGanhoPeriodo, total: qtdeGanhoTotal },
       qtdePerda: { periodo: qtdePerdaPeriodo, total: qtdePerdaTotal },
       conversaoQtde: { periodo: conversaoQtdePeriodo, total: conversaoQtdeTotal },
+      // quantos registros da base são carga histórica — declarado à vista, porque são
+      // 49% dela e entram em toda contagem "total" desta tela
+      historicosNaBase,
     };
   }, [baseOrders, periodOrders, baseResultados, periodResultados, basePerdas, periodPerdas]);
 
@@ -802,6 +812,17 @@ export function DashboardPage() {
       </section>
 
       <PainelKpis titulo="Indicadores">
+      {/* A BASE DECLARADA (@R 17/09). Metade dos registros é carga anterior ao sistema:
+          eles têm data e valor, entram em toda contagem "Total" desta tela, e ninguém
+          trabalha neles. Esconder isso faria os totais parecerem operação viva — foi
+          exatamente o que aconteceu na home ("775 em aberto" onde havia 209). */}
+      {kpis.historicosNaBase > 0 && (
+        <p className="dashboard-base-nota">
+          Os totais incluem <strong>{kpis.historicosNaBase}</strong> registros de carga
+          histórica (lançamentos anteriores ao sistema). Eles contam como demanda que
+          existiu, mas não como trabalho em aberto nem como cliente ativo.
+        </p>
+      )}
       <div className="dashboard-kpi-grid">
         {cards.map((card) => (
           <div className="kpi-card" key={card.titulo}>

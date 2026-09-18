@@ -702,3 +702,21 @@ body.dark-theme .dashboard-esp__sub { color: #e2e8f0; }
 body.dark-theme .dashboard-esp__tabela-wrap { background: #0f1c2b; border-color: #1e293b; }
 body.dark-theme .dashboard-esp__tabela th, body.dark-theme .dashboard-esp__tabela td { border-bottom-color: #1e293b; }
 body.dark-theme .dashboard-esp__tabela tbody tr:hover { background: #16263a; }
+
+/* A nota da base fica ANTES dos números, não em rodapé: quem lê um total precisa saber
+   o que há dentro dele antes de tirar conclusão, não depois. */
+.dashboard-base-nota {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: .8rem;
+  color: #92400e;
+  line-height: 1.5;
+}
+body.dark-theme .dashboard-base-nota {
+  background: rgba(180, 83, 9, .14);
+  border-color: rgba(180, 83, 9, .35);
+  color: #fbbf24;
+}
