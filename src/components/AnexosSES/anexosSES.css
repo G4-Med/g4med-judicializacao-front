@@ -63,3 +63,10 @@
 .mc-ses-origem--manual { background: #f3eefb; color: #5b3d8a; }
 .mc-ses-doc-data { color: #5b6772; }
 .mc-ses-linha--peca > td:first-child { box-shadow: inset 3px 0 0 #1f5f7a; }
+
+/* MINIATURA DE EXAME (@R 18/09) — tamanho fixo para a tabela não pular de layout
+   enquanto as imagens carregam (lazy). 56px reconhece sem pesar. */
+.mc-ses-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 6px;
+  border: 1px solid var(--surface-border, #dee2e6); display: block; }
+.mc-ses-mini { width: 64px; }
+.mc-ses-imgtag { color: var(--primary-color, #0b7285); font-weight: 600; }

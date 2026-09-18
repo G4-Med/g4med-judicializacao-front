@@ -29,6 +29,15 @@ const ESTADO: Record<string, { rotulo: string; severity: 'success' | 'warning' |
 const fmt = (iso?: string | null) =>
   iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
 
+/* IMAGEM DE EXAME — o raio-X que o Fabrício disse que "tem mas não aparece" (@R 18/09).
+   MEDIDO: 17 arquivos de imagem/zip existem no bucket, mas rotulados RELATORIO (13), OUTRO (3)
+   e ORCAMENTO (1) — o sistema os trata como documento de texto, então viram uma linha de tabela
+   igual às outras e ninguém abre. A extensão já está no `link`: dá para mostrar a imagem SEM
+   mexer no banco. Quando a Fase 2 do plano criar o tipo IMAGEM_EXAME, este helper continua
+   valendo (ele olha o arquivo, ¬o rótulo — e o rótulo é justamente o que está errado hoje). */
+const RE_IMAGEM = /\.(jpe?g|png|webp|gif|bmp|tiff?)(\?|$)/i;
+const ehImagem = (link?: string | null) => !!link && RE_IMAGEM.test(link.split('?')[0]);
+
 const TIPO_ANEXO: Record<string, string> = {
   RELATORIO: 'Relatório / documento', EXAME: 'Exame', LAUDO: 'Laudo / relatório médico', ORCAMENTO: 'Orçamento',
   ORCAMENTO_TERCEIRO: 'Orçamento de terceiro', PROCESSO: 'Processo', PROTOCOLO: 'Protocolo', OUTRO: 'Outro',
@@ -126,7 +135,7 @@ function ModalAnexosSES({ orderId, paciente, aberto, fechar }: { orderId: number
               ? <p className="mc-ses-vazio">Nenhum documento neste pedido ainda. {dados?.statusDocumentos === 'AGUARDANDO' ? 'A SES foi avisada e estamos aguardando.' : ''}</p>
               : (
                 <table className="mc-ses-tabela">
-                  <thead><tr><th>Documento</th><th>Tipo</th><th>Chegou em</th><th>Processamento</th><th /></tr></thead>
+                  <thead><tr><th>Documento</th><th>Tipo</th><th /><th>Chegou em</th><th>Processamento</th><th /></tr></thead>
                   <tbody>
                     {anexos.map((a: any) => (
                       <tr key={a.id} className={a.origem === 'PECA' ? 'mc-ses-linha--peca' : undefined}>
@@ -139,12 +148,24 @@ function ModalAnexosSES({ orderId, paciente, aberto, fechar }: { orderId: number
                             </span>
                           </div>
                         </td>
-                        <td>{TIPO_ANEXO[a.tipo] ?? a.tipo}</td>
+                        <td>
+                          {TIPO_ANEXO[a.tipo] ?? a.tipo}
+                          {ehImagem(a.link) && <span className="mc-ses-imgtag" title="Este arquivo é uma imagem (exame/raio-X)"> · imagem</span>}
+                        </td>
                         <td>{fmt(a.criadoEm)}</td>
                         <td>{a.processamento ? <Tag value={String(a.processamento).toLowerCase()} severity={a.processamento === 'PROCESSADO' ? 'success' : 'info'} /> : <span className="mc-ses-vazio">—</span>}</td>
                         {/* VER abre (link do R2, útil p/ conferir rápido) · BAIXAR passa pelo
                             backend, que força o attachment — o R2 não manda Content-Disposition e o
                             Chrome ABRE o PDF de 23 MB em vez de salvar (@R 18/09). */}
+                        <td className="mc-ses-mini">
+                          {ehImagem(a.link) && (
+                            /* lazy: 17 imagens numa tabela travariam a abertura do modal.
+                               Clicar abre o tamanho real — a miniatura é para RECONHECER, ¬para ler. */
+                            <a href={a.link!} target="_blank" rel="noreferrer" title="Abrir a imagem em tamanho real">
+                              <img className="mc-ses-thumb" src={a.link!} loading="lazy" alt="Miniatura do exame" />
+                            </a>
+                          )}
+                        </td>
                         <td className="mc-ses-acoes">
                           {a.link ? <a href={a.link} target="_blank" rel="noreferrer" className="mc-ses-link"><i className="pi pi-eye" /> ver</a> : null}
                           {a.id != null ? (
