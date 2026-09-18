@@ -200,6 +200,15 @@ export const sugerirMedicoIA = (orderId: number) =>
 export const aplicarSugestaoIA = (sugestaoId: number, idMedico: number) =>
   api.post(`/ia/sugestoes/${sugestaoId}/aplicar/`, { idMedico });
 
+/** Quem foi convidado a cotar este pedido (cotação concorrente — @R 18/09).
+ *  O registro é o que torna o convite AUDITÁVEL: hoje alguém cobra dois médicos pelo
+ *  WhatsApp e o sistema não sabe de nenhum dos dois. */
+export const listarCandidatosCotacao = (orderId: number) =>
+  api.get(`/orders/${orderId}/candidatos-cotacao/`);
+
+export const convidarCandidatoCotacao = (orderId: number, idMedico: number) =>
+  api.post(`/orders/${orderId}/candidatos-cotacao/`, { idMedico });
+
 export interface AnalisarEmpenhoResposta {
   encontrado: boolean;
   mensagem?: string;

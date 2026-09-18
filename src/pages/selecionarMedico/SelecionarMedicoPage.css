@@ -494,3 +494,7 @@ body.dark-theme .ia-precos__camada { color: #94a3b8; }
    não o argumento principal (que é o `porque` da IA). */
 .ia-candidato__jacotou { font-size: .78rem; color: #64748b; margin-top: 2px; }
 body.dark-theme .ia-candidato__jacotou { color: #94a3b8; }
+
+/* Multi-seleção de médicos para cotação concorrente (@R 18/09). */
+.ia-candidato__check { margin-right: 0.5rem; vertical-align: middle; }
+.ia-candidato__selo--resp { background: #1d4ed8; color: #fff; }

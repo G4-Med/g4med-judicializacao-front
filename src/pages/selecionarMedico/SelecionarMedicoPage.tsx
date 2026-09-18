@@ -6,6 +6,8 @@ import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
+import { MultiSelect } from 'primereact/multiselect';
+import { Checkbox } from 'primereact/checkbox';
 import { InputText } from 'primereact/inputtext';
 import { FilterMatchMode } from 'primereact/api';
 import type { DataTableFilterMeta } from 'primereact/datatable';
@@ -16,6 +18,7 @@ import {
   marcarSemProfissional,
   sugerirMedicoIA,
   aplicarSugestaoIA,
+  convidarCandidatoCotacao,
   type SugestaoIAResposta,
 } from '../../services/api/orders';
 import { getPrecosDoMedico } from '../../services/api/orders';
@@ -95,6 +98,23 @@ export function SelecionarMedicoPage() {
   const [processos, setProcessos] = useState<ProcessoResumo[]>([]);
   const [selectedProcessos, setSelectedProcessos] = useState<ProcessoResumoTableRow[]>([]);
   const [medicosOptions, setMedicosOptions] = useState<MedicoOption[]>([]);
+  /* ═══ MAIS DE UM MÉDICO NO MESMO PEDIDO (@R 18/09) ═══
+     ⟦"precisamos poder selecionar mais de um médico para mandar os orçamentos, tem
+     orçamentos que temos que mandar para mais de um médico"⟧
+
+     POR QUE DOIS CAMPOS SEPARADOS, e não uma lista só: são perguntas diferentes.
+     `iaMedicoEscolhido` responde QUEM FICA COM O CASO — é o `Order.idMedico`, campo
+     único, o que a tabela mostra e o que o resto do sistema lê. `iaTambemPedir` responde
+     A QUEM MAIS VAMOS PEDIR ORÇAMENTO — relação de muitos, que vive na tabela de
+     candidatos de cotação. Fundir os dois numa lista só obrigaria a inventar uma regra
+     de "quem é o primeiro da lista vira o responsável", e essa regra seria invisível na
+     tela: a pessoa marcaria três nomes sem saber qual deles ficou gravado no pedido.
+
+     O QUE ISTO NÃO DECIDE: quando dois responderem, qual orçamento vale. Essa é decisão
+     comercial do @R, ainda em aberto (procurador 3d7aa97d74). Aqui só registramos o FATO
+     — quem foi convidado —, que é exatamente o que hoje acontece pelo WhatsApp sem o
+     sistema saber de nada. */
+  const [iaTambemPedir, setIaTambemPedir] = useState<number[]>([]);
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(10);
   const [sortField, setSortField] = useState<string | undefined>('dias');
@@ -386,6 +406,7 @@ export function SelecionarMedicoPage() {
       setIaOrderId(rowData.id);
       setIaPedido(rowData);
       setIaMedicoEscolhido(sug?.idMedico ?? null);
+      setIaTambemPedir([]);
       setIaDialogVisible(true);
     } catch (error: any) {
       console.error('Erro ao sugerir médico via IA:', error);
@@ -401,6 +422,7 @@ export function SelecionarMedicoPage() {
     setIaOrderId(null);
     setIaPedido(null);
     setIaMedicoEscolhido(null);
+    setIaTambemPedir([]);
   };
 
   const handleAplicarSugestaoIA = async () => {
@@ -416,6 +438,31 @@ export function SelecionarMedicoPage() {
     setIaAplicando(true);
     try {
       await aplicarSugestaoIA(iaSugestao.sugestaoId, escolhido);
+      /* Os CONVIDADOS A COTAR. O responsável entra também: quem ficou com o caso é o
+         primeiro a quem pedimos orçamento, e deixá-lo fora faria a lista de convidados
+         mentir por omissão — mostraria os concorrentes e esconderia o principal.
+         Falha aqui NÃO derruba a escolha do médico, que é o ato principal e já foi
+         gravado: o convite é registro auxiliar, e perder o registro é menos grave que
+         desfazer uma decisão que a pessoa acabou de tomar. O que não pode é silêncio —
+         por isso avisa. */
+      const convidados = Array.from(new Set<number>([escolhido, ...iaTambemPedir]));
+      const falhas: number[] = [];
+      for (const idm of convidados) {
+        try {
+          await convidarCandidatoCotacao(iaOrderId, idm);
+        } catch {
+          falhas.push(idm);
+        }
+      }
+      if (falhas.length) {
+        const nomes = falhas
+          .map((id) => medicosOptions.find((m) => m.value === id)?.label ?? `#${id}`)
+          .join(', ');
+        alert(
+          `O médico foi definido normalmente, mas não consegui registrar o convite de ` +
+          `cotação de: ${nomes}. Peça o orçamento assim mesmo — só o registro falhou.`,
+        );
+      }
       fecharIaDialog();
       await carregarDados();
     } catch (error: any) {
@@ -847,8 +894,31 @@ export function SelecionarMedicoPage() {
                   {iaSugestao.candidatos.map((c, i) => (
                     <li key={c.idMedico} className={i === 0 ? 'ia-candidato ia-candidato--topo' : 'ia-candidato'}>
                       <div className="ia-candidato__nome">
+                        {/* MARCAR AQUI, no card que a pessoa está lendo (@R 18/09). O campo
+                            de baixo aceita qualquer médico do cadastro; este atalho serve o
+                            caso comum — a decisão de pedir a dois nasce COMPARANDO os cards,
+                            e obrigar a rolar até um campo e reencontrar o nome pela busca
+                            perde o contexto que acabou de sustentar a escolha. */}
+                        {c.idMedico !== iaMedicoEscolhido && (
+                          <Checkbox
+                            inputId={`tambem-${c.idMedico}`}
+                            checked={iaTambemPedir.includes(c.idMedico)}
+                            onChange={(e) =>
+                              setIaTambemPedir((atual) =>
+                                e.checked
+                                  ? [...atual, c.idMedico]
+                                  : atual.filter((id) => id !== c.idMedico),
+                              )
+                            }
+                            disabled={iaAplicando}
+                            className="ia-candidato__check"
+                          />
+                        )}
                         {c.nomeMedico}
                         {i === 0 && <span className="ia-candidato__selo">recomendado</span>}
+                        {c.idMedico === iaMedicoEscolhido && (
+                          <span className="ia-candidato__selo ia-candidato__selo--resp">fica com o caso</span>
+                        )}
                       </div>
                       <div className="ia-candidato__porque">{c.porque}</div>
                       <div className="ia-candidato__numeros">
@@ -988,6 +1058,38 @@ export function SelecionarMedicoPage() {
               )}
             </div>
 
+            {/* PEDIR AO MESMO TEMPO A MAIS DE UM (@R 18/09). Um procedimento que um médico
+                demora a cotar — ou nem cota — hoje espera na fila até alguém lembrar de
+                cobrar outro. Pedir a dois em paralelo troca espera por escolha.
+                O campo aceita QUALQUER médico do cadastro, não só os candidatos da IA: a
+                lista da IA é conselho, e quem opera às vezes sabe de um nome que o
+                cadastro pobre não revela. */}
+            <div className="ia-sugestao-dialog__bloco ia-sugestao-dialog__troca">
+              <div className="ia-sugestao-dialog__label">
+                Também pedir orçamento a (opcional)
+              </div>
+              <MultiSelect
+                value={iaTambemPedir}
+                options={medicosOptions.filter((m) => m.value !== iaMedicoEscolhido)}
+                optionLabel="label"
+                optionValue="value"
+                onChange={(e) => setIaTambemPedir(e.value ?? [])}
+                placeholder="Nenhum outro — só o médico acima"
+                display="chip"
+                filter
+                disabled={iaAplicando}
+                className="ia-sugestao-dialog__drop"
+              />
+              <small className="ia-sugestao-dialog__aviso">
+                {iaTambemPedir.length === 0
+                  ? 'O pedido fica com o médico acima e o orçamento é pedido só a ele.'
+                  : `Vamos pedir orçamento a ${iaTambemPedir.length + 1} médicos. O caso continua ` +
+                    'com o médico escolhido acima; os demais ficam registrados como cotação ' +
+                    'concorrente — a mensagem do pedido é a mesma, você copia em Orçamento ' +
+                    'Médico e envia a cada um.'}
+              </small>
+            </div>
+
             {/* QUANTO ELE COBRA (@R 17/09: "os preços dos últimos empenhos dele para a
                 cirurgia, para sabermos a competitividade"). O modal dizia se o médico
                 responde e em quantos dias; não dizia por quanto — e entre dois médicos
@@ -1052,7 +1154,13 @@ export function SelecionarMedicoPage() {
                 disabled={iaAplicando}
               />
               <Button
-                label={iaAplicando ? 'Aplicando...' : 'Confirmar Médico'}
+                label={
+                  iaAplicando
+                    ? 'Aplicando...'
+                    : iaTambemPedir.length
+                      ? `Confirmar e pedir a ${iaTambemPedir.length + 1} médicos`
+                      : 'Confirmar Médico'
+                }
                 icon="pi pi-check"
                 severity="success"
                 onClick={handleAplicarSugestaoIA}

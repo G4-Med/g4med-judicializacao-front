@@ -430,44 +430,133 @@ const abrirDetalhe = (rowData: ProcessoOrcamentoRow) => {
 // carregarDados dele — sem isso, a marca de "pedido" gravaria no banco e a linha só
 // mostraria na próxima abertura da tela (a cicatriz de 17/09: peça provada, ¬instalada).
 const copiarParaWhatsapp = async (rowData: ProcessoOrcamentoRow, recarregar?: () => void) => {
-  let linhasAnexos = 'Nenhum anexo'
+  /* OS ANEXOS PRECISAM DIZER O QUE SÃO (@R 18/09: "arrumar a mensagem para falar o que
+     é cada anexo que estamos mandando").
+
+     DOIS DEFEITOS MEDIDOS NA MENSAGEM ANTIGA:
+
+     1. Ela buscava SÓ tipo='RELATORIO'. Medido nos 45 pedidos da fase: 60 relatórios —
+        e 101 LAUDOS + 47 EXAMES que nunca eram enviados. O médico recebia justamente o
+        que menos ajuda a cotar, e faltava o que mais ajuda. Não era uma mensagem curta:
+        era uma mensagem incompleta com cara de completa.
+
+     2. Rotulava tudo como "Anexo 1, Anexo 2" + um link. Quem recebe não sabe se abre um
+        laudo, um exame ou a decisão judicial — e abrir link por link para descobrir é o
+        atrito que faz o orçamento demorar (ou voltar com pergunta em vez de preço).
+
+     Agora vai AGRUPADO POR TIPO, com o nome do documento quando ele é legível. Tipos
+     administrativos (e-mail original, comprovantes) ficam de fora: o médico cota a
+     cirurgia, não audita o processo — mandar tudo é tão ruim quanto mandar de menos,
+     porque enterra o que importa. */
+  const ROTULO_ANEXO: Record<string, string> = {
+    LAUDO: 'Laudo médico',
+    EXAME: 'Exame',
+    RELATORIO: 'Relatório médico',
+    DECISAO_INTEIRO_TEOR: 'Decisão judicial (inteiro teor)',
+    RECEITA: 'Receita',
+    PRESCRICAO: 'Prescrição',
+  }
+  let linhasAnexos = 'Nenhum documento anexado a este pedido'
   try {
-    const res: any = await getAnexosOrder(rowData.id, 'RELATORIO')
-    const listaAnexos: any[] = res.data.anexos
-    if (listaAnexos.length > 0) {
-      linhasAnexos = listaAnexos
-        .map((a: any, index: number) => `Anexo ${index + 1}\n${a.linkImagem}`)
-        .join('\n')
+    const res: any = await getAnexosOrder(rowData.id)
+    const todos: any[] = (res.data.anexos || []).filter(
+      (a: any) => ROTULO_ANEXO[a.tipo] && a.linkImagem)
+    if (todos.length > 0) {
+      // ordem CLÍNICA: é como um médico lê para chegar ao preço (diagnóstico → evidência
+      // → relatório → o que a Justiça determinou). Ordem de banco não serve a ninguém.
+      const ORDEM = ['LAUDO', 'EXAME', 'RELATORIO', 'RECEITA', 'PRESCRICAO', 'DECISAO_INTEIRO_TEOR']
+      todos.sort((a: any, b: any) => ORDEM.indexOf(a.tipo) - ORDEM.indexOf(b.tipo))
+      const porTipo = new Map<string, any[]>()
+      for (const a of todos) {
+        if (!porTipo.has(a.tipo)) porTipo.set(a.tipo, [])
+        porTipo.get(a.tipo)!.push(a)
+      }
+      const blocos: string[] = []
+      for (const [tipo, itens] of porTipo) {
+        blocos.push(`${ROTULO_ANEXO[tipo]}${itens.length > 1 ? ` (${itens.length})` : ''}:`)
+        for (const a of itens) {
+          // `nomeLegivel` existe no modelo exatamente para isto — é o nome que alguém
+          // conferiu. Vazio significa "ninguém identificou ainda"; nesse caso vai só o
+          // link, porque um hash no lugar do nome confunde mais que a ausência dele (é o
+          // que faz o médico devolver pedindo esclarecimento em vez de mandar o preço).
+          const nome = (a.nomeLegivel || '').trim()
+          const ehLegivel = nome.length > 0 && nome.length < 70
+          blocos.push(ehLegivel ? `- ${nome}\n  ${a.linkImagem}` : `- ${a.linkImagem}`)
+        }
+      }
+      linhasAnexos = blocos.join('\n')
     }
   } catch {
-    linhasAnexos = 'Erro ao carregar anexos'
+    linhasAnexos = 'Não foi possível carregar os documentos — confira na plataforma antes de enviar'
   }
 
-  const hoje = new Date()
-  const dataRef = rowData.dataStatusJuridico
-    ? new Date(rowData.dataStatusJuridico + 'T00:00:00')
-    : null
-  const diasEmAberto = dataRef
-    ? Math.max(0, Math.floor((hoje.getTime() - dataRef.getTime()) / (1000 * 60 * 60 * 24)))
-    : rowData.dias
-
+  // "dias em aberto" saiu da mensagem: é o nosso controle de fila, e dito ao médico soa
+  // como cobrança antes do primeiro pedido. O cálculo foi junto — código que só existia
+  // para alimentar uma linha removida vira ruído na próxima leitura.
   const orcamentos = rowData.orcamentosJuridico?.trim() || 'Nenhum orçamento registrado'
 
-  const texto = `[#] SOLICITAÇÃO DE ORÇAMENTO
-----------------------------------------
-Paciente: ${rowData.paciente}
-Idade: ${rowData.idade}
-Procedimento: ${rowData.procedimento}
-Área: ${rowData.area}
-Subárea: ${rowData.subarea}
-Data Solicitação: ${formatarData(rowData.dataStatusJuridico)}
-Status: ${rowData.statusOrcamento}
-Dias em Aberto: ${diasEmAberto} dias
-Orçamentos:
-${orcamentos}
-Anexos:
+  /* A MENSAGEM QUE VAI AO MÉDICO (@R 18/09) — reescrita com três mudanças:
+     · os documentos dizem O QUE SÃO (ver o bloco de anexos acima)
+     · entra o aviso de que a SES acompanha o status — @R verbatim
+     · saem os campos de USO INTERNO que não ajudam quem vai cotar
+
+     O QUE SAIU, E POR QUÊ: "Status: Solicitado ao Medico" e "Dias em Aberto" são o NOSSO
+     controle de fila, não informação para quem cota — e "dias em aberto" dito ao médico
+     soa como cobrança antes mesmo do primeiro pedido. O que ele precisa é: quem é o
+     paciente, o que fazer, e o que ler para chegar ao preço.
+
+     A FRASE DA TRANSPARÊNCIA é literal do pedido do @R, e é VERDADE verificável: existem
+     8 templates de e-mail à SES no sistema (recebimento, orçamento enviado, perda) —
+     medido em 18/09. Uma frase dessas só pode existir se o sistema de fato notificar;
+     prometer acompanhamento que não acontece seria pior que não dizer nada.
+     Escrevi "órgão solicitante" e não "prefeitura": os 546 pedidos com origem medida vêm
+     de @saude.mg.gov.br (Estado). Dizer prefeitura erraria na maioria dos casos. */
+  /* ═══ A MENSAGEM AO MÉDICO — formato único (@R 18/09) ═══
+     ⟦"pensar na mensagem para ser fácil e em um formato único para passar AUTORIDADE ao
+     pedido, e explicativo para acessar os exames extraídos e informações, segue os
+     arquivos juntos, profissionais"⟧
+
+     DE ONDE VEM A AUTORIDADE DE UM TEXTO ASSIM — e não é de adjetivo:
+     · de quem ASSINA (G4MED, por processo judicial) e de POR QUE aquilo chegou nele
+     · de o pedido ser ESPECÍFICO (paciente, procedimento, especialidade) — pedido
+       genérico parece disparo em massa e é tratado como tal
+     · de o material estar PRONTO (documentos nomeados, agrupados, em ordem clínica)
+     · de dizer o que acontece DEPOIS (a SES acompanha o status)
+     Escrever "solicitamos com urgência" ou "prezado doutor" não acrescenta nada disso —
+     só ocupa a primeira linha, que é a única que todo mundo lê.
+
+     ORDEM CLÍNICA, ¬alfabética: laudo (o diagnóstico) → exame (a evidência) → relatório
+     → decisão judicial. É a ordem em que um médico lê para chegar ao preço; qualquer
+     outra obriga ele a reorganizar mentalmente antes de começar.
+
+     NÚMERO DO PEDIDO no fim: é a chave que a pessoa cita ao responder, e é o que
+     transforma um "quanto fica?" solto numa resposta rastreável até este processo. */
+  const totalDocs = (linhasAnexos.match(/\n?- /g) || []).length
+  const texto = `*G4MED · SOLICITAÇÃO DE ORÇAMENTO*
+Processo judicial de saúde — Secretaria de Estado de Saúde de MG
+
+*PACIENTE:* ${rowData.paciente}${rowData.idade ? ` · ${rowData.idade} anos` : ''}
+*PROCEDIMENTO:* ${rowData.procedimento}
+*ESPECIALIDADE:* ${rowData.area}${rowData.subarea ? ` · ${rowData.subarea}` : ''}
+
+Doutor(a), este paciente aguarda decisão judicial para o procedimento acima e precisamos
+do seu orçamento para dar seguimento.
+
+*DOCUMENTOS DO PROCESSO*${totalDocs ? ` (${totalDocs})` : ''}
+Os arquivos abaixo foram extraídos do processo e estão identificados por tipo. Basta
+abrir cada link — não é necessário cadastro.
+
 ${linhasAnexos}
-----------------------------------------`
+${orcamentos && orcamentos !== 'Nenhum orçamento registrado' ? `\n*ORÇAMENTOS JÁ REGISTRADOS NESTE PROCESSO*\n${orcamentos}\n` : ''}
+*O QUE PRECISAMOS*
+Valor do procedimento, com a composição (equipe, hospitalar e OPME quando houver). Se
+faltar algum exame para você fechar o valor, responda dizendo qual — nós buscamos.
+
+A Secretaria de Estado de Saúde de Minas Gerais será notificada do status deste pedido
+para acompanhamento da cotação, conforme a transparência acordada junto à entidade e ao
+órgão solicitante.
+
+_Pedido #${rowData.id} · G4MED · ${formatarData(new Date().toISOString().slice(0, 10))}_`
 
   const copiar = async (texto: string) => {
     if (navigator.clipboard && window.isSecureContext) {
@@ -702,6 +791,29 @@ ${blocos}
               if (!r.cotacoesPedidas) {
                 return <Tag value="Não pedimos" severity="warning" icon="pi pi-clock"
                   title="Ninguém copiou a mensagem para este médico ainda." />;
+              }
+              /* PEDIDO SEM DATA — os 37 marcados pelo backfill (@R 18/09: "já tínhamos
+                 pedidos"). Sabemos QUE foi pedido (o status dizia), não QUANDO: esse
+                 registro nunca existiu. Mostrar uma data inventada aqui faria a coluna
+                 de dias exibir número que ninguém mediu, e alguém cobraria um médico com
+                 base nele. "data não registrada" é feio e é verdade. */
+              if (!r.ultimaCotacaoPedidaEm) {
+                return (
+                  <span className="om-pedido">
+                    <Tag value="Pedido · sem data" severity="secondary" icon="pi pi-check"
+                      title="Já foi pedido antes de o sistema registrar a data (marcação em lote, 18/09). A partir do próximo copiar, a data passa a ser gravada." />
+                    {!readOnly && (
+                      <button type="button" className="om-pedido__cancelar"
+                        title="Cancelar: volta para 'não pedimos'"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!window.confirm('Cancelar o pedido ao médico? Volta a contar como "não pedimos".')) return;
+                          try { await registrarCotacaoPedida(r.id, true); await carregarDados(); }
+                          catch { alert('Não foi possível cancelar.'); }
+                        }}>✕</button>
+                    )}
+                  </span>
+                );
               }
               return (
                 <span className="om-pedido">
