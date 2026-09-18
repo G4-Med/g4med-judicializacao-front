@@ -152,6 +152,8 @@ export const GROUP_PERMISSIONS: Record<UserGroup, GroupPermissionConfig> = {
       'home',
       'clientes',
       'juridico',
+      'selecionarMedico',
+      'orcamentoMedico',
       'paraProtocolar',
       'protocolados',
       'segredoJustica',
@@ -166,7 +168,11 @@ export const GROUP_PERMISSIONS: Record<UserGroup, GroupPermissionConfig> = {
       'centralEmails',
       'configuracoesEmails',
     ],
-    edit: ['clientes', 'juridico', 'paraProtocolar', 'protocolados', 'segredoJustica', 'lixeira'],
+    // @R 18/09: o Instituto passa a VER e EDITAR as etapas 2 e 3 (pedido da Carol — um pedido
+    // dela parou na etapa 2 e ela nao alcancava a tela para corrigir). O backend foi liberado
+    // nos 5 endpoints dessas telas no mesmo ato; liberar so aqui entregaria botao que da 403.
+    edit: ['clientes', 'juridico', 'selecionarMedico', 'orcamentoMedico', 'paraProtocolar',
+           'protocolados', 'segredoJustica', 'lixeira'],
     exportReports: ['relatorioResumido', 'relatorioConsolidado'],
     allMedicos: true,
   },
