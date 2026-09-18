@@ -112,3 +112,7 @@ body.dark-theme .fic__situacao-novo { color: #7fb2ff; }
 .fic__orcpeca-prop { color: #b45309; font-style: italic; }
 .fic__orcpeca-cobertura { list-style: none; margin: .6rem 0 0; padding: 0; font-size: .74rem; opacity: .7; }
 .fic__orcpeca-cobertura li { margin-bottom: .2rem; }
+.fic__orcpeca-ok { color: #15803d; font-style: normal; }
+.fic__orcpeca-conferir { margin-left: .4rem; font-size: .72rem; padding: 1px 7px;
+  border: 1px solid #16a34a; color: #15803d; background: transparent; border-radius: 10px; cursor: pointer; }
+.fic__orcpeca-conferir:hover { background: rgba(22,163,74,.1); }

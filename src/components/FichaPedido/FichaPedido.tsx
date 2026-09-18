@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
-import { getFichaPedido, getLogAuditoria, reverterHistorico, getConteudoEmail, moverSituacao } from '../../services/api/orders';
+import { conferirOrcamentoPeca, getFichaPedido, getLogAuditoria, reverterHistorico, getConteudoEmail, moverSituacao } from '../../services/api/orders';
 import { criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
@@ -44,6 +44,9 @@ type SituacaoOpcoes = Record<string, string[]>;
 
 interface OrcamentoDaPeca {
   id: number; valorTotal: number | null; prestador?: string | null;
+  /** etiqueta canonizada (agrupa as grafias); o `prestador` acima continua sendo o
+   *  texto CRU como estava na peça — decisão @R 18/09 */
+  prestadorExibicao?: string | null; grupoPrestador?: number | null;
   procedimento?: string | null; categoria?: string | null; dataOrcamento?: string | null;
   anexoOrigemId?: number | null; anexoOrigemNome?: string | null; paginaOrigem?: number | null;
   linkArquivo?: string | null; fonte?: string; confirmado?: boolean; confirmadoPor?: string | null;
@@ -411,7 +414,12 @@ export function FichaPedido({
                         ? o.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                         : 'valor não lido'}
                     </span>
-                    <span className="fic__orcpeca-quem">{o.prestador || 'prestador não identificado'}</span>
+                    <span className="fic__orcpeca-quem"
+                      title={o.prestador && o.prestadorExibicao !== o.prestador
+                        ? `na peça está escrito: ${o.prestador}`
+                        : undefined}>
+                      {o.prestadorExibicao || o.prestador || 'prestador não identificado'}
+                    </span>
                     {o.procedimento && <span className="fic__orcpeca-proc">{o.procedimento}</span>}
                     <span className="fic__orcpeca-origem">
                       {o.anexoOrigemNome || 'peça'}
@@ -422,7 +430,31 @@ export function FichaPedido({
                           <a href={o.linkArquivo} target="_blank" rel="noreferrer">abrir</a>
                         </>
                       )}
-                      {!o.confirmado && <em className="fic__orcpeca-prop"> · não conferido</em>}
+                      {o.confirmado
+                        ? <em className="fic__orcpeca-ok"> · conferido por {o.confirmadoPor}</em>
+                        : <em className="fic__orcpeca-prop"> · não conferido</em>}
+                      {/* O GESTO DE CONFERIR (@R 18/09): ⟦"quem for usar o número abre a
+                          página do link, confere e marca. Sem mutirão"⟧. Fica aqui, ao
+                          lado do link, porque é aqui que a pessoa acabou de abrir a
+                          fonte — pedir que ela vá a outra tela marcar seria garantir
+                          que ninguém marca. */}
+                      {!o.confirmado && (
+                        <button type="button" className="fic__orcpeca-conferir"
+                          title="Abri a página do documento e confirmei que este valor está certo"
+                          onClick={async () => {
+                            try {
+                              await conferirOrcamentoPeca(o.id);
+                              // relê a ficha: a marca precisa aparecer no MESMO clique,
+                              // senão a pessoa clica de novo achando que não funcionou
+                              if (orderId) {
+                                const r = await getFichaPedido(orderId);
+                                setDados(r.data);
+                              }
+                            } catch {
+                              alert('Não foi possível registrar a conferência.');
+                            }
+                          }}>conferi</button>
+                      )}
                     </span>
                   </li>
                 ))}

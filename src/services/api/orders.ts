@@ -215,6 +215,14 @@ export const convidarCandidatoCotacao = (
 /** Este orçamento é o que vale. O sistema NÃO elege sozinho (decisão 6d831a5fa8):
  *  quando a escolha não é a mais barata, o backend exige o motivo — é a pergunta que
  *  alguém faz depois ("por que pagamos mais?"), e ela merece resposta registrada. */
+/** "Abri a página e confirmei que este número está certo" (@R 18/09).
+ *  Aceita correção junto: quem abre e vê errado precisa de caminho que não seja
+ *  deixar como está. O valor lido pela máquina vai para a observação, nunca some. */
+export const conferirOrcamentoPeca = (
+  orcamentoId: number,
+  opts?: { desfazer?: boolean; valorCorrigido?: number; prestadorCorrigido?: string },
+) => api.post(`/orcamentos-peca/${orcamentoId}/conferir/`, opts ?? {});
+
 export const elegerVencedorCotacao = (
   orderId: number,
   idMedico: number,
