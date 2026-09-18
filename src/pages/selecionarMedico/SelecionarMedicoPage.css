@@ -467,3 +467,25 @@ body.dark-theme .selecionar-medico-resumo strong { color: #e6eef6; }
   display: block; margin-top: .4rem; font-size: .76rem;
   color: var(--orange-700, #b45309);
 }
+
+/* "abrir ficha completa" mora junto dos metadados do pedido: é uma saída, ¬a ação
+   principal do modal (que é confirmar o médico). */
+.ia-sugestao-dialog__ficha {
+  background: none; border: 0; padding: 0;
+  font: inherit; font-size: .82rem; color: #2563eb; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.ia-sugestao-dialog__ficha:hover { text-decoration: underline; }
+body.dark-theme .ia-sugestao-dialog__ficha { color: #7fb2ff; }
+
+/* Preços do médico no modal da IA: o contraste com a referência é o que se lê primeiro
+   (acima em âmbar, abaixo em verde), a lista fica como prova de onde o número veio. */
+.ia-precos__camada { font-weight: 400; color: #64748b; text-transform: none; letter-spacing: 0; }
+.ia-precos__resumo { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; margin-bottom: 6px; }
+.ia-precos__acima { color: #b45309; font-weight: 700; }
+.ia-precos__abaixo { color: #047857; font-weight: 700; }
+.ia-precos__estimativa { color: #334155; font-size: .9rem; }
+.ia-precos__lista { font-size: .86rem; }
+.ia-precos__ganho { color: #047857; font-weight: 600; }
+body.dark-theme .ia-precos__estimativa { color: #cbd5e1; }
+body.dark-theme .ia-precos__camada { color: #94a3b8; }

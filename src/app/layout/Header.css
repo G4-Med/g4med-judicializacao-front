@@ -192,3 +192,12 @@ body.dark-theme .mc-notif__item span { color: #cbd5e1; }
      "qual versão" ainda identifica o pacote e "que horas" sozinho não identifica nada. */
   .mc-versao__hora { display: none; }
 }
+
+/* A marca herda as cores que já vivem na barra (a faixa verde+navy logo abaixo dela).
+   No tema escuro o navy vira o mesmo tom claro do texto — a marca precisa continuar
+   legível, e um azul-escuro sobre fundo escuro é uma marca que some. */
+.mc-marca__g4 path { fill: var(--mc-navy-700, #0a3d62); }
+.mc-marca__med path { fill: var(--mc-navy-700, #0a3d62); }
+.mc-marca__barras rect { fill: var(--mc-green-500, #00a651); }
+body.dark-theme .mc-marca__g4 path,
+body.dark-theme .mc-marca__med path { fill: #e6eef6; }

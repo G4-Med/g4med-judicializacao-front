@@ -18,6 +18,7 @@ import {
   aplicarSugestaoIA,
   type SugestaoIAResposta,
 } from '../../services/api/orders';
+import { getPrecosDoMedico } from '../../services/api/orders';
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
@@ -85,7 +86,7 @@ export function SelecionarMedicoPage() {
   // A tabela recarrega quando a FICHA muda a situação de um pedido (@R 17/09:
   // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
   // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
-  const { versaoDados } = useFichaPedido();
+  const { versaoDados, abrir: abrirFicha, disponivel: fichaDisponivel } = useFichaPedido();
   // @R 28/08 03:37: o painel do pedido abre ABAIXO da linha, em toda fase.
   const [expandidas, setExpandidas] = useState<any>(undefined);
   const { isReadOnly, filterMedicosByAccess } = useAccess();
@@ -114,9 +115,26 @@ export function SelecionarMedicoPage() {
   // Sem ele, o modal pede para confirmar um médico sem dizer PARA QUÊ — e quem confirma
   // às cegas confirma errado. A linha já está na mão de quem clicou; guardá-la custa nada.
   const [iaPedido, setIaPedido] = useState<ProcessoResumoTableRow | null>(null);
+  // PREÇOS DO MÉDICO ESCOLHIDO (@R 17/09: "os preços dos últimos empenhos dele... e se
+  // trocarmos ali no box ele recalcula"). Depende de `iaMedicoEscolhido`, ¬do sugerido:
+  // o número tem que acompanhar a decisão que está sendo tomada, senão vira o preço de
+  // um médico com o nome de outro — o pior tipo de erro, porque parece certo.
+  const [precosMedico, setPrecosMedico] = useState<any | null>(null);
+  const [carregandoPrecos, setCarregandoPrecos] = useState(false);
   // Escolha MANUAL dentro do modal: a sugestão é conselho, não trava. Antes era preciso
   // cancelar e procurar o médico na tabela — duas telas para uma decisão só.
   const [iaMedicoEscolhido, setIaMedicoEscolhido] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!iaDialogVisible || !iaPedido || !iaMedicoEscolhido) { setPrecosMedico(null); return; }
+    let vivo = true;
+    setCarregandoPrecos(true);
+    getPrecosDoMedico(iaPedido.id, iaMedicoEscolhido)
+      .then((r: any) => { if (vivo) setPrecosMedico(r.data); })
+      .catch(() => { if (vivo) setPrecosMedico(null); })
+      .finally(() => { if (vivo) setCarregandoPrecos(false); });
+    return () => { vivo = false; };
+  }, [iaDialogVisible, iaPedido, iaMedicoEscolhido]);
 
   const colunasCfg = useColunasVisiveis('selecionar-medico');
 
@@ -798,6 +816,20 @@ export function SelecionarMedicoPage() {
                   {iaPedido.area && <span>{iaPedido.area}</span>}
                   {iaPedido.subarea && <span>{iaPedido.subarea}</span>}
                   <span>pedido #{iaPedido.id}</span>
+                  {/* @R 17/09: "adicionar aqui também para abrir a ficha completa se
+                      precisar". O modal traz o que a IA usou para decidir; quando isso
+                      não basta (anexos, histórico jurídico, e-mails), a saída era fechar
+                      tudo e caçar o pedido na tabela — e voltar sem a justificativa que
+                      se acabou de ler. */}
+                  {fichaDisponivel && (
+                    <button
+                      type="button"
+                      className="ia-sugestao-dialog__ficha"
+                      onClick={() => abrirFicha(iaPedido.id)}
+                    >
+                      <i className="pi pi-id-card" /> abrir ficha completa
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -946,6 +978,62 @@ export function SelecionarMedicoPage() {
                   Você escolheu um médico diferente do sugerido — a escolha é sua, e é ela
                   que será aplicada.
                 </small>
+              )}
+            </div>
+
+            {/* QUANTO ELE COBRA (@R 17/09: "os preços dos últimos empenhos dele para a
+                cirurgia, para sabermos a competitividade"). O modal dizia se o médico
+                responde e em quantos dias; não dizia por quanto — e entre dois médicos
+                adequados, escolhe-se por preço. A comparação é contra a REFERÊNCIA DO
+                PEDIDO (razão orçado÷ref), nunca contra o valor bruto de outro médico:
+                valor bruto compara procedimentos, ¬preços (coluna custa mais que catarata
+                sem ser mais cara). O bloco segue o médico do box, não o sugerido. */}
+            <div className="ia-sugestao-dialog__bloco">
+              <div className="ia-sugestao-dialog__label">
+                Quanto este médico costuma cobrar
+                {precosMedico?.camada && precosMedico.n > 0 && (
+                  <span className="ia-precos__camada"> · {precosMedico.n} orçamento{precosMedico.n > 1 ? 's' : ''} na {precosMedico.camada}</span>
+                )}
+              </div>
+              {carregandoPrecos ? (
+                <div className="ia-sugestao-dialog__texto">medindo…</div>
+              ) : !precosMedico || !precosMedico.n ? (
+                <div className="ia-sugestao-dialog__texto">
+                  Nenhum orçamento registrado para este médico — não há como medir preço ainda.
+                  <strong> Isto não é "barato": é não medido.</strong>
+                </div>
+              ) : (
+                <>
+                  <div className="ia-precos__resumo">
+                    {precosMedico.medianaRazao != null && (
+                      <span className={precosMedico.medianaRazao > 1 ? 'ia-precos__acima' : 'ia-precos__abaixo'}>
+                        {precosMedico.medianaRazao > 1 ? '↑' : '↓'}{' '}
+                        {Math.abs(Math.round((precosMedico.medianaRazao - 1) * 100))}%{' '}
+                        {precosMedico.medianaRazao > 1 ? 'acima' : 'abaixo'} da referência
+                      </span>
+                    )}
+                    {precosMedico.estimativaNestePedido != null && (
+                      <span className="ia-precos__estimativa">
+                        neste pedido, provavelmente{' '}
+                        <strong>{precosMedico.estimativaNestePedido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                        {precosMedico.refPrecoDestePedido != null && (
+                          <> · referência {Number(precosMedico.refPrecoDestePedido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  <ul className="ia-sugestao-dossie ia-precos__lista">
+                    {precosMedico.ultimos.map((u: any) => (
+                      <li key={u.id}>
+                        {u.data ? new Date(u.data).toLocaleDateString('pt-BR') : 's/ data'} ·{' '}
+                        <strong>{Number(u.valorOrcamento).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                        {u.razao != null && <> ({u.razao > 1 ? '+' : ''}{Math.round((u.razao - 1) * 100)}% vs ref)</>}
+                        {' · '}{u.subarea || u.procedimento || '—'}
+                        {u.ganhou && <span className="ia-precos__ganho"> · ganhou</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </>
               )}
             </div>
 
