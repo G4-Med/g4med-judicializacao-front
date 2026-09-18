@@ -55,7 +55,8 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
       { label: 'Orçamento Médico', icon: 'pi pi-angle-right', path: '/orcamento-medico', screen: 'orcamentoMedico' },
       { label: 'Protocolar', icon: 'pi pi-angle-right', path: '/para-protocolar', screen: 'paraProtocolar' },
       { label: 'Protocolados', icon: 'pi pi-angle-right', path: '/protocolados', screen: 'protocolados' },
-      { label: 'Env. à SES S/Prot', icon: 'pi pi-angle-right', path: '/enviado-ses', screen: 'protocolados' },
+      // sub-item de Protocolados: caminho IRMÃO, ¬passo seguinte (ver conteudo.ts, 5.1)
+      { label: 'Enviados sem protocolar', icon: 'pi pi-angle-double-right', path: '/enviado-ses', screen: 'protocolados' },
     ],
   },
   // RESULTADOS — 1 entrada, 5 abas (@R 08/09, olhando a tela: ⟦não era melhor tirar
@@ -90,7 +91,11 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
 
 function rotularComNumeroDaRegra(label: string, path: string): string {
   const numero = NUMERO_REGRA_POR_PATH[path];
-  return numero ? `${numero}. ${label}` : label;
+  if (!numero) return label;
+  // sub-fase (5.1) entra sem o ponto final, para não virar "5.1." — e a vírgula decimal
+  // é a do português, que é como o número aparece escrito em todo o resto da tela.
+  const ehSub = !Number.isInteger(numero);
+  return ehSub ? `${String(numero).replace('.', ',')} ${label}` : `${numero}. ${label}`;
 }
 
 export function buildMenuItems({

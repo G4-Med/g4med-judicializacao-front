@@ -25,7 +25,7 @@ const ROTULO_FASE: Record<string, string> = {
   '2_3_orcamento': '2/3. Selecionar Médico / Orçamento',
   '4_protocolar': '4. Protocolar',
   '5_protocolados': '5. Protocolados',
-  '6_enviado_ses': '6. Enviado à SES sem protocolo',
+  '6_enviado_ses': '5,1 Enviados sem protocolar',
   'perdas': 'Perdas',
   'ganhos': 'Ganhos (Aguardando Cirurgia)',
 };

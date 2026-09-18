@@ -15,6 +15,8 @@
 
 export interface Etapa {
   id: string;
+  /** Número da etapa na régua. Sub-fase usa decimal: 5.1 é "dentro da 5", ¬depois dela
+   *  (@R 17/09: "colocarmos ela como uma fase DENTRO de protocolados"). */
   numero: number;
   titulo: string;
   dono: 'INSTITUTO' | 'G4MED';
@@ -191,8 +193,24 @@ export const ETAPAS: Etapa[] = [
     id: 'enviado-ses',
     entrega: 'O retorno técnico da Secretaria sobre o que foi enviado sem protocolo.',
     prazo: 'A resposta é do Estado; nossa verificação tem prazo: checar em 120 dias, cobrar em 180',
-    numero: 6,
-    titulo: 'Enviado à SES sem protocolo — aguardando retorno técnico',
+    /* ERA A FASE 6, VIROU 5.1 (@R 17/09: "a fase 6, temos que colocar ela como uma fase
+       dentro de protocolados, que é Enviados Sem Protocolar; no menu temos que mudar o
+       nome dela e o número para ficar lógico").
+
+       POR QUE ELA NÃO ERA UMA FASE PRÓPRIA: numerada como 6, ela parecia o passo SEGUINTE
+       a Protocolados — como se todo pedido protocolado fosse depois para lá. É o
+       contrário: são caminhos IRMÃOS a partir do mesmo ponto. Protocolado é quem entrou
+       nos autos e acompanhamos; este é quem foi entregue sem protocolo (prazo perdido ou
+       segredo) e só se aguarda. Quem lia o menu em ordem entendia uma sequência que não
+       existe.
+
+       O QUE NÃO MUDOU, DE PROPÓSITO: o `statusProcesso` no banco continua 'Enviado à SES
+       - Sem Protocolo'. Este arquivo governa RÓTULO e NAVEGAÇÃO; o vocabulário de dados
+       é o `status_canon.py` do backend, lido por funil, relatórios e e-mails. Renomear lá
+       mudaria número em todo lugar ao mesmo tempo — e isso não é ajuste de menu, é
+       migração, com o seu GO. */
+    numero: 5.1,
+    titulo: 'Enviados sem protocolar — aguardando retorno técnico',
     dono: 'G4MED',
     rota: '/enviado-ses',
     oQueFaz:
