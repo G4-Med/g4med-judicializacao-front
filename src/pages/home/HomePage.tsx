@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import { getOrders, getPerdas, getResultados, getSaudeDados, type SaudeDados } from '../../services/api/orders';
+import { ComoEstamos } from './ComoEstamos';
 import { Button } from 'primereact/button'
 import { Chart } from 'primereact/chart';
 import { InputText } from 'primereact/inputtext';
@@ -737,6 +738,8 @@ export function HomePage() {
           </div>
         </div>
       </section>
+
+      <ComoEstamos linhas={orders as any[]} />
 
       <PainelColapsavel
         titulo="Visão mensal x histórico"
