@@ -3,6 +3,7 @@ import { DataTable } from 'primereact/datatable';
 import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgencia';
 import { CelulaMedico } from '../../components/TrocarMedico/CelulaMedico';
 import { CelulaCotacaoConcorrente, DialogCotacaoConcorrente } from '../../components/CotacaoConcorrente/CotacaoConcorrente';
+import { FaixaDaPeca } from '../../components/CotacaoConcorrente/FaixaDaPeca';
 import { registrarCotacaoPedida } from '../../services/api/orders';
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -866,19 +867,7 @@ ${blocos}
             header={cabecalhoComHint('Orçamento na peça',
               'Valores de orçamento encontrados na decisão de inteiro teor deste processo. É leitura automática (proposta), não valor conferido — e não vai na mensagem ao médico, porque ancoraria o preço dele.')}
             style={{ minWidth: '11rem' }}
-            body={(r: any) => {
-              const o = r.orcamentosDaPeca;
-              if (!o || !o.n) {
-                return <span className="ident-vazio" title="Nenhum orçamento lido das peças deste pedido — pode ser que não haja peça anexada, ou que a peça não traga valores.">—</span>;
-              }
-              const f = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
-              return (
-                <span className="om-orcpeca" title={`${o.n} orçamento(s) lido(s) das peças · abra a ficha do pedido para ver prestador, página e link`}>
-                  {o.menor === o.maior ? f(o.menor) : `${f(o.menor)} – ${f(o.maior)}`}
-                  <span className="om-orcpeca__n">{o.n}×</span>
-                </span>
-              );
-            }} />
+            body={(r: any) => <FaixaDaPeca faixa={r.orcamentosDaPeca} />} />
 
           {/* COTAÇÃO CONCORRENTE (@R 18/09) — quem mais foi convidado a cotar este mesmo
               pedido, o que cada um respondeu, e qual orçamento valeu. */}

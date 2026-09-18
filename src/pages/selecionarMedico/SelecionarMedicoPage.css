@@ -498,3 +498,7 @@ body.dark-theme .ia-candidato__jacotou { color: #94a3b8; }
 /* Multi-seleção de médicos para cotação concorrente (@R 18/09). */
 .ia-candidato__check { margin-right: 0.5rem; vertical-align: middle; }
 .ia-candidato__selo--resp { background: #1d4ed8; color: #fff; }
+
+/* Faixa de preço lida das peças — mesma aparência da fase 3 (@R 18/09). */
+.om-orcpeca { display: inline-flex; gap: .35rem; align-items: baseline; font-size: .85rem; }
+.om-orcpeca__n { font-size: .72rem; opacity: .6; }

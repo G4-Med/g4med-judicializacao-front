@@ -7,6 +7,7 @@ import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { MultiSelect } from 'primereact/multiselect';
+import { FaixaDaPeca, type FaixaOrcamentoPeca } from '../../components/CotacaoConcorrente/FaixaDaPeca';
 import { Checkbox } from 'primereact/checkbox';
 import { InputText } from 'primereact/inputtext';
 import { FilterMatchMode } from 'primereact/api';
@@ -56,6 +57,8 @@ interface ProcessoResumo {
   slaFasePrazo?: string | null;
   slaFaseHorasRestantes?: number | null;
   slaFaseVencido?: boolean | null;
+  /** faixa de preço lida das peças deste processo (@R 18/09) */
+  orcamentosDaPeca?: FaixaOrcamentoPeca | null;
 }
 
 /** SLA da fase (@R 29/08): 1 dia útil para definir o médico; sexta fecha na segunda. */
@@ -675,6 +678,19 @@ export function SelecionarMedicoPage() {
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}
             style={{ minWidth: '10rem' }}
+          />
+          {/* O PREÇO QUE A PEÇA JÁ REVELOU (@R 18/09: "não vi aqui em um pedido na fase 2
+              ele agora com os orçamentos separados"). Fica ANTES da coluna do médico de
+              propósito: esta é a tela onde se ESCOLHE quem vai cotar, e a escolha muda
+              quando se sabe por quanto o procedimento costuma ser cotado neste processo.
+              Mesmo dado da fase 3, mesmo componente — cópia diverge no 1º ajuste. */}
+          <Column
+            key="col-orc-peca"
+            field="orcamentosDaPeca"
+            header={cabecalhoComHint('Orçamento na peça',
+              'Valores encontrados na decisão de inteiro teor deste processo. Leitura automática (proposta), não valor conferido — o detalhe (prestador, página, link) está na ficha do pedido.')}
+            style={{ minWidth: '11rem' }}
+            body={(r: any) => <FaixaDaPeca faixa={r.orcamentosDaPeca} />}
           />
           <Column
             field="medico"
