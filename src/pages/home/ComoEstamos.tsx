@@ -42,7 +42,7 @@ type Linha = {
   valorGanho?: number | string | null;
 };
 
-type Lente = 'mes' | 'ano' | 'vida';
+type Lente = 'mes' | 'ano' | 'vida' | 'serie';
 
 const num = (v: unknown) => {
   const n = typeof v === 'string' ? Number(v) : (v as number);
@@ -131,6 +131,95 @@ function Comparacao({ rotulo, atual, base }: { rotulo: string; atual: number; ba
   );
 }
 
+/** Uma linha por mês, cada evento no mês em que aconteceu (@R 18/09: "temos que ver a
+ *  visão dos meses, consolidado para não misturar meses").
+ *
+ *  POR QUE A SÉRIE RESOLVE O QUE O TOTAL ESCONDE: no painel de cima, uma perda de
+ *  setembro vinha de um pedido que entrou em abril, e os dois números apareciam lado a
+ *  lado como se falassem do mesmo trabalho. Aqui cada mês é uma linha fechada: dá para
+ *  ver o RITMO (isto sobe? aquilo caiu?) sem ninguém precisar subtrair coisas que não se
+ *  subtraem.
+ *
+ *  ⚠ O QUE A SÉRIE REVELOU, E QUE O TOTAL NUNCA MOSTRARIA (medido 18/09): abril/2026 tem
+ *  R$ 16,4 milhões em "enviado" — 6× qualquer outro mês. Não foi um mês excepcional: são
+ *  92 orçamentos digitados em 17/04 e 60 em 16/04, logo depois de o sistema nascer
+ *  (primeiro registro 09/04). É a carga inicial, e ela não está marcada como histórico —
+ *  por isso a tela MARCA o mês em vez de escondê-lo. Apagar seria decidir sozinho o que
+ *  é operação e o que é digitação; marcar deixa quem sabe decidir.
+ */
+const MES_DE_CARGA = '2026-04';
+
+function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) => string }) {
+  const meses = new Map<string, { rec: number; env: number; per: number; gan: number; n: number }>();
+  const zero = () => ({ rec: 0, env: 0, per: 0, gan: 0, n: 0 });
+  const chave = (iso?: string | null) => {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime())
+      ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const por = (iso: string | null | undefined, campo: 'rec' | 'env' | 'per' | 'gan', v: number, conta = false) => {
+    const k = chave(iso);
+    if (!k || !v) return;
+    if (!meses.has(k)) meses.set(k, zero());
+    const m = meses.get(k)!;
+    m[campo] += v;
+    if (conta) m.n += 1;
+  };
+
+  for (const l of linhas) {
+    por(l.dataPedido, 'rec', num(l.refPreco), true);
+    por(l.dataStatusOrcamento, 'env', num(l.valorOrcamento));
+    if (l.statusProcesso === 'Perda') por(l.dataStatusPerda, 'per', num(l.valorOrcamento));
+    if (l.statusProcesso === 'Ganho') por(l.dataResultado, 'gan', num(l.valorGanho) || num(l.valorOrcamento));
+  }
+
+  const ordenados = [...meses.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 18);
+  const rotulo = (k: string) => {
+    const [ano, mes] = k.split('-');
+    return new Date(Number(ano), Number(mes) - 1, 1)
+      .toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+  };
+
+  return (
+    <div className="ce-serie">
+      <table>
+        <thead>
+          <tr>
+            <th>Mês</th><th>Pedidos</th><th>Recebido</th><th>Enviado</th><th>Perdido</th><th>Ganho</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ordenados.map(([k, m]) => (
+            <tr key={k} className={k === MES_DE_CARGA ? 'ce-serie__carga' : ''}>
+              <td>
+                {rotulo(k)}
+                {k === MES_DE_CARGA && (
+                  <span className="ce-serie__aviso"
+                    title="152 orçamentos foram digitados em 16 e 17/04, logo após o sistema nascer (09/04). É a carga inicial — trabalho de meses anteriores lançado de uma vez, ¬um mês excepcional.">
+                    {' '}⚠ carga inicial
+                  </span>
+                )}
+              </td>
+              <td className="ce-num">{m.n || '—'}</td>
+              <td className="ce-num">{m.rec ? moeda(m.rec) : '—'}</td>
+              <td className="ce-num">{m.env ? moeda(m.env) : '—'}</td>
+              <td className="ce-num ce-perda">{m.per ? moeda(m.per) : '—'}</td>
+              <td className="ce-num ce-ganho">{m.gan ? moeda(m.gan) : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="ce__regua">
+        Cada valor no mês do SEU evento: pedido pela entrada, orçamento pelo envio, perda e
+        ganho pela data em que foram decididos. Uma linha não é uma coorte — o que foi perdido
+        em setembro entrou meses antes. Para seguir o destino de quem entrou num mês
+        específico, é outra conta (coorte), e ela ainda não existe aqui.
+      </p>
+    </div>
+  );
+}
+
 export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
   const [lente, setLente] = useState<Lente>('mes');
   const hoje = new Date();
@@ -167,7 +256,7 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
       <header className="ce__topo">
         <h2>Como estamos</h2>
         <div className="ce__lentes" role="tablist">
-          {([['mes', `${nomeMes} (até dia ${dados.dia})`], ['ano', `${dados.ano}`], ['vida', 'Vida toda']] as const)
+          {([['mes', `${nomeMes} (até dia ${dados.dia})`], ['ano', `${dados.ano}`], ['vida', 'Vida toda'], ['serie', 'Mês a mês']] as const)
             .map(([chave, rotulo]) => (
               <button key={chave} type="button" role="tab" aria-selected={lente === chave}
                 className={`ce__lente ${lente === chave ? 'is-ativa' : ''}`}
@@ -176,6 +265,8 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
         </div>
       </header>
 
+      {lente === 'serie' ? <SerieMensal linhas={linhas} moeda={moeda} /> : (
+      <>
       <div className="ce__grade">
         <div className="ce__card">
           <span className="ce__rotulo">Pedidos recebidos</span>
@@ -251,6 +342,8 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
           </>
         )}
       </p>
+      </>
+      )}
     </section>
   );
 }

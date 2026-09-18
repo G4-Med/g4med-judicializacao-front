@@ -28,3 +28,21 @@ body.dark-theme .ce__valor { color: #e6eef6; }
    junto dos outros em preto faz o olho passar batido. */
 .ce__valor--perda { color: #b45309; }
 body.dark-theme .ce__valor--perda { color: #fbbf24; }
+
+/* Série mensal: tabela enxuta, números à direita para o olho comparar coluna abaixo. */
+.ce-serie table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+.ce-serie th { text-align: left; font-size: .7rem; text-transform: uppercase; letter-spacing: .05em;
+  color: #64748b; padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
+.ce-serie th:not(:first-child) { text-align: right; }
+.ce-serie td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
+.ce-serie .ce-num { text-align: right; font-variant-numeric: tabular-nums; }
+.ce-serie .ce-perda { color: #b45309; }
+.ce-serie .ce-ganho { color: #047857; }
+/* o mês da carga fica MARCADO, ¬escondido: esconder seria decidir sozinho o que é
+   operação e o que é digitação em massa. */
+.ce-serie__carga { background: #fffbeb; }
+.ce-serie__aviso { font-size: .7rem; color: #92400e; font-weight: 700; cursor: help; }
+body.dark-theme .ce-serie th { color: #94a3b8; border-color: #1e2d42; }
+body.dark-theme .ce-serie td { border-color: #16283f; }
+body.dark-theme .ce-serie__carga { background: rgba(180, 83, 9, .16); }
+body.dark-theme .ce-serie__aviso { color: #fbbf24; }
