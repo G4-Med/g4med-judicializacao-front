@@ -1,0 +1,41 @@
+/* Mora ao lado do selo de versão: a faixa da barra onde o sistema fala de si mesmo. */
+.mc-busca {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(0, 166, 81, .10);
+  border: 1px solid rgba(0, 166, 81, .28);
+  color: #05713a;
+  font-size: .74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mc-busca__ponto {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--mc-green-500, #00a651);
+  animation: mc-busca-pulso 1s ease-in-out infinite;
+}
+.mc-busca__tempo { font-variant-numeric: tabular-nums; opacity: .8; }
+
+/* Passou de 8s: o mesmo chip, outro tom. Não é erro — é "está demorando", que é
+   informação diferente de "falhou" e merece cor diferente das duas. */
+.mc-busca--demora {
+  background: rgba(180, 83, 9, .10);
+  border-color: rgba(180, 83, 9, .30);
+  color: #92400e;
+}
+.mc-busca--demora .mc-busca__ponto { background: #b45309; }
+
+@keyframes mc-busca-pulso {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .35; transform: scale(.8); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mc-busca__ponto { animation: none; }
+}
+body.dark-theme .mc-busca { color: #6ee7a8; background: rgba(0, 166, 81, .16); }
+body.dark-theme .mc-busca--demora { color: #fbbf24; background: rgba(180, 83, 9, .18); }
+
+/* A barra fina continua, mas sem texto solto: quem narra agora é o chip. */

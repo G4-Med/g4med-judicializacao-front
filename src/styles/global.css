@@ -362,3 +362,20 @@ body.dark-theme .p-multiselect {
 .mc-repedido-ligou:hover:not(:disabled) { opacity: 1; background: var(--surface-200, #e9ecef); }
 .p-datatable tr:hover .mc-repedido-ligou { opacity: .75; }
 .mc-repedido-ligou:disabled { cursor: progress; }
+
+/* ── UTILITÁRIO: só para leitor de tela ───────────────────────────────────────────
+   @R 17/09: o texto "Buscando dados no servidor…" APARECEU no canto da tela. Causa
+   medida: `.sr-only` existia só ESCOPADA dentro de dois componentes
+   (`.botao-copiar .sr-only`, `.contador-registros .sr-only`) — fora deles a classe não
+   fazia nada, e quem a usasse achando que era global punha texto visível na tela sem
+   perceber. Agora é global de verdade, e a próxima peça que precisar dela funciona. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

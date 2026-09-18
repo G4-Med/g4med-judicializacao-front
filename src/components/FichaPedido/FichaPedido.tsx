@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { getFichaPedido, getLogAuditoria, reverterHistorico, getConteudoEmail, moverSituacao } from '../../services/api/orders';
 import { criarStatusOrcamentoPersonalizado } from '../../services/api/client';
+import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
 import './FichaPedido.css';
 
@@ -46,6 +47,8 @@ type Emails = {
   explicacao: string | null;
   recebidos: EmailRecebido[];
   originais: EmailOriginal[];
+  /** para quem a ficha escreve — o mesmo endereço que recebeu o que está listado */
+  solicitante?: string | null;
 };
 
 const dataHora = (v?: string | null) =>
@@ -368,7 +371,23 @@ export function FichaPedido({
 
           {dados.emails && (
             <section className="fic__bloco fic__emails">
-              <header className="fic__fase"><strong>E-mails deste pedido</strong></header>
+              <header className="fic__fase fic__fase--com-acao">
+                <strong>E-mails deste pedido</strong>
+                {/* @R 17/09: escrever ao solicitante "em qualquer fase, em ações em cada
+                    parte do pedido". O lugar natural é aqui, ao lado do que já foi dito
+                    a ele — quem vai escrever precisa ver o histórico antes, senão repete
+                    ou contradiz o que o sistema já mandou. */}
+                {orderId && (
+                  <EscreverEmail
+                    orderId={orderId}
+                    destinatarioPadrao={dados.emails?.solicitante ?? null}
+                    aoEnviar={async () => {
+                      const r = await getFichaPedido(orderId);
+                      setDados(r.data);
+                    }}
+                  />
+                )}
+              </header>
 
               {/* AUSÊNCIA DECLARADA, e com o MOTIVO: medido 17/09, só 3,2% dos pedidos têm
                   o e-mail original — não porque a captura falhe (ela pega 90% dos que vêm

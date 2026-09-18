@@ -94,3 +94,9 @@
 .fic__situacao-novo:hover:not(:disabled) { text-decoration: underline; }
 .fic__situacao-novo:disabled { opacity: .5; cursor: default; }
 body.dark-theme .fic__situacao-novo { color: #7fb2ff; }
+
+/* O cabeçalho da seção de e-mails passou a ter ação (Escrever e-mail) — o botão
+   fica à direita, longe do título, para não competir com a leitura do histórico. */
+.fic__fase--com-acao {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}

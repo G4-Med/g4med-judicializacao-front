@@ -1,0 +1,9 @@
+.esc-email { display: flex; flex-direction: column; gap: 6px; }
+.esc-email label { font-size: .8rem; font-weight: 600; color: #475569; margin-top: 8px; }
+.esc-email label small { font-weight: 400; color: #94a3b8; }
+.esc-email__ia { display: flex; gap: 8px; }
+.esc-email__ia .p-inputtext { flex: 1; }
+.esc-email__aviso { color: #64748b; font-size: .76rem; }
+.esc-email__acoes { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+body.dark-theme .esc-email label { color: #cbd5e1; }
+body.dark-theme .esc-email__aviso { color: #94a3b8; }

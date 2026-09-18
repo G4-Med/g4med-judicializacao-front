@@ -70,6 +70,15 @@ export const enviarEmailsPendentesLote = (ids: number[]) => api.post('/orders/em
  *  Camadas: subárea → área → geral; a resposta diz em qual parou e com que n. */
 export const getPrecosDoMedico = (orderId: number, medicoId: number) =>
   api.get(`/orders/${orderId}/precos-medico/${medicoId}/`);
+/** Escreve um e-mail ao solicitante em qualquer fase. Passa pela FILA (fica no
+ *  histórico do pedido e pode ser cancelado); `enviarAgora` dispara na hora. */
+export const enviarEmailAvulso = (orderId: number, payload: {
+  destinatario?: string; assunto: string; corpo: string;
+  anexoUrl?: string; enviarAgora?: boolean;
+}) => api.post(`/orders/${orderId}/email-avulso/`, payload);
+/** Rascunho da IA: ela escreve, você edita e envia. Nunca dispara sozinha. */
+export const redigirEmailComIA = (orderId: number, intencao: string) =>
+  api.post<{ assunto: string; corpo: string }>(`/ia/redigir-email/${orderId}/`, { intencao });
 export const cancelarEmailPendente = (id: number, motivo?: string) =>
   api.post(`/orders/emails/${id}/cancelar/`, motivo ? { motivo } : {});
 export const enviarEmailDireto = (payload: {

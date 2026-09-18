@@ -17,6 +17,7 @@ import { MarcaG4med } from './MarcaG4med'
 import { AjudaModal } from '../../components/AjudaModal/AjudaModal'
 import './Header.css'
 import { VersaoDoSistema } from './VersaoDoSistema';
+import { EstadoDaBusca } from './EstadoDaBusca';
 
 interface MinhaSessao {
   username: string;
@@ -192,6 +193,7 @@ export function Header({ onMenuClick }: Props) {
           <MarcaG4med altura={40} />
         </span>
         <VersaoDoSistema />
+        <EstadoDaBusca />
 
         
         </div>
