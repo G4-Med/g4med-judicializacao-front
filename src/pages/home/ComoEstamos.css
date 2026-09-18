@@ -46,3 +46,25 @@ body.dark-theme .ce-serie th { color: #94a3b8; border-color: #1e2d42; }
 body.dark-theme .ce-serie td { border-color: #16283f; }
 body.dark-theme .ce-serie__carga { background: rgba(180, 83, 9, .16); }
 body.dark-theme .ce-serie__aviso { color: #fbbf24; }
+
+/* Coorte: os três destinos lado a lado, porque eles FECHAM entre si (ganho+perda+aberto
+   = quem entrou). É a única linha do painel onde somar faz sentido — e por isso ela
+   fica visualmente separada dos cards, que não somam. */
+.ce-coorte { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e2e8f0; }
+.ce-coorte__titulo { font-size: .78rem; font-weight: 700; color: #334155; margin-bottom: 8px; }
+.ce-coorte__titulo small { font-weight: 400; color: #94a3b8; }
+.ce-coorte__barras { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: .84rem; }
+.ce-coorte__item strong { font-size: 1.05rem; }
+.ce-coorte__item--ganho { color: #047857; }
+.ce-coorte__item--perda { color: #b45309; }
+.ce-coorte__item--aberto { color: #475569; }
+.ce-coorte__cedo { display: block; margin-top: 6px; color: #94a3b8; font-size: .74rem; }
+body.dark-theme .ce-coorte { border-color: #1e2d42; }
+body.dark-theme .ce-coorte__titulo { color: #cbd5e1; }
+body.dark-theme .ce-coorte__item--aberto { color: #cbd5e1; }
+
+/* O total e o resíduo fecham a tabela: é onde o olho confere contra os indicadores. */
+.ce-serie__total td { border-top: 2px solid #cbd5e1; font-weight: 700; padding-top: 8px; }
+.ce-serie__semdata td { color: #92400e; background: #fffbeb; }
+body.dark-theme .ce-serie__total td { border-color: #334155; }
+body.dark-theme .ce-serie__semdata td { color: #fbbf24; background: rgba(180, 83, 9, .14); }

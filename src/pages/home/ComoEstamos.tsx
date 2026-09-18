@@ -97,9 +97,29 @@ function medir(linhas: Linha[], dentro: (d: Date) => boolean, vidaToda = false) 
     lista.reduce((a, l) => a + campo(l), 0);
   const valorRecebido = soma(recebidos, (l) => num(l.refPreco));
 
+  /* A COORTE — "o valor em setembro tem que contabilizar só os processos ENTRADOS em
+     setembro" (@R 18/09). Aqui a pergunta muda: não é "o que aconteceu no mês", é "o que
+     foi feito de quem chegou no mês". Os mesmos pedidos do começo ao fim.
+
+     ⚠ A TERCEIRA SAÍDA É OBRIGATÓRIA. Medido em 18/09: dos 33 que entraram em setembro,
+     3 foram orçados, 0 ganharam, 3 perderam — e 30 AINDA NÃO FORAM DECIDIDOS. Sem
+     mostrar os 30, setembro parece um desastre; com eles, aparece o que é: cedo demais
+     para julgar. Em 2025 o efeito é o mesmo em escala: 579 entraram, 481 seguem abertos.
+     É a mesma razão por que a tela de Funil mostra três saídas em vez de duas. */
+  const coorteGanho = entraram.filter((l) => l.statusProcesso === 'Ganho');
+  const coortePerda = entraram.filter((l) => l.statusProcesso === 'Perda');
+  const coorteAberto = entraram.filter(
+    (l) => l.statusProcesso !== 'Ganho' && l.statusProcesso !== 'Perda');
+  const valorDe = (l: Linha) => num(l.valorOrcamento) || num(l.refPreco);
+
   return {
     pedidos: entraram.length,
     ganhos: ganhos.length,
+    coorte: {
+      ganho: { n: coorteGanho.length, valor: coorteGanho.reduce((a, l) => a + (num(l.valorGanho) || valorDe(l)), 0) },
+      perda: { n: coortePerda.length, valor: coortePerda.reduce((a, l) => a + valorDe(l), 0) },
+      aberto: { n: coorteAberto.length, valor: coorteAberto.reduce((a, l) => a + valorDe(l), 0) },
+    },
     valorGanho: ganhos.reduce((a, l) => a + (num(l.valorGanho) || num(l.valorOrcamento)), 0),
     valorRecebido,
     // o denominador é quem TEM referência, ¬todos os pedidos: dividir por quem não tem
@@ -108,6 +128,13 @@ function medir(linhas: Linha[], dentro: (d: Date) => boolean, vidaToda = false) 
     mediaOportunidade: recebidos.length ? valorRecebido / recebidos.length : 0,
     valorEnviado: soma(enviados, (l) => num(l.valorOrcamento)),
     nEnviados: enviados.length,
+    // o que NUNCA aparece numa soma por mês, porque não tem data de envio — declarado
+    // para que "soma dos meses + isto = total" feche (@R 18/09: "tem que somar, senão
+    // não batem"). Medido: R$ 21.658.350 em 308 orçamentos.
+    enviadoSemData: soma(
+      linhas.filter((l) => num(l.valorOrcamento) > 0 && !l.dataStatusOrcamento),
+      (l) => num(l.valorOrcamento)),
+    nEnviadoSemData: linhas.filter((l) => num(l.valorOrcamento) > 0 && !l.dataStatusOrcamento).length,
     valorPerdido: soma(perdidos, (l) => num(l.valorOrcamento)),
     nPerdidos: perdidos.length,
   };
@@ -175,6 +202,19 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
   }
 
   const ordenados = [...meses.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 18);
+
+  // soma de TODOS os meses (¬só dos 18 exibidos — o total não pode depender de quantas
+  // linhas cabem na tela)
+  const totais = [...meses.values()].reduce(
+    (a, m) => ({ rec: a.rec + m.rec, env: a.env + m.env, per: a.per + m.per,
+                 gan: a.gan + m.gan, n: a.n + m.n }),
+    { rec: 0, env: 0, per: 0, gan: 0, n: 0 });
+
+  const semDataLinhas = linhas.filter((l) => num(l.valorOrcamento) > 0 && !l.dataStatusOrcamento);
+  const semData = {
+    env: semDataLinhas.reduce((a, l) => a + num(l.valorOrcamento), 0),
+    nEnv: semDataLinhas.length,
+  };
   const rotulo = (k: string) => {
     const [ano, mes] = k.split('-');
     return new Date(Number(ano), Number(mes) - 1, 1)
@@ -209,6 +249,39 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
             </tr>
           ))}
         </tbody>
+        {/* O TOTAL FECHA COM OS INDICADORES (@R 18/09: "tem que somar a base toda e
+            verificar para o número bater com os números exibidos nos indicadores").
+            Sem esta linha, quem somasse a tabela na mão chegaria a um número diferente
+            do painel e não saberia qual dos dois está errado — a resposta é "nenhum,
+            são réguas diferentes", e isso precisa estar VISÍVEL, ¬explicado em nota.
+            A linha "sem data" é o que existe mas não cabe em mês nenhum: soma dos meses
+            + sem data = total. */}
+        <tfoot>
+          {semData.env > 0 && (
+            <tr className="ce-serie__semdata">
+              <td>
+                sem data do evento
+                <span className="ce-serie__aviso"
+                  title="Orçamentos sem data de envio preenchida. Existem e valem, mas não pertencem a mês nenhum — por isso aparecem aqui, e não somem.">
+                  {' '}⚠ {semData.nEnv} orçamento{semData.nEnv === 1 ? '' : 's'}
+                </span>
+              </td>
+              <td className="ce-num">—</td>
+              <td className="ce-num">—</td>
+              <td className="ce-num">{moeda(semData.env)}</td>
+              <td className="ce-num">—</td>
+              <td className="ce-num">—</td>
+            </tr>
+          )}
+          <tr className="ce-serie__total">
+            <td>TOTAL (vida toda)</td>
+            <td className="ce-num">{totais.n}</td>
+            <td className="ce-num">{moeda(totais.rec)}</td>
+            <td className="ce-num">{moeda(totais.env + semData.env)}</td>
+            <td className="ce-num ce-perda">{moeda(totais.per)}</td>
+            <td className="ce-num ce-ganho">{moeda(totais.gan)}</td>
+          </tr>
+        </tfoot>
       </table>
       <p className="ce__regua">
         Cada valor no mês do SEU evento: pedido pela entrada, orçamento pelo envio, perda e
@@ -324,12 +397,48 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
         </div>
       </div>
 
+      {/* DESTINO DE QUEM ENTROU NO PERÍODO (@R 18/09). Diferente dos cards acima: lá cada
+          número é do evento que aconteceu no mês; aqui são SEMPRE os mesmos pedidos — os
+          que chegaram — seguidos até onde estão hoje. Por isso estes três FECHAM: ganho +
+          perda + em aberto = total que entrou. */}
+      <div className="ce-coorte">
+        <div className="ce-coorte__titulo">
+          Destino dos {foco.pedidos} pedidos que entraram {lente === 'mes' ? 'neste mês'
+            : lente === 'ano' ? 'neste ano' : 'na vida toda'}
+          <small> — os mesmos pedidos, do começo ao fim</small>
+        </div>
+        <div className="ce-coorte__barras">
+          <span className="ce-coorte__item ce-coorte__item--ganho">
+            <strong>{foco.coorte.ganho.n}</strong> ganhos · {moeda(foco.coorte.ganho.valor)}
+          </span>
+          <span className="ce-coorte__item ce-coorte__item--perda">
+            <strong>{foco.coorte.perda.n}</strong> perdas · {moeda(foco.coorte.perda.valor)}
+          </span>
+          <span className="ce-coorte__item ce-coorte__item--aberto">
+            <strong>{foco.coorte.aberto.n}</strong> ainda em aberto · {moeda(foco.coorte.aberto.valor)}
+          </span>
+        </div>
+        {foco.coorte.aberto.n > foco.coorte.ganho.n + foco.coorte.perda.n && (
+          <small className="ce-coorte__cedo">
+            A maior parte ainda não foi decidida — é cedo para julgar este período pelo
+            resultado. Sem esta linha, ele pareceria um desastre.
+          </small>
+        )}
+      </div>
+
       <p className="ce__regua">
         {lente === 'vida' ? (
           <>
             Toda a base, desde o primeiro pedido registrado. Aqui os valores <strong>não</strong>{' '}
-            são filtrados por data do evento: metade dos orçamentos não tem essa data preenchida,
-            e exigi-la esconderia R$ 21,6 milhões justamente na lente mais ampla.
+            são filtrados por data do evento — exigir a data esconderia o que não a tem.
+            {foco.nEnviadoSemData > 0 && (
+              <>
+                {' '}Por isso o total enviado <strong>não bate</strong> com a soma dos meses:{' '}
+                <strong>{moeda(foco.enviadoSemData)}</strong> em {foco.nEnviadoSemData}{' '}
+                orçamentos não têm data de envio e não aparecem em mês nenhum. Soma dos
+                meses + esse valor = total. Recebido e perdido fecham (nenhum sem data).
+              </>
+            )}
           </>
         ) : (
           <>
