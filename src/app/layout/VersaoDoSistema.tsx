@@ -21,7 +21,18 @@
  *  Se a pergunta falhar, mostra só o front e diz isso no tooltip — nunca inventa um número.
  */
 import { useEffect, useState } from 'react';
+import { Dialog } from 'primereact/dialog';
 import api from '../../services/api';
+
+type Versao = { versao: string; data: string; itens: string[] };
+
+/** Um item vem do .md com **negrito** na frase que resume a mudança. Renderizar como texto
+ *  puro perderia a hierarquia — é o negrito que deixa a lista varrível em 5 segundos. */
+function comNegrito(texto: string) {
+  return texto.split(/(\*\*[^*]+\*\*)/g).map((p, i) =>
+    p.startsWith('**') && p.endsWith('**') ? <strong key={i}>{p.slice(2, -2)}</strong> : <span key={i}>{p}</span>,
+  );
+}
 
 const VERSAO_FRONT = import.meta.env.VITE_APP_VERSION ?? 'dev';
 const MOMENTO_FRONT = import.meta.env.VITE_APP_BUILD_TIME ?? '';
@@ -44,6 +55,18 @@ function horaCurta(iso: string): string {
 export function VersaoDoSistema() {
   const [back, setBack] = useState<{ versao: string; publicadoEm: string } | null>(null);
   const [falhou, setFalhou] = useState(false);
+  const [aberto, setAberto] = useState(false);
+  const [notas, setNotas] = useState<Versao[] | null>(null);
+
+  // As notas só são buscadas quando alguém abre — é histórico, não precisa custar nada a
+  // quem nunca clica.
+  useEffect(() => {
+    if (!aberto || notas) return;
+    api
+      .get('release-notes/')
+      .then((r) => setNotas(r.data?.versoes ?? []))
+      .catch(() => setNotas([]));
+  }, [aberto, notas]);
 
   useEffect(() => {
     let vivo = true;
@@ -87,9 +110,44 @@ export function VersaoDoSistema() {
       ].join('\n');
 
   return (
-    <span className="mc-versao" title={detalhe} aria-label={detalhe}>
-      <span className="mc-versao__num">v{selo}</span>
-      {hora && <span className="mc-versao__hora">{hora}</span>}
-    </span>
+    <>
+      <button
+        type="button"
+        className="mc-versao"
+        title={`${detalhe}\n\nClique para ver o que mudou em cada versão.`}
+        aria-label={detalhe}
+        onClick={() => setAberto(true)}
+      >
+        <span className="mc-versao__num">v{selo}</span>
+        {hora && <span className="mc-versao__hora">{hora}</span>}
+      </button>
+
+      <Dialog
+        header="O que mudou na plataforma"
+        visible={aberto}
+        onHide={() => setAberto(false)}
+        style={{ width: 'min(680px, 94vw)' }}
+        dismissableMask
+      >
+        {notas === null && <p>Carregando…</p>}
+        {notas !== null && notas.length === 0 && (
+          <p>Ainda não há notas publicadas — ou não consegui buscá-las agora.</p>
+        )}
+        {notas?.map((v) => (
+          <section key={v.versao} className="mc-notas__versao">
+            <h3 className="mc-notas__cab">
+              <span className="mc-notas__num">v{v.versao}</span>
+              <span className="mc-notas__data">{v.data}</span>
+              {v.versao === back?.versao && <span className="mc-notas__atual">no ar agora</span>}
+            </h3>
+            <ul className="mc-notas__lista">
+              {v.itens.map((it, i) => (
+                <li key={i}>{comNegrito(it)}</li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </Dialog>
+    </>
   );
 }

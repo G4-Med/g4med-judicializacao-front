@@ -201,3 +201,16 @@ body.dark-theme .mc-notif__item span { color: #cbd5e1; }
 .mc-marca__barras rect { fill: var(--mc-green-500, #00a651); }
 body.dark-theme .mc-marca__g4 path,
 body.dark-theme .mc-marca__med path { fill: #e6eef6; }
+
+/* Histórico de versões (@R 18/09) — o selo virou botão: quem quer saber "o que mudou"
+   clica onde já olhava para saber "qual versão". Um link separado no menu seria mais um
+   lugar para procurar. */
+button.mc-versao { background: none; border: none; padding: 0; font: inherit; cursor: pointer; }
+button.mc-versao:hover .mc-versao__num { text-decoration: underline; }
+.mc-notas__versao { margin-bottom: 1.4rem; }
+.mc-notas__cab { display: flex; align-items: baseline; gap: .6rem; margin: 0 0 .5rem; font-size: 1rem; }
+.mc-notas__num { font-weight: 700; }
+.mc-notas__data { opacity: .7; font-weight: 400; font-size: .9em; }
+.mc-notas__atual { font-size: .75em; background: #16a34a; color: #fff; border-radius: 999px; padding: .1em .6em; }
+.mc-notas__lista { margin: 0; padding-left: 1.2rem; line-height: 1.55; }
+.mc-notas__lista li { margin-bottom: .55rem; }
