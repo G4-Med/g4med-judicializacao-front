@@ -119,7 +119,14 @@ export function VersaoDoSistema() {
         onClick={() => setAberto(true)}
       >
         <span className="mc-versao__num">v{selo}</span>
-        {hora && <span className="mc-versao__hora">{hora}</span>}
+        {/* O horário é o do ÚLTIMO deploy (front OU backend), ¬o da última nota. Um deploy
+            só de servidor muda este horário sem criar entrada na lista — foi o que confundiu
+            em 18/09: barra 18:01, nota mais nova 16:23. O title explica sem poluir a barra. */}
+        {hora && (
+          <span className="mc-versao__hora" title={`última atualização do sistema às ${hora}`}>
+            {hora}
+          </span>
+        )}
       </button>
 
       <Dialog
@@ -140,7 +147,10 @@ export function VersaoDoSistema() {
               <span className="mc-notas__data">
                 {v.data}
                 {v.hora ? ` às ${v.hora}` : ''}
-                {v.duracao ? ` · ${v.duracao} no ar` : ''}
+                {/* "2 min NO AR" dizia a coisa errada: lia-se "está no ar há 2 minutos", quando
+                    uma release das 16:23 vista às 18:40 está no ar há 2h17. Os minutos são quanto
+                    a ATUALIZAÇÃO levou — o tempo de parada, não o tempo de vida. (@R 18/09) */}
+                {v.duracao ? ` · atualização levou ${v.duracao}` : ''}
               </span>
               {v.versao === back?.versao && <span className="mc-notas__atual">no ar agora</span>}
             </h3>
