@@ -6,7 +6,7 @@ import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
 import './FichaPedido.css';
 
-const API_BASE = import.meta.env.VITE_API_URL;
+import { baixarAnexo, salvarBlob } from '../../services/api/orders';
 
 /**
  * FICHA DO PEDIDO — a rastreabilidade numa tela só.
@@ -381,10 +381,18 @@ export function FichaPedido({
                           pelo backend, que força o attachment. Os dois ficam: abrir é útil para
                           conferir rápido, baixar é o que a equipe pediu. */}
                       {a.id != null && (
-                        <a className="fic__baixar-anexo" href={`${API_BASE}/orders/anexos/${a.id}/baixar/`}
-                           title="Baixar este arquivo">
+                        <button type="button" className="fic__baixar-anexo"
+                          title="Baixar este arquivo"
+                          onClick={async () => {
+                            try {
+                              const { data } = await baixarAnexo(a.id as number);
+                              salvarBlob(data, `${(a.tipo || 'anexo').toLowerCase()}-${a.id}.pdf`);
+                            } catch {
+                              alert('Não foi possível baixar este arquivo agora.');
+                            }
+                          }}>
                           <i className="pi pi-download" /> baixar
-                        </a>
+                        </button>
                       )}
                       <span className="fic__tipo">{a.tipo}</span>
                       <span className="fic__quando">{dataHora(a.quando)}</span>

@@ -7,11 +7,9 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
 import { BotaoCopiar } from '../BotaoCopiar/BotaoCopiar';
 import { useFichaPedido } from '../FichaPedido/FichaPedidoContext';
-import { uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos } from '../../services/api/orders';
+import { uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos, baixarAnexoDoTipo, salvarBlob } from '../../services/api/orders';
 import './colunasIdentificacao.css';
 
-// mesma fonte que services/api.ts usa — `define` do Vite não vale no dev (cicatriz 10/09)
-const API_BASE = import.meta.env.VITE_API_URL;
 
 /**
  * Colunas de IDENTIFICAÇÃO do pedido, reutilizáveis em toda tabela (task #214, @R 27/08 13:23:
@@ -603,6 +601,7 @@ function nomeDoEmail(email: string): string {
    Anexar quando falta. O upload vai pro bucket R2 (tipo DECISAO_INTEIRO_TEOR). */
 function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
   const [enviado, setEnviado] = useState(false);
+  const [baixando, setBaixando] = useState(false);
   const [enviando, setEnviando] = useState(false);
 
   if (linha.temInteiroTeor || enviado) {
@@ -614,12 +613,24 @@ function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
     const tag = <Tag value="Inteiro teor ✓" severity="success" icon="pi pi-file-check"
       title="A peça de inteiro teor já está anexada a este pedido" />;
     if (!linha.id) return tag;
+    /* ⚠ NÃO usar <a href>: navegação de browser não manda o header Authorization e a rota
+       devolve 401 (foi o que aconteceu com o @R em 18/09). O download passa pelo axios. */
     return (
-      <a className="inteiro-teor-baixar"
-         href={`${API_BASE}/orders/${linha.id}/baixar-tipo/DECISAO_INTEIRO_TEOR/`}
-         title="Baixar a peça de inteiro teor (PDF)">
-        {tag}
-      </a>
+      <button type="button" className="inteiro-teor-baixar" disabled={baixando}
+        title={baixando ? 'Baixando…' : 'Baixar a peça de inteiro teor (PDF)'}
+        onClick={async () => {
+          setBaixando(true);
+          try {
+            const { data } = await baixarAnexoDoTipo(linha.id as number, 'DECISAO_INTEIRO_TEOR');
+            salvarBlob(data, `peca-inteiro-teor-${linha.id}.pdf`);
+          } catch {
+            alert('Não foi possível baixar a peça agora. Se o problema continuar, me avise.');
+          } finally {
+            setBaixando(false);
+          }
+        }}>
+        {baixando ? <i className="pi pi-spin pi-spinner" /> : tag}
+      </button>
     );
   }
   if (!linha.id) return <span className="ident-vazio">—</span>;

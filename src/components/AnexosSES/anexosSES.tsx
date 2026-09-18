@@ -6,6 +6,7 @@ import { TabView, TabPanel } from 'primereact/tabview';
 import { cabecalhoComHint, casaOpcaoDosDados, filtroOpcoesDosDados } from '../ColunasIdentificacao/colunasIdentificacao';
 import { getThreadPedido, postThreadVista, patchDossie } from '../../services/api/integracoes';
 import './anexosSES.css';
+import { baixarAnexo, salvarBlob } from '../../services/api/orders';
 
 /**
  * SES ANEXOS (@R 28/08 22:09): "criar uma coluna com SES Anexos e colocar se veio com anexo /
@@ -141,7 +142,26 @@ function ModalAnexosSES({ orderId, paciente, aberto, fechar }: { orderId: number
                         <td>{TIPO_ANEXO[a.tipo] ?? a.tipo}</td>
                         <td>{fmt(a.criadoEm)}</td>
                         <td>{a.processamento ? <Tag value={String(a.processamento).toLowerCase()} severity={a.processamento === 'PROCESSADO' ? 'success' : 'info'} /> : <span className="mc-ses-vazio">—</span>}</td>
-                        <td>{a.link ? <a href={a.link} target="_blank" rel="noreferrer" className="mc-ses-link"><i className="pi pi-download" /> ver / baixar</a> : null}</td>
+                        {/* VER abre (link do R2, útil p/ conferir rápido) · BAIXAR passa pelo
+                            backend, que força o attachment — o R2 não manda Content-Disposition e o
+                            Chrome ABRE o PDF de 23 MB em vez de salvar (@R 18/09). */}
+                        <td className="mc-ses-acoes">
+                          {a.link ? <a href={a.link} target="_blank" rel="noreferrer" className="mc-ses-link"><i className="pi pi-eye" /> ver</a> : null}
+                          {a.id != null ? (
+                            <button type="button" className="mc-ses-link mc-ses-link--btn"
+                              title="Baixar o arquivo"
+                              onClick={async () => {
+                                try {
+                                  const { data } = await baixarAnexo(a.id as number);
+                                  salvarBlob(data, `${String(a.tipo || 'anexo').toLowerCase()}-${a.id}.pdf`);
+                                } catch {
+                                  alert('Não foi possível baixar este arquivo agora.');
+                                }
+                              }}>
+                              <i className="pi pi-download" /> baixar
+                            </button>
+                          ) : null}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

@@ -61,6 +61,29 @@ export const enviarRelatorioResumido = (medicoId: number, destinatario?: string)
 export const getEmailsPendentes = (params?: { status?: string; tipoEmail?: string }) =>
   api.get('/orders/emails/', { params });
 export const getEmailsPendentesKpis = () => api.get('/orders/emails/kpis/');
+
+/** BAIXAR ANEXO — precisa passar pelo axios, ¬por <a href> (cicatriz @R 18/09).
+ *
+ *  O que eu fiz errado antes: liguei o botão num <a href> apontando para a rota. Navegação de
+ *  browser NÃO manda header, e o token desta API vai em `Authorization: Bearer` pelo interceptor
+ *  — resultado: HTTP 401 na cara do @R. Só a requisição pelo axios carrega a credencial.
+ *  `responseType: 'blob'` é obrigatório: sem ele o axios trata o PDF como texto e corrompe. */
+export const baixarAnexo = (anexoId: number) =>
+  api.get(`/orders/anexos/${anexoId}/baixar/`, { responseType: 'blob' });
+
+export const baixarAnexoDoTipo = (orderId: number, tipo: string) =>
+  api.get(`/orders/${orderId}/baixar-tipo/${tipo}/`, { responseType: 'blob' });
+
+/** Salva o blob como arquivo. Revoga o objectURL — sem isso, 23 MB ficam presos na memória
+ *  da aba a cada download (o PDF do #1268 tem exatamente esse tamanho). */
+export function salvarBlob(data: Blob, nome: string) {
+  const url = URL.createObjectURL(data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 export const getEmailsPendentesCount = () => api.get('/orders/emails/pendentes-count/');
 export const enviarEmailPendente = (id: number) => api.post(`/orders/emails/${id}/enviar/`);
 export const enviarEmailsPendentesLote = (ids: number[]) => api.post('/orders/emails/enviar-lote/', { ids });
