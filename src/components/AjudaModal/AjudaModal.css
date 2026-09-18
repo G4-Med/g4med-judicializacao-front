@@ -29,3 +29,17 @@ body.dark-theme .ajuda-modal__oquee { color: var(--mc-ink-2, #c6d2df); }
 body.dark-theme .ajuda-modal h4 { color: var(--mc-muted, #94a3b8); }
 body.dark-theme .ajuda-modal ul { color: var(--mc-ink, #e6eef6); }
 body.dark-theme .ajuda-modal__vazio { color: var(--mc-muted, #94a3b8); }
+
+/* Preferências de avisos (@R 18/09) — o lugar único onde se liga/desliga o que o sistema
+   mostra. Fica na Ajuda porque é para lá que o próprio aviso manda a pessoa. */
+.mc-prefs__intro { margin: .2rem 0 .9rem; opacity: .8; font-size: .92em; }
+.mc-prefs__erro { color: #b91c1c; font-size: .9em; margin: 0 0 .7rem; }
+.mc-prefs__linha { display: flex; gap: .8rem; align-items: flex-start; margin-bottom: .9rem; }
+.mc-prefs__texto { margin: .2rem 0 0; font-size: .9em; opacity: .8; line-height: 1.45; }
+
+/* Preferências de avisos (@R 18/09) — o lugar único onde se liga/desliga o que o sistema
+   mostra. Fica na Ajuda porque é para lá que o próprio aviso manda a pessoa. */
+.mc-prefs__intro { margin: .2rem 0 .9rem; opacity: .8; font-size: .92em; }
+.mc-prefs__erro { color: #b91c1c; font-size: .9em; margin: 0 0 .7rem; }
+.mc-prefs__linha { display: flex; gap: .8rem; align-items: flex-start; margin-bottom: .9rem; }
+.mc-prefs__texto { margin: .2rem 0 0; font-size: .9em; opacity: .8; line-height: 1.45; }

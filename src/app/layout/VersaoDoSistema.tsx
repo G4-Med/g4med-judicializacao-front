@@ -24,7 +24,7 @@ import { useEffect, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import api from '../../services/api';
 
-type Versao = { versao: string; data: string; itens: string[] };
+type Versao = { versao: string; data: string; hora?: string; duracao?: string; telas?: string[]; itens: string[] };
 
 /** Um item vem do .md com **negrito** na frase que resume a mudança. Renderizar como texto
  *  puro perderia a hierarquia — é o negrito que deixa a lista varrível em 5 segundos. */
@@ -137,9 +137,20 @@ export function VersaoDoSistema() {
           <section key={v.versao} className="mc-notas__versao">
             <h3 className="mc-notas__cab">
               <span className="mc-notas__num">v{v.versao}</span>
-              <span className="mc-notas__data">{v.data}</span>
+              <span className="mc-notas__data">
+                {v.data}
+                {v.hora ? ` às ${v.hora}` : ''}
+                {v.duracao ? ` · ${v.duracao} no ar` : ''}
+              </span>
               {v.versao === back?.versao && <span className="mc-notas__atual">no ar agora</span>}
             </h3>
+            {/* As telas que mudaram: é o que responde "isso me afeta?" antes de ler a lista
+                inteira. Quem só usa Orçamento não precisa ler o que mudou em Clientes. */}
+            {!!v.telas?.length && (
+              <p className="mc-notas__telas">
+                <span className="mc-notas__telas-rot">Telas:</span> {v.telas.join(' · ')}
+              </p>
+            )}
             <ul className="mc-notas__lista">
               {v.itens.map((it, i) => (
                 <li key={i}>{comNegrito(it)}</li>

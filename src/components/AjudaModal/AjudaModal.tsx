@@ -1,4 +1,5 @@
 import { Dialog } from 'primereact/dialog';
+import { PreferenciasAvisos } from './PreferenciasAvisos';
 import { useLocation } from 'react-router-dom';
 import { ajudaDaRota } from '../../content/ajudaPaginas';
 import './AjudaModal.css';
@@ -52,6 +53,11 @@ export function AjudaModal({ visible, onHide }: { visible: boolean; onHide: () =
           <a href="/processo-operacional">manual do Processo Operacional</a>.
         </p>
       )}
+      {/* Fora do if: o aviso manda "reativar em Ajuda → Avisos" de QUALQUER tela — inclusive
+          das que ainda não têm ajuda escrita. Se ficasse dentro do ramo com ajuda, a promessa
+          continuaria falsa nas telas sem documentação. */}
+      <h4>Avisos</h4>
+      <PreferenciasAvisos />
     </Dialog>
   );
 }

@@ -214,3 +214,5 @@ button.mc-versao:hover .mc-versao__num { text-decoration: underline; }
 .mc-notas__atual { font-size: .75em; background: #16a34a; color: #fff; border-radius: 999px; padding: .1em .6em; }
 .mc-notas__lista { margin: 0; padding-left: 1.2rem; line-height: 1.55; }
 .mc-notas__lista li { margin-bottom: .55rem; }
+.mc-notas__telas { margin: -.2rem 0 .5rem; font-size: .85em; opacity: .8; }
+.mc-notas__telas-rot { font-weight: 600; opacity: .9; }

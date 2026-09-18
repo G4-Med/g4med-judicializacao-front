@@ -21,11 +21,12 @@ import './AvisoNovidade.css';
  * calar — quem não quer, dispensa de novo em 1 clique).
  */
 
-const CHAVE = 'avisos_dispensados';
+export const CHAVE_AVISOS = 'avisos_dispensados';
+const CHAVE = CHAVE_AVISOS;
 
 export type NovidadeId = 'ficha-pedido' | 'voltar-fase';
 
-const NOVIDADES: Record<NovidadeId, { titulo: string; texto: string; comoUsar: string }> = {
+export const NOVIDADES: Record<NovidadeId, { titulo: string; texto: string; comoUsar: string }> = {
   'ficha-pedido': {
     titulo: 'Novo: a ficha do pedido',
     texto:
