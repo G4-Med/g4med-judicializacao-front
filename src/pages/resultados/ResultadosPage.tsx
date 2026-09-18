@@ -723,7 +723,7 @@ const kpis = useMemo(() => {
           {colunaComarca()}
           {colunaCadastro()}
           {colunaInteiroTeor()}
-          {colunaSolicitante()}
+          {colunaSolicitante('13rem', dataComCamposCalculados)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}
           {colunaPagoEm()}

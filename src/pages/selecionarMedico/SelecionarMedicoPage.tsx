@@ -682,7 +682,7 @@ export function SelecionarMedicoPage() {
           {colunaComarca()}
           {colunaCadastro()}
           {colunaInteiroTeor()}
-          {colunaSolicitante()}
+          {colunaSolicitante('13rem', dataComCamposCalculados)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}
           {colunaPagoEm()}

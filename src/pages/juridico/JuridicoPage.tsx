@@ -589,7 +589,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
               return <span className="juridico-geo-vazio">—</span>;
             }} />
           {colunaInteiroTeor()}
-          {colunaSolicitante()}
+          {colunaSolicitante('13rem', dataComSequencial)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}
           {colunaPagoEm()}

@@ -498,7 +498,7 @@ export function PerdasPage() {
           {colunaComarca()}
           {colunaCadastro()}
           {colunaInteiroTeor()}
-          {colunaSolicitante()}
+          {colunaSolicitante('13rem', linhasVisiveis)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}
           {colunaPagoEm()}

@@ -74,7 +74,11 @@ export interface LinhaIdentificada {
 }
 
 export const FILTROS_IDENTIFICACAO = {
-  solicitante: { value: '', matchMode: 'contains' as const },
+  // 'custom' e NÃO 'contains': o matchMode do objeto `filters` VENCE o da coluna em
+  // tabela controlada. Deixar 'contains' aqui faria a coluna declarar filtro de opções e
+  // o PrimeReact filtrar por texto — a lista mostraria "Fulano (12)" e a tabela
+  // devolveria zero, que é o jeito mais fácil de confundir com "não há nada aqui".
+  solicitante: { value: '', matchMode: 'custom' as const },
   nprocesso: { value: '', matchMode: 'contains' as const },
   numeroSei: { value: '', matchMode: 'contains' as const },
   comarca: { value: '', matchMode: 'contains' as const },
@@ -172,7 +176,7 @@ import { FilterService } from 'primereact/api';
 
 const CAMPOS_OPCAO = [
   'vezesPedido', 'segredo', 'origemRegistro', 'sesAnexos', 'tipoPaciente', 'area',
-  'cadastro', 'temInteiroTeor',
+  'cadastro', 'temInteiroTeor', 'solicitante',
 ];
 const CAMPOS_PERIODO = ['chegouEm', 'dataEnvio', 'dataStatusJuridico', 'dataPedido'];
 
@@ -657,10 +661,26 @@ export function colunaInteiroTeor(largura = '10rem') {
   );
 }
 
-export function colunaSolicitante(largura = '13rem') {
+export function colunaSolicitante(largura = '13rem', dados?: any[]) {
+  /* QUEM MAIS ENVIA (@R 17/09: "em buscar solicitante vamos classificar eles e o número
+     de envios de cada um para sabermos quem mais envia").
+
+     O campo de texto exigia saber o nome ANTES de procurar — e a pergunta que se faz aqui
+     é justamente "quem são e quantos cada um manda?". A lista já vem ordenada do maior
+     volume para o menor (o mesmo helper das outras colunas), com a contagem ao lado, e o
+     rótulo usa o nome legível em vez do e-mail cru, que é como a coluna já se apresenta.
+
+     Sem `dados` (tela que ainda não passou a lista) continua o campo de texto — degrada,
+     não quebra. */
+  const filtroDoSolicitante = dados
+    ? filtroOpcoesDosDados(dados, (r: any) => r?.solicitante, 'Todos os solicitantes',
+        (v) => `${nomeDoEmail(String(v))} · ${v}`)
+    : filtro('Buscar solicitante');
   return (
     <Column key="col-solicitante" field="solicitante" header={cabecalhoComHint('Solicitante', EXPLICA.solicitante)}
-      sortable filter filterElement={filtro('Buscar solicitante')} style={{ minWidth: largura }}
+      sortable filter showFilterMenu={!dados}
+      {...(dados ? { filterMatchMode: 'custom' as const, filterFunction: casaOpcaoDosDados } : {})}
+      filterElement={filtroDoSolicitante} style={{ minWidth: largura }}
       body={(r: LinhaIdentificada) => {
         if (!r.solicitante) return <span className="ident-vazio">—</span>;
         return (

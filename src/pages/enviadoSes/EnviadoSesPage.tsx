@@ -314,7 +314,7 @@ export function EnviadoSesPage() {
           {colunaComarca()}
           {colunaCadastro()}
           {colunaInteiroTeor()}
-          {colunaSolicitante()}
+          {colunaSolicitante('13rem', linhas)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}
           {colunaPagoEm()}

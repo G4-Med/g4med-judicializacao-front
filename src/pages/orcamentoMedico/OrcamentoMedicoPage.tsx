@@ -704,7 +704,7 @@ ${blocos}
           {colunaComarca()}
           {colunaCadastro()}
           {colunaInteiroTeor()}
-          {colunaSolicitante()}
+          {colunaSolicitante('13rem', dataComMedico)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}
           {colunaPagoEm()}

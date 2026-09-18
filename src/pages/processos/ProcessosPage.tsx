@@ -818,11 +818,29 @@ ${linhasAnexos}
       ? (qtdeOrcamentoEnviado / totalProcessos) * 100
       : 0;
 
+    // DINHEIRO, ¬só contagem (@R 17/09: "falta o valor total de oportunidades recebidas,
+    // o total de oportunidades que não receberam orçamentos, o valor enviado").
+    // Três perguntas diferentes e três réguas diferentes:
+    //   recebido  = tudo que entrou, pela REFERÊNCIA (é o que se sabe antes de cotar)
+    //   semCotacao = o que entrou e ninguém orçou — a oportunidade que está escapando
+    //   enviado   = o que de fato foi cotado, pelo valor ORÇADO (¬pela referência:
+    //               referência é estimativa, orçamento é o número que foi à SES)
+    const valorRecebido = items.reduce((acc, i) => acc + (Number(i.refPreco) || 0), 0);
+    const semCotacao = items.filter((i) => !Number(i.valorOrcamento));
+    const valorSemCotacao = semCotacao.reduce((acc, i) => acc + (Number(i.refPreco) || 0), 0);
+    const valorEnviado = items
+      .filter((i) => Number(i.valorOrcamento))
+      .reduce((acc, i) => acc + (Number(i.valorOrcamento) || 0), 0);
+
     return {
       totalProcessos,
       processosAtivos,
       processosBaixados,
       percentualRespostas,
+      valorRecebido,
+      semCotacaoQtd: semCotacao.length,
+      valorSemCotacao,
+      valorEnviado,
       aguardandoJuridico: items.filter(
         (item) => item.status === 'Aguardando Juridico'
       ).length,
@@ -1968,6 +1986,33 @@ ${linhasAnexos}
           <div className="kpi-value">{kpis.totalProcessos}</div>
         </div>
 
+        <div className="kpi-card" title="Soma da referência de preço de tudo que entrou — o tamanho da oportunidade recebida">
+          <div className="kpi-header">
+            <span>Valor recebido em oportunidades</span>
+            <i className="pi pi-wallet"></i>
+          </div>
+          <div className="kpi-value">{formatarMoeda(kpis.valorRecebido)}</div>
+        </div>
+
+        <div className="kpi-card" title="Pedidos que ninguém orçou — pela referência, o quanto disso está escapando">
+          <div className="kpi-header">
+            <span>Sem orçamento</span>
+            <i className="pi pi-exclamation-circle"></i>
+          </div>
+          <div className="kpi-value">
+            {formatarMoeda(kpis.valorSemCotacao)}
+            <span className="kpi-sub"> · {kpis.semCotacaoQtd} pedido{kpis.semCotacaoQtd === 1 ? '' : 's'}</span>
+          </div>
+        </div>
+
+        <div className="kpi-card" title="Soma do que foi efetivamente orçado (valor do orçamento, ¬a referência)">
+          <div className="kpi-header">
+            <span>Valor enviado em oportunidades</span>
+            <i className="pi pi-send"></i>
+          </div>
+          <div className="kpi-value">{formatarMoeda(kpis.valorEnviado)}</div>
+        </div>
+
         <div className="kpi-card">
           <div className="kpi-header">
             <span>Processos Ativos</span>
@@ -2220,7 +2265,7 @@ ${linhasAnexos}
           {colunaComarca()}
           {colunaCadastro()}
           {colunaInteiroTeor()}
-          {colunaSolicitante()}
+          {colunaSolicitante('13rem', dataComCamposCalculados)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}
           {colunaPagoEm()}
