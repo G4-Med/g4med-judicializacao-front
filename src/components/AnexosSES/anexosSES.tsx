@@ -221,8 +221,16 @@ function CelulaAnexosSES({ r }: { r: any }) {
   const subLaudo = processando
     ? (r?.laudoLendoAgora ? 'lendo a peça agora' : 'processando laudo…')
       + (haMin != null ? ` · há ${fmtMin(haMin)}` : '')
-      + (roboParado ? ` · robô parado há ${fmtMin(r.laudoRoboParadoMin)}` : etaMin == null ? '' : etaMin > 0 ? ` · faltam ~${fmtMin(etaMin)}` : atrasado ? ' · demorando mais que o normal' : ' · termina a qualquer momento')
+      /* FILA PARADA ¬é "falta pouco" (@R 18/09): quando nada saiu nas últimas 2h o backend
+         manda laudoFilaParada e NÃO manda eta. Contar minutos sobre robô parado foi o que
+         fez a tela prometer "~2 min" por 6 horas — e estimativa que erra 180× ensina a
+         equipe a ignorar o indicador, que é pior que não ter indicador. */
+      + (r?.laudoFilaParada ? ' · ⚠ fila parada'
+         : roboParado ? ` · robô parado há ${fmtMin(r.laudoRoboParadoMin)}`
+         : etaMin == null ? '' : etaMin > 0 ? ` · faltam ~${fmtMin(etaMin)}` : atrasado ? ' · demorando mais que o normal' : ' · termina a qualquer momento')
       + (r?.laudoNaFrente ? ` · ${r.laudoNaFrente} na frente` : '')
+      /* o RITMO ao lado da espera: sem ele "31 na frente" não diz se é 1h ou 8h */
+      + (r?.laudoRitmoHora ? ` · ${r.laudoRitmoHora}/h` : '')
     : '';
   const classe = processando ? (atrasado || roboParado ? ' mc-ses-btn--processando mc-ses-btn--atrasado' : ' mc-ses-btn--processando') : chave === 'SEM_ANEXO' ? ' mc-ses-btn--alerta' : chave === 'SOLICITADO' ? ' mc-ses-btn--aguarda' : '';
   const dos = r?.dossieN != null ? `dossiê ${r.dossieN} de ${r.dossieDe ?? 3}` : null;
