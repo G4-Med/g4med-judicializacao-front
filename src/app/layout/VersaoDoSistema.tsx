@@ -1,21 +1,30 @@
-/** A versão que está NO AR, na barra de menu (@R 17/09/2026).
+/** A versão que está NO AR, na barra de menu (@R 17/09/2026 · ampliado 18/09/2026).
  *
- *  POR QUE EXISTE: hoje, para saber se a tela é a nova, a única saída era comparar o
+ *  POR QUE EXISTE: para saber se a tela é a nova, a única saída era comparar o
  *  comportamento com o que se lembrava do anterior — e quando a publicação falha calada
  *  (o Netlify parou de publicar em 17/09 e ninguém soube por horas), a tela ANTIGA continua
  *  respondendo normalmente. Sem carimbo, "não atualizou" e "atualizou e não mudou nada" são
- *  indistinguíveis do lado de cá. Este selo separa os dois em 1 olhada.
+ *  indistinguíveis do lado de cá.
  *
- *  POR QUE O DADO VEM DO BUILD, ¬do código: qualquer número escrito à mão aqui seria uma
- *  PROMESSA (alguém lembrar de incrementar), e promessa é exatamente o que falha sob pressa.
- *  O `publicar_front.sh` injeta o commit e o horário no ato de gerar o pacote, então o selo
- *  só pode mentir se o pacote inteiro for outro — e aí ele denuncia isso também.
+ *  POR QUE AGORA SÃO DOIS (@R 18/09: "toda vez que atualizarmos, mesmo que seja backend,
+ *  a versão tem que mudar"): a primeira versão deste selo carregava só o commit do FRONT,
+ *  injetado no build. Deploy de backend não reconstrói o front — então o selo ficava idêntico
+ *  enquanto o sistema no ar já era outro. Medido em 18/09: front publicado às 14:17 e DOIS
+ *  deploys de backend depois, com o selo parado no mesmo número. O comentário antigo aqui
+ *  dizia "o selo só pode mentir se o pacote inteiro for outro" — faltava o terceiro caso:
+ *  o pacote é o mesmo e o SISTEMA mudou.
  *
- *  Sem as variáveis (rodando em desenvolvimento) ele diz "dev", que é a verdade, em vez de
- *  inventar um número.
+ *  POR QUE O BACKEND VEM EM RUNTIME, ¬do build: a alternativa era reconstruir o front a cada
+ *  deploy de backend, o que acopla dois deploys e depende de alguém lembrar — e lembrar é o
+ *  que falha sob pressa. Aqui a tela PERGUNTA ao servidor, então o selo se corrige sozinho.
+ *
+ *  Se a pergunta falhar, mostra só o front e diz isso no tooltip — nunca inventa um número.
  */
-const VERSAO = import.meta.env.VITE_APP_VERSION ?? 'dev';
-const MOMENTO = import.meta.env.VITE_APP_BUILD_TIME ?? '';
+import { useEffect, useState } from 'react';
+import api from '../../services/api';
+
+const VERSAO_FRONT = import.meta.env.VITE_APP_VERSION ?? 'dev';
+const MOMENTO_FRONT = import.meta.env.VITE_APP_BUILD_TIME ?? '';
 
 function horaCurta(iso: string): string {
   if (!iso) return '';
@@ -33,16 +42,53 @@ function horaCurta(iso: string): string {
 }
 
 export function VersaoDoSistema() {
-  const hora = horaCurta(MOMENTO);
-  const detalhe = MOMENTO
-    ? `Versão ${VERSAO}, publicada em ${new Date(MOMENTO).toLocaleString('pt-BR')}.\n` +
-      'Se este horário não mudou depois de uma atualização, o que você está vendo é a versão antiga — ' +
-      'recarregue a página; se continuar igual, a publicação não chegou.'
-    : 'Ambiente de desenvolvimento — este pacote não veio de uma publicação.';
+  const [back, setBack] = useState<{ versao: string; publicadoEm: string } | null>(null);
+  const [falhou, setFalhou] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    api
+      .get('versao/')
+      .then((r) => vivo && setBack(r.data))
+      .catch(() => vivo && setFalhou(true));
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  // O horário que importa é o da ÚLTIMA mudança, venha de onde vier — é ele que responde
+  // "o que estou vendo já tem a correção?". Mostrar o do front quando o backend subiu depois
+  // reproduziria exatamente o erro que este componente existe para impedir.
+  const maisRecente =
+    back?.publicadoEm && MOMENTO_FRONT
+      ? new Date(back.publicadoEm) > new Date(MOMENTO_FRONT)
+        ? back.publicadoEm
+        : MOMENTO_FRONT
+      : back?.publicadoEm || MOMENTO_FRONT;
+
+  const hora = horaCurta(maisRecente);
+  const selo = back ? `${VERSAO_FRONT}·${back.versao}` : VERSAO_FRONT;
+
+  const detalhe = !MOMENTO_FRONT
+    ? 'Ambiente de desenvolvimento — este pacote não veio de uma publicação.'
+    : [
+        `Tela (front): ${VERSAO_FRONT}, publicada em ${new Date(MOMENTO_FRONT).toLocaleString('pt-BR')}.`,
+        back
+          ? `Servidor (backend): ${back.versao}${
+              back.publicadoEm ? `, publicado em ${new Date(back.publicadoEm).toLocaleString('pt-BR')}` : ''
+            }.`
+          : falhou
+            ? 'Servidor: não consegui perguntar a versão — o número ao lado é só o da tela.'
+            : 'Servidor: perguntando…',
+        '',
+        'O horário mostrado é o da última mudança, venha do front ou do servidor.',
+        'Se ele não mudou depois de uma atualização, o que você está vendo é a versão antiga —',
+        'recarregue a página; se continuar igual, a publicação não chegou.',
+      ].join('\n');
 
   return (
     <span className="mc-versao" title={detalhe} aria-label={detalhe}>
-      <span className="mc-versao__num">v{VERSAO}</span>
+      <span className="mc-versao__num">v{selo}</span>
       {hora && <span className="mc-versao__hora">{hora}</span>}
     </span>
   );
