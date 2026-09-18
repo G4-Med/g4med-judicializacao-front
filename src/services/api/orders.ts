@@ -64,6 +64,10 @@ export const getEmailsPendentesKpis = () => api.get('/orders/emails/kpis/');
 export const getEmailsPendentesCount = () => api.get('/orders/emails/pendentes-count/');
 export const enviarEmailPendente = (id: number) => api.post(`/orders/emails/${id}/enviar/`);
 export const enviarEmailsPendentesLote = (ids: number[]) => api.post('/orders/emails/enviar-lote/', { ids });
+/** Tira da fila um e-mail que não deve mais sair (o pedido voltou de fase, mudou a decisão).
+ *  Não apaga: marca CANCELADO com quem e por quê — e-mail já ENVIADO devolve 409. */
+export const cancelarEmailPendente = (id: number, motivo?: string) =>
+  api.post(`/orders/emails/${id}/cancelar/`, motivo ? { motivo } : {});
 export const enviarEmailDireto = (payload: {
   emailPendenteId?: number;
   destinatario: string;

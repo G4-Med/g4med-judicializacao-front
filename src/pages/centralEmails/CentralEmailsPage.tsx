@@ -11,7 +11,7 @@ import { Calendar } from 'primereact/calendar';
 import { Tag } from 'primereact/tag';
 import { ConfiguracoesEmailsPage } from '../configuracoesEmails/ConfiguracoesEmailsPage';
 import { getCentralSaude, getCentralEmails, getCentralCaixa, postCentralReprocessar, getCentralRespostas } from '../../services/api/integracoes';
-import { enviarEmailPendente, enviarEmailsPendentesLote } from '../../services/api/orders';
+import { enviarEmailPendente, enviarEmailsPendentesLote, cancelarEmailPendente } from '../../services/api/orders';
 import { cabecalhoComHint } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import './CentralEmailsPage.css';
 
@@ -387,10 +387,28 @@ function Respostas({ statusInicial }: { statusInicial: string | null }) {
     setEnviando('lote');
     try { await enviarEmailsPendentesLote(pendentes.map((p) => p.id)); } finally { setEnviando(null); carregar(); }
   };
+  // CANCELAR (@R 17/09): a fila existe para dar tempo de consertar um engano — mas a tela
+  // só sabia "Enviar". Quando o pedido volta de fase, o e-mail da fase antiga fica na fila,
+  // válido, e o botão de lote envia TODAS. Cancelar registra a mudança de decisão; não apaga.
+  const cancelarUm = async (r: any) => {
+    const motivo = window.prompt(
+      `Cancelar este e-mail (${r.paciente || 'sem paciente'}${r.orderId ? ` · #${r.orderId}` : ''})?\n` +
+      'Ele sai da fila e não será enviado. Diga o motivo (fica registrado):',
+      'o pedido voltou de fase',
+    );
+    if (motivo === null) return;
+    setEnviando([r.id]);
+    try {
+      await cancelarEmailPendente(r.id, motivo);
+    } catch (e: any) {
+      alert(e?.response?.data?.error ?? 'Não foi possível cancelar este e-mail.');
+    } finally { setEnviando(null); carregar(); }
+  };
   const fmtDt = (v?: string | null) => (v ? new Date(v).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
   const entrega = (r: any) => {
     if (r.status === 'PENDENTE') return <Tag value={`na fila · ${r.idadeMin ?? '?'} min`} severity={(r.idadeMin ?? 0) > 60 ? 'warning' : 'info'} />;
     if (r.status === 'ERRO') return <Tag value="falhou" severity="danger" />;
+    if (r.status === 'CANCELADO') return <Tag value="cancelada" severity="secondary" />;
     if (r.rejeitado) return <Tag value="devolvida" severity="danger" />;
     if (r.spam) return <Tag value="caiu em spam" severity="danger" />;
     if (r.clicado) return <Tag value="aberta · clicou" severity="success" />;
@@ -443,9 +461,15 @@ function Respostas({ statusInicial }: { statusInicial: string | null }) {
         <Column field="criadoEm" header="Montada em" sortable style={{ width: '8rem' }} body={(r) => fmtDt(r.criadoEm)} />
         <Column field="enviadoEm" header="Enviada em" sortable style={{ width: '8rem' }} body={(r) => fmtDt(r.enviadoEm)} />
         <Column header="Entrega" style={{ width: '11rem' }} body={entrega} />
-        <Column header="" style={{ width: '9rem' }}
+        <Column header="" style={{ width: '13rem' }}
           body={(r) => (r.status === 'PENDENTE' || r.status === 'ERRO'
-            ? <Button label="Enviar" icon="pi pi-send" size="small" outlined loading={Array.isArray(enviando) && enviando.includes(r.id)} onClick={() => enviarUm(r.id)} />
+            ? (
+              <span style={{ display: 'inline-flex', gap: 6 }}>
+                <Button label="Enviar" icon="pi pi-send" size="small" outlined loading={Array.isArray(enviando) && enviando.includes(r.id)} onClick={() => enviarUm(r.id)} />
+                <Button label="Cancelar" icon="pi pi-times" size="small" outlined severity="danger"
+                  tooltip="Tira da fila — não será enviado" onClick={() => cancelarUm(r)} />
+              </span>
+            )
             : null)} />
       </DataTable>
     </div>
