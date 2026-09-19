@@ -787,6 +787,10 @@ ${blocos}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
           {colunaSegredo(undefined, dataComMedico)}
+          {/* @R 19/09: Inteiro teor e Cadastro vêm para a frente, ao lado de Segredo — é o que
+              se olha primeiro para saber se dá para agir no pedido. */}
+          {colunaInteiroTeor()}
+          {colunaCadastro()}
           {/* @R 17/09: segredo ao lado de origem — "para sabermos". Nesta fase a
               informação decide O MOLDE do pedido de orçamento, então precisa estar
               no campo de visão de quem vai pedir, ¬no fim da tabela. */}
@@ -939,8 +943,6 @@ ${blocos}
 {colunaCnj()}
           {colunaSei()}
           {colunaComarca()}
-          {colunaCadastro()}
-          {colunaInteiroTeor()}
           {colunaSolicitante('13rem', dataComMedico)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}

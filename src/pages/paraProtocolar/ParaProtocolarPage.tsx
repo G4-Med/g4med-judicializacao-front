@@ -811,6 +811,10 @@ const handleConfirmarProtocolacao = async () => {
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
           {colunaSegredo(undefined, dataComCamposCalculados)}
+          {/* @R 19/09: Inteiro teor e Cadastro vêm para a frente, ao lado de Segredo — é o que
+              se olha primeiro para saber se dá para agir no pedido. */}
+          {colunaInteiroTeor()}
+          {colunaCadastro()}
           {colunaRepedido(dataComCamposCalculados)}
           <Column
             field="cliente"
@@ -874,8 +878,6 @@ const handleConfirmarProtocolacao = async () => {
 {colunaCnj()}
           {colunaSei()}
           {colunaComarca()}
-          {colunaCadastro()}
-          {colunaInteiroTeor()}
           {colunaSolicitante('13rem', dataComCamposCalculados)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}
