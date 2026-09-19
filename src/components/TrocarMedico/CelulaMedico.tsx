@@ -53,6 +53,54 @@ export function CelulaMedico({
 
   const nome = row?.medico || '—';
 
+  // ⚠ ORDENA POR QUEM ATENDE A ÁREA DO PEDIDO — @R, print de 19/09: para IMPLANTE DE
+  // ELETRODO CEREBRAL PROFUNDO (área Neurocirurgia) o seletor oferecia BUONA VITA, que é
+  // HOME CARE. O dropdown listava todos em ordem alfabética, sem cruzar com a área.
+  // Home care para cirurgia cerebral, com nome plausível na lista.
+  //
+  // FAIL-VISIBLE, não fail-closed: quem não atende CONTINUA na lista, só vai para o fim
+  // e marcado. Às vezes a pessoa SABE que aquele hospital faz e o cadastro é que está
+  // atrasado — esconder seria trocar um erro por outro, e o escondido é pior porque
+  // ninguém descobre.
+  const semAcento = (v: any) => String(v ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+
+  const areaPedido = semAcento(row?.area);
+
+  const atende = (m: any) => {
+    if (!areaPedido) return true;                    // sem área declarada, ninguém é despriorizado
+    const lista = [m?.especialidade, ...(m?.especialidades ?? [])].map(semAcento).filter(Boolean);
+    if (!lista.length) return true;                  // cadastro sem especialidade: não acusamos
+    return lista.some((e: string) => e === areaPedido
+      || e.startsWith(areaPedido + ' ') || areaPedido.startsWith(e + ' '));
+  };
+
+  const opcoesMedicos = (() => {
+    const base = (medicos ?? []).map((m: any) => ({
+      label: m.nomeSistema || m.nomeCompleto,
+      value: m.id,
+      _atende: atende(m),
+    }));
+    const sim = base.filter((o) => o._atende);
+    const nao = base.filter((o) => !o._atende);
+    return [
+      ...sim,
+      ...nao.map((o) => ({ ...o, label: `${o.label}  · não marcou ${row?.area ?? 'esta área'}` })),
+    ];
+  })();
+
+  // ⚠ O AVISO PERGUNTA OUTRA COISA que o `_atende`: quem está SEM especialidade cadastrada
+  // entra na lista de cima (não o acusamos sem saber), mas ele NÃO conta como alguém que
+  // marcou a área. Testado antes de publicar: com a regra ingênua, bastava 1 cliente sem
+  // cadastro para o aviso nunca aparecer — e é justamente quando ninguém marcou que a
+  // pessoa precisa ser avisada.
+  const alguemMarcouAArea = (medicos ?? []).some((m: any) => {
+    const lista = [m?.especialidade, ...(m?.especialidades ?? [])].map(semAcento).filter(Boolean);
+    return lista.length > 0 && lista.some((e: string) => e === areaPedido
+      || e.startsWith(areaPedido + ' ') || areaPedido.startsWith(e + ' '));
+  });
+  const nenhumAtende = !!areaPedido && (medicos ?? []).length > 0 && !alguemMarcouAArea;
+
   /** Adiciona SEM tirar o atual — é a diferença inteira em relação a "Confirmar médico". */
   const adicionar = async () => {
     if (!escolhido) return;
@@ -118,14 +166,18 @@ export function CelulaMedico({
           Hoje com <strong>{nome}</strong>
           {row?.paciente ? <> · pedido de <strong>{row.paciente}</strong></> : null}
         </p>
+        {nenhumAtende && (
+          <p style={{ color: '#b45309', marginBottom: 6 }}>
+            Nenhum cliente marcou <strong>{row?.area}</strong> nas especialidades atendidas.
+            A lista continua completa — marque a especialidade em Clientes, ou escolha assim mesmo
+            se souber que o prestador faz.
+          </p>
+        )}
         <div className="field">
-          <label>Novo médico</label>
+          <label>Novo médico{areaPedido ? <small style={{ opacity: .7, fontWeight: 400 }}> · quem atende {row?.area} aparece primeiro</small> : null}</label>
           <Dropdown
             value={escolhido}
-            options={medicos.map((m: any) => ({
-              label: m.nomeSistema || m.nomeCompleto,
-              value: m.id,
-            }))}
+            options={opcoesMedicos}
             onChange={(e) => setEscolhido(e.value)}
             placeholder="Selecione o médico"
             filter
