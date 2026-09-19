@@ -192,10 +192,23 @@ function Comparacao({ rotulo, atual, base }: { rotulo: string; atual: number; ba
 const MES_DE_CARGA = '2026-04';
 
 function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) => string }) {
-  const meses = new Map<string, { rec: number; env: number; per: number; gan: number; pago: number; n: number }>();
-  const zero = () => ({ rec: 0, env: 0, per: 0, gan: 0, pago: 0, n: 0 });
+  /* cEnv/cPer são COORTE: contam o pedido no mês em que ELE ENTROU, não no mês do
+     evento. É o que permite um percentual que nunca passa de 100% — ver o comentário
+     da tabela abaixo. */
+  const meses = new Map<string, { rec: number; env: number; per: number; gan: number; pago: number; n: number; cEnv: number; cPer: number }>();
+  const zero = () => ({ rec: 0, env: 0, per: 0, gan: 0, pago: 0, n: 0, cEnv: 0, cPer: 0 });
+  /* ⚠ NÃO troque por `new Date(iso)` — foi assim e estava ERRADO (medido 19/09).
+     A API manda DateField puro ("2026-09-01", sem hora). `new Date("2026-09-01")` é
+     interpretado como MEIA-NOITE UTC; em Brasília (UTC-3) isso é 31/08 às 21h, e o
+     `getMonth()` devolve AGOSTO. Todo pedido do dia 1º caía no mês anterior.
+     Medido em produção: 52 dos 1.163 pedidos (4,5%) têm dataPedido no dia 1 — e o
+     mesmo valia para orçamento, perda e ganho, que também são DateField.
+     A string ISO já começa com "AAAA-MM": ler os 7 primeiros caracteres não passa por
+     fuso nenhum. Só cai no Date quando o formato não é o esperado. */
   const chave = (iso?: string | null) => {
     if (!iso) return null;
+    const m = /^(\d{4})-(\d{2})/.exec(iso);
+    if (m) return `${m[1]}-${m[2]}`;
     const d = new Date(iso);
     return Number.isNaN(d.getTime())
       ? null : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -222,6 +235,18 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
 
   for (const l of linhas) {
     contar(l.dataPedido);
+    /* A COORTE, contada no mês de ENTRADA do pedido (@R 19/09 pediu "o percentual de
+       envio e o percentual de perda"). Aqui o pedido é contado sempre no MESMO mês, do
+       começo ao fim — por isso o percentual tem um denominador honesto e não estoura. */
+    {
+      const k = chave(l.dataPedido);
+      if (k) {
+        if (!meses.has(k)) meses.set(k, zero());
+        const m = meses.get(k)!;
+        if (num(l.valorOrcamento) > 0) m.cEnv += 1;
+        if (l.statusProcesso === 'Perda') m.cPer += 1;
+      }
+    }
     por(l.dataPedido, 'rec', num(l.refPreco));
     por(l.dataStatusOrcamento, 'env', num(l.valorOrcamento));
     if (l.statusProcesso === 'Perda') por(l.dataStatusPerda, 'per', num(l.valorOrcamento));
@@ -246,8 +271,9 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
   // linhas cabem na tela)
   const totais = [...meses.values()].reduce(
     (a, m) => ({ rec: a.rec + m.rec, env: a.env + m.env, per: a.per + m.per,
-                 gan: a.gan + m.gan, pago: a.pago + m.pago, n: a.n + m.n }),
-    { rec: 0, env: 0, per: 0, gan: 0, pago: 0, n: 0 });
+                 gan: a.gan + m.gan, pago: a.pago + m.pago, n: a.n + m.n,
+                 cEnv: a.cEnv + m.cEnv, cPer: a.cPer + m.cPer }),
+    { rec: 0, env: 0, per: 0, gan: 0, pago: 0, n: 0, cEnv: 0, cPer: 0 });
 
   /* QUEM NÃO TEM VALOR (@R 18/09: "o valor recebido não tá somando todos os pedidos e
      enviados não tá somando todos os orçamentos, por quê").
@@ -277,8 +303,9 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
         <thead>
           <tr>
             <th>Mês</th><th>Pedidos</th><th>Recebido</th><th>Enviado</th>
-            <th title="Enviado ÷ recebido no mesmo mês. Pode passar de 100%: o orçamento enviado em setembro costuma ser de pedido que entrou antes — não é a mesma coorte.">Taxa envio</th>
+            <th title="Dos pedidos que ENTRARAM neste mês, quantos % já foram orçados. Denominador e numerador são os MESMOS pedidos, por isso nunca passa de 100%. A antiga 'Taxa envio' dividia o orçado no mês (data do orçamento) pelo recebido no mês (data do pedido) — populações diferentes, e por isso dava 122%, 130%, 700%.">% enviado</th>
             <th>Perdido</th>
+            <th title="Dos pedidos que ENTRARAM neste mês, quantos % já viraram perda. Mesma coorte do % enviado. Mês recente tende a mostrar pouco: a maior parte ainda não foi decidida — é cedo, não é bom.">% perdido</th>
             <th title="Ganho MARCADO na tela por alguém. Medido em 18/09: 19 marcados — contra 345 pedidos com pagamento de sinal forte no dado do Estado.">Ganho (marcado)</th>
             <th title="PAGO pelo Estado DEPOIS do nosso pedido, no dado do 548 (sinal PAGO_APOS_O_PEDIDO). É fato medido, não marcação de tela. Entra no mês do pagamento.">Pago (548)</th>
           </tr>
@@ -298,14 +325,20 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
               <td className="ce-num">{m.n || '—'}</td>
               <td className="ce-num">{m.rec ? moeda(m.rec) : '—'}</td>
               <td className="ce-num">{m.env ? moeda(m.env) : '—'}</td>
-              {/* @R 18/09: "a taxa de orçamento enviado". Enviado ÷ recebido no MESMO
-                  mês — e por isso pode passar de 100%: o que se orça em setembro entrou
-                  meses antes. O título da coluna diz isso, porque um 630% sem explicação
-                  parece erro de conta. */}
+              {/* @R 19/09: "o percentual de envio e o percentual de perda".
+                  A versão anterior dividia DINHEIRO enviado por DINHEIRO recebido no
+                  mesmo mês e dava 122%, 130%, 700% — não era erro de conta: numerador e
+                  denominador eram populações diferentes (o orçado em setembro é de
+                  pedido que entrou em junho). Agora o percentual é de PEDIDOS sobre a
+                  COORTE: dos que entraram neste mês, quantos já foram orçados. Os mesmos
+                  pedidos nos dois lados da divisão, logo o teto é 100% por construção. */}
               <td className="ce-num">
-                {m.rec && m.env ? `${Math.round((m.env / m.rec) * 100)}%` : '—'}
+                {m.n ? `${Math.round((m.cEnv / m.n) * 100)}%` : '—'}
               </td>
               <td className="ce-num ce-perda">{m.per ? moeda(m.per) : '—'}</td>
+              <td className="ce-num ce-perda">
+                {m.n ? `${Math.round((m.cPer / m.n) * 100)}%` : '—'}
+              </td>
               <td className="ce-num ce-ganho">{m.gan ? moeda(m.gan) : '—'}</td>
               <td className="ce-num ce-ganho">{m.pago ? moeda(m.pago) : '—'}</td>
             </tr>
@@ -335,11 +368,12 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
               <td className="ce-num">—</td>
               <td className="ce-num">—</td>
               <td className="ce-num">—</td>
+              <td className="ce-num">—</td>
             </tr>
           )}
           {(semReferencia > 0 || semOrcamento > 0) && (
             <tr className="ce-serie__semvalor">
-              <td colSpan={7}>
+              <td colSpan={8}>
                 <strong>Por que o valor não acompanha a contagem:</strong>{' '}
                 {semReferencia > 0 && (
                   <>{semReferencia} pedido{semReferencia === 1 ? '' : 's'} sem valor
@@ -359,9 +393,12 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
             <td className="ce-num">{moeda(totais.rec)}</td>
             <td className="ce-num">{moeda(totais.env + semData.env)}</td>
             <td className="ce-num">
-              {totais.rec ? `${Math.round(((totais.env + semData.env) / totais.rec) * 100)}%` : '—'}
+              {totais.n ? `${Math.round((totais.cEnv / totais.n) * 100)}%` : '—'}
             </td>
             <td className="ce-num ce-perda">{moeda(totais.per)}</td>
+            <td className="ce-num ce-perda">
+              {totais.n ? `${Math.round((totais.cPer / totais.n) * 100)}%` : '—'}
+            </td>
             <td className="ce-num ce-ganho">{moeda(totais.gan)}</td>
             <td className="ce-num ce-ganho">{moeda(totais.pago)}</td>
           </tr>
