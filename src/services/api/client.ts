@@ -88,6 +88,8 @@ export type GrupoWhatsappCliente = {
   createDate: string;
 };
 export type GrupoWhatsappCatalogo = { grupoNome: string; grupoJid: string; agenteDestino: string };
+/** Todos os vínculos de uma vez — para a coluna "Grupo WhatsApp" na lista de clientes (@R 19/09). */
+export const getGruposWhatsappTodos = () => api.get<GrupoWhatsappCliente[]>('/client/grupos-whatsapp/');
 export const getGruposWhatsappCliente = (idMedico: number) =>
   api.get<GrupoWhatsappCliente[]>(`/client/grupos-whatsapp/?idMedico=${idMedico}`);
 export const criarGrupoWhatsappCliente = (data: Partial<GrupoWhatsappCliente>) =>

@@ -27,6 +27,7 @@ import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import AreaDoCliente from '../../components/AreaDoCliente/AreaDoCliente';
 import { GruposWhatsappCliente } from '../../components/GruposWhatsapp/GruposWhatsappCliente';
+import { getGruposWhatsappTodos, type GrupoWhatsappCliente } from '../../services/api/client';
 import { MultiSelect } from 'primereact/multiselect';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { useAccess } from '../../access/AccessContext';
@@ -467,9 +468,27 @@ export function ClientesPage() {
       chavePix: ''
     }));
 
+  /* Coluna "Grupo WhatsApp" na lista (@R 19/09: "adicione o grupo do whatsapp aqui para eu ver a
+     coluna de quem tem o grupo"). Lê a tabela 1:N nova, não o campo de texto antigo — é ela que
+     diz quem de fato tem grupo vinculado (e com que função). Carregada à parte, fail-soft:
+     se a chamada falhar a lista de clientes continua, a coluna mostra "?" em vez de "—". */
+  const [gruposPorCliente, setGruposPorCliente] = useState<Record<number, GrupoWhatsappCliente[]> | null>(null);
+  const carregarGrupos = async () => {
+    try {
+      const { data } = await getGruposWhatsappTodos();
+      const mapa: Record<number, GrupoWhatsappCliente[]> = {};
+      for (const g of data ?? []) (mapa[g.idMedico] ??= []).push(g);
+      setGruposPorCliente(mapa);
+    } catch {
+      setGruposPorCliente(null);
+    }
+  };
+  useEffect(() => { void carregarGrupos(); }, []);
+
   const carregarClientes = async () => {
     const { data } = await getMedicosCompleto();
     setClientes(mapearClientesTabela(data));
+    void carregarGrupos();
   };
 
   useEffect(() => {
@@ -1656,13 +1675,22 @@ const handleSalvarEdicao = async () => {
             style={{ minWidth: '14rem' }}
           />
 
+          {/* CRM saiu da exibição a pedido do @R (19/09) — o dado continua na ficha (aba Dados Médico). */}
           <Column
-            field="crm"
-            header="CRM"
-            sortable
-            filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
-            style={{ minWidth: '10rem' }}
+            header={cabecalhoComHint('Grupo WhatsApp', 'Grupos de WhatsApp vinculados a este cliente na ficha (vários por cliente, com função). "—" = nenhum vinculado ainda.')}
+            body={(r: { id: number }) => {
+              if (gruposPorCliente === null) return <span title="Não consegui ler os grupos agora">?</span>;
+              const gs = gruposPorCliente[r.id] ?? [];
+              if (!gs.length) return <span style={{ opacity: .5 }}>—</span>;
+              const nomes = gs.map((g) => g.grupoNome.replace(/^Grupo \d+( e \d+)?[:\s-]*/i, '').replace(/^\d+-\d+\.\s*/, ''));
+              return (
+                <span title={gs.map((g) => `${g.grupoNome} (${g.funcao}${g.envioAtivo ? ', envio LIGADO' : ''})`).join('\n')}>
+                  <Tag value={String(gs.length)} severity={gs.some((g) => g.envioAtivo) ? 'success' : undefined} style={{ marginRight: 6 }} />
+                  {nomes.join(' · ')}
+                </span>
+              );
+            }}
+            style={{ minWidth: '16rem', maxWidth: '22rem', whiteSpace: 'normal' }}
           />
 
           <Column
