@@ -195,8 +195,12 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
   /* cEnv/cPer são COORTE: contam o pedido no mês em que ELE ENTROU, não no mês do
      evento. É o que permite um percentual que nunca passa de 100% — ver o comentário
      da tabela abaixo. */
-  const meses = new Map<string, { rec: number; env: number; per: number; gan: number; pago: number; n: number; cEnv: number; cPer: number }>();
-  const zero = () => ({ rec: 0, env: 0, per: 0, gan: 0, pago: 0, n: 0, cEnv: 0, cPer: 0 });
+  /* orc/gap são a TELA DO INVESTIDOR (@R 19/09): "o valor total que já passou pela
+     g4med de oportunidades e o valor de orçamentos enviados, e quanto deixamos de
+     mandar em cada mês e o percentual".
+     Contam sempre no mês em que o PEDIDO ENTROU — ver o bloco da tabela. */
+  const meses = new Map<string, { rec: number; env: number; per: number; gan: number; pago: number; n: number; cEnv: number; cPer: number; orc: number; gap: number; nGap: number; nSemValor: number }>();
+  const zero = () => ({ rec: 0, env: 0, per: 0, gan: 0, pago: 0, n: 0, cEnv: 0, cPer: 0, orc: 0, gap: 0, nGap: 0, nSemValor: 0 });
   /* ⚠ NÃO troque por `new Date(iso)` — foi assim e estava ERRADO (medido 19/09).
      A API manda DateField puro ("2026-09-01", sem hora). `new Date("2026-09-01")` é
      interpretado como MEIA-NOITE UTC; em Brasília (UTC-3) isso é 31/08 às 21h, e o
@@ -245,6 +249,27 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
         const m = meses.get(k)!;
         if (num(l.valorOrcamento) > 0) m.cEnv += 1;
         if (l.statusProcesso === 'Perda') m.cPer += 1;
+        /* ═══ A CONTA DO INVESTIDOR, e ela FECHA POR CONSTRUÇÃO ═══
+           pedido ORÇADO   → entra pelo valor ORÇADO (oportunidade realizada)
+           pedido SEM orçamento → entra pela REFERÊNCIA (oportunidade que ficou na mesa)
+           logo: oportunidade = orçamos + deixamos de mandar, sempre, sem sobra.
+
+           POR QUE NÃO pela referência nos dois casos: 202 pedidos foram orçados ACIMA da
+           referência (o maior: referência R$ 187.332 → orçado R$ 950.000). Medindo tudo
+           pela referência, 3 meses davam "deixamos de mandar" NEGATIVO — numa tela para
+           investidor isso é incompreensível. E medindo por max(ref, orçado) sobravam
+           R$ 1,15 milhão que não fechavam com nada. Só esta forma fecha: medido
+           46.609.952 + 26.361.459 = 72.971.411, exato.
+
+           ⚠ O GAP É PISO, NÃO TETO: 136 pedidos não têm valor de referência nenhum e
+           entram como R$ 0. O que deixamos de mandar é MAIOR do que a coluna mostra. */
+        if (num(l.valorOrcamento) > 0) {
+          m.orc += num(l.valorOrcamento);
+        } else {
+          m.gap += num(l.refPreco);
+          m.nGap += 1;
+          if (num(l.refPreco) === 0) m.nSemValor += 1;
+        }
       }
     }
     por(l.dataPedido, 'rec', num(l.refPreco));
@@ -272,8 +297,11 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
   const totais = [...meses.values()].reduce(
     (a, m) => ({ rec: a.rec + m.rec, env: a.env + m.env, per: a.per + m.per,
                  gan: a.gan + m.gan, pago: a.pago + m.pago, n: a.n + m.n,
-                 cEnv: a.cEnv + m.cEnv, cPer: a.cPer + m.cPer }),
-    { rec: 0, env: 0, per: 0, gan: 0, pago: 0, n: 0, cEnv: 0, cPer: 0 });
+                 cEnv: a.cEnv + m.cEnv, cPer: a.cPer + m.cPer,
+                 orc: a.orc + m.orc, gap: a.gap + m.gap,
+                 nGap: a.nGap + m.nGap, nSemValor: a.nSemValor + m.nSemValor }),
+    { rec: 0, env: 0, per: 0, gan: 0, pago: 0, n: 0, cEnv: 0, cPer: 0,
+      orc: 0, gap: 0, nGap: 0, nSemValor: 0 });
 
   /* QUEM NÃO TEM VALOR (@R 18/09: "o valor recebido não tá somando todos os pedidos e
      enviados não tá somando todos os orçamentos, por quê").
@@ -286,11 +314,9 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
   const semReferencia = linhas.filter((l) => !num(l.refPreco) && !num(l.valorOrcamento)).length;
   const semOrcamento = linhas.filter((l) => !num(l.valorOrcamento)).length;
 
-  const semDataLinhas = linhas.filter((l) => num(l.valorOrcamento) > 0 && !l.dataStatusOrcamento);
-  const semData = {
-    env: semDataLinhas.reduce((a, l) => a + num(l.valorOrcamento), 0),
-    nEnv: semDataLinhas.length,
-  };
+  /* semData/semDataLinhas removidos em 19/09 junto com a linha órfã do rodapé:
+     a régua agora conta tudo pelo mês do PEDIDO, e não existe pedido sem dataPedido
+     (1.163 de 1.163 medidos). Ver o comentário no <tfoot>. */
   const rotulo = (k: string) => {
     const [ano, mes] = k.split('-');
     return new Date(Number(ano), Number(mes) - 1, 1)
@@ -302,8 +328,11 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
       <table>
         <thead>
           <tr>
-            <th>Mês</th><th>Pedidos</th><th>Recebido</th><th>Enviado</th>
-            <th title="Dos pedidos que ENTRARAM neste mês, quantos % já foram orçados. Denominador e numerador são os MESMOS pedidos, por isso nunca passa de 100%. A antiga 'Taxa envio' dividia o orçado no mês (data do orçamento) pelo recebido no mês (data do pedido) — populações diferentes, e por isso dava 122%, 130%, 700%.">% enviado</th>
+            <th>Mês</th><th>Pedidos</th>
+            <th title="Tudo que passou pela G4MED naquele mês, em valor. Quem foi orçado entra pelo valor do orçamento; quem não foi, pelo preço de referência. Por isso esta coluna é exatamente a soma das duas seguintes.">Oportunidade</th>
+            <th title="Do que entrou naquele mês, quanto virou orçamento enviado. São os MESMOS pedidos da coluna anterior — não é o orçamento assinado no mês, é o orçamento DAQUELES pedidos.">Orçamos</th>
+            <th title="Do que entrou naquele mês, quanto NÃO virou orçamento. É oportunidade que ficou na mesa. ATENÇÃO: é PISO, não teto — 136 pedidos da base não têm preço de referência e entram como zero aqui, então o valor real é maior.">Deixamos de mandar</th>
+            <th title="Quanto da oportunidade do mês virou orçamento, em VALOR (orçamos ÷ oportunidade). Nunca passa de 100% porque numerador e denominador são os mesmos pedidos. A antiga 'Taxa envio' dividia o orçado no mês pelo recebido no mês — populações diferentes, e por isso dava 122%, 130%, 700%.">% orçado</th>
             <th>Perdido</th>
             <th title="Dos pedidos que ENTRARAM neste mês, quantos % já viraram perda. Mesma coorte do % enviado. Mês recente tende a mostrar pouco: a maior parte ainda não foi decidida — é cedo, não é bom.">% perdido</th>
             <th title="Ganho MARCADO na tela por alguém. Medido em 18/09: 19 marcados — contra 345 pedidos com pagamento de sinal forte no dado do Estado.">Ganho (marcado)</th>
@@ -323,8 +352,11 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
                 )}
               </td>
               <td className="ce-num">{m.n || '—'}</td>
-              <td className="ce-num">{m.rec ? moeda(m.rec) : '—'}</td>
-              <td className="ce-num">{m.env ? moeda(m.env) : '—'}</td>
+              <td className="ce-num">{(m.orc + m.gap) ? moeda(m.orc + m.gap) : '—'}</td>
+              <td className="ce-num ce-ganho">{m.orc ? moeda(m.orc) : '—'}</td>
+              <td className="ce-num ce-perda" title={m.nGap ? `${m.nGap} pedido(s) sem orçamento${m.nSemValor ? `, ${m.nSemValor} deles sem preço de referência (entram como zero)` : ''}` : undefined}>
+                {m.gap ? moeda(m.gap) : (m.nGap ? 'sem preço' : '—')}
+              </td>
               {/* @R 19/09: "o percentual de envio e o percentual de perda".
                   A versão anterior dividia DINHEIRO enviado por DINHEIRO recebido no
                   mesmo mês e dava 122%, 130%, 700% — não era erro de conta: numerador e
@@ -333,7 +365,7 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
                   COORTE: dos que entraram neste mês, quantos já foram orçados. Os mesmos
                   pedidos nos dois lados da divisão, logo o teto é 100% por construção. */}
               <td className="ce-num">
-                {m.n ? `${Math.round((m.cEnv / m.n) * 100)}%` : '—'}
+                {(m.orc + m.gap) ? `${Math.round((m.orc / (m.orc + m.gap)) * 100)}%` : '—'}
               </td>
               <td className="ce-num ce-perda">{m.per ? moeda(m.per) : '—'}</td>
               <td className="ce-num ce-perda">
@@ -352,28 +384,16 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
             A linha "sem data" é o que existe mas não cabe em mês nenhum: soma dos meses
             + sem data = total. */}
         <tfoot>
-          {semData.env > 0 && (
-            <tr className="ce-serie__semdata">
-              <td>
-                sem data do evento
-                <span className="ce-serie__aviso"
-                  title="Orçamentos sem data de envio preenchida. Existem e valem, mas não pertencem a mês nenhum — por isso aparecem aqui, e não somem.">
-                  {' '}⚠ {semData.nEnv} orçamento{semData.nEnv === 1 ? '' : 's'}
-                </span>
-              </td>
-              <td className="ce-num">—</td>
-              <td className="ce-num">—</td>
-              <td className="ce-num">{moeda(semData.env)}</td>
-              <td className="ce-num">—</td>
-              <td className="ce-num">—</td>
-              <td className="ce-num">—</td>
-              <td className="ce-num">—</td>
-              <td className="ce-num">—</td>
-            </tr>
-          )}
+          {/* A LINHA "sem data do evento" FOI REMOVIDA em 19/09, e a razão importa:
+              ela existia porque a coluna de orçamento contava pelo mês do ORÇAMENTO
+              (dataStatusOrcamento), e 308 orçamentos (R$ 21,6 milhões, 46% do total)
+              não tinham essa data — ficavam órfãos num rodapé.
+              Agora TUDO conta pelo mês em que o PEDIDO entrou, e dataPedido existe em
+              1.163 de 1.163 registros (medido em produção). Não há mais órfão possível:
+              a linha não foi escondida, ela deixou de ter conteúdo por construção. */}
           {(semReferencia > 0 || semOrcamento > 0) && (
             <tr className="ce-serie__semvalor">
-              <td colSpan={8}>
+              <td colSpan={9}>
                 <strong>Por que o valor não acompanha a contagem:</strong>{' '}
                 {semReferencia > 0 && (
                   <>{semReferencia} pedido{semReferencia === 1 ? '' : 's'} sem valor
@@ -390,10 +410,11 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
           <tr className="ce-serie__total">
             <td>TOTAL (vida toda)</td>
             <td className="ce-num">{totais.n}</td>
-            <td className="ce-num">{moeda(totais.rec)}</td>
-            <td className="ce-num">{moeda(totais.env + semData.env)}</td>
+            <td className="ce-num">{moeda(totais.orc + totais.gap)}</td>
+            <td className="ce-num ce-ganho">{moeda(totais.orc)}</td>
+            <td className="ce-num ce-perda">{moeda(totais.gap)}</td>
             <td className="ce-num">
-              {totais.n ? `${Math.round((totais.cEnv / totais.n) * 100)}%` : '—'}
+              {(totais.orc + totais.gap) ? `${Math.round((totais.orc / (totais.orc + totais.gap)) * 100)}%` : '—'}
             </td>
             <td className="ce-num ce-perda">{moeda(totais.per)}</td>
             <td className="ce-num ce-perda">
