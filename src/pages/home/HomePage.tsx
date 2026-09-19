@@ -167,7 +167,17 @@ const ehCargaHistorica = (status?: string | null) =>
 function parseApiDate(value?: string | null): Date | null {
   if (!value) return null;
 
-  const normalized = value.includes('T') ? value : value.replace(' ', 'T');
+  /* ⚠ O `T00:00:00` NÃO É ENFEITE — sem ele TODA data voltava um dia (medido 19/09).
+     A API manda DateField puro ("2026-09-15", sem hora). `new Date("2026-09-15")` é lido
+     como meia-noite UTC; em Brasília (UTC-3) isso vira 14/09 às 21h. Acrescentar a hora
+     faz o JS interpretar como data LOCAL, que é o que ela é.
+     O efeito nos cards era nas bordas do mês: pedido do dia 1º de setembro NÃO contava em
+     setembro, e o do dia 1º de outubro CONTAVA. Medido em produção: 52 dos 1.163 pedidos
+     (4,5%) têm dataPedido no dia 1. Mesmo defeito que o ComoEstamos.tsx teve e curou. */
+  const semHora = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const normalized = semHora
+    ? `${value}T00:00:00`
+    : (value.includes('T') ? value : value.replace(' ', 'T'));
   const parsed = new Date(normalized);
 
   if (!Number.isNaN(parsed.getTime())) return parsed;
