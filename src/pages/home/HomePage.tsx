@@ -481,6 +481,20 @@ export function HomePage() {
     }, 0);
 
     const pedidosAbertosQtd = pedidosEmAberto.length;
+    /* Quantos pedidos esperam ação em CADA fase (@R 19/09/2026: "adicionar quantos pedidos na
+       fase 1, fase 2, fase 3, fase 4 aguardando ação"). O total continua sendo o mesmo
+       `pedidosEmAberto` — é só a mesma contagem aberta por fase, pela régua de reguaFases.
+       Os rótulos são os valores EXATOS do banco (censo 19/09: 'Enviado à SES - Sem Protocolo'
+       tem sufixo — um filtro por 'Enviado à SES' devolvia zero em silêncio). */
+    const contarFase = (...status: string[]) =>
+      pedidosEmAberto.filter((item) => status.includes(item.statusProcesso ?? '')).length;
+    const porFase = [
+      { fase: '1', nome: 'Jurídico', qtd: contarFase('Aguardando Juridico') },
+      { fase: '2', nome: 'Orçamento', qtd: contarFase('Aguardando Orçamento') },
+      { fase: '3', nome: 'Protocolar', qtd: contarFase('Aguardando Protocolar') },
+      { fase: '4', nome: 'Aguardando resposta', qtd: contarFase('Aguardando Resposta', 'Aguardando Resposta - Segredo de Justiça') },
+      { fase: '4b', nome: 'Enviado à SES (sem protocolo)', qtd: contarFase('Enviado à SES - Sem Protocolo') },
+    ];
 
     return {
       cardsMesVida,
@@ -489,6 +503,7 @@ export function HomePage() {
       maiorValorGrafico,
       mesAtualLabel: agora.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }),
       pedidosAbertosQtd,
+      porFase,
       ganhosQuantidade,
       perdasQuantidade,
     };
@@ -574,10 +589,20 @@ export function HomePage() {
             <strong>Mês atual</strong>
             <span>{indicadores.mesAtualLabel}</span>
           </div>
-          <div className="home-hero__metric"
-            title="Pedidos que estão em alguma fase do funil (jurídico, orçamento, protocolar, aguardando resposta, enviado à SES). NÃO inclui ganho, perda, nem os registros de carga histórica — esses não são trabalho em aberto.">
-            <strong>Pedidos em aberto</strong>
-            <span>{loading ? '--' : indicadores.pedidosAbertosQtd}</span>
+          {/* @R 19/09/2026: no lugar de "Pedidos em aberto 211 / Ganhos x perdas", quantos
+              esperam ação em CADA fase. O total é o mesmo 211 — aberto por fase. */}
+          <div className="home-hero__metric home-hero__metric--fases"
+            title="Pedidos que esperam ação, por fase do funil. NÃO inclui ganho, perda, nem os registros de carga histórica — esses não são trabalho em aberto.">
+            <strong>Aguardando ação <small>({loading ? '--' : indicadores.pedidosAbertosQtd} pedidos)</small></strong>
+            <ul className="home-hero__fases" aria-label="Pedidos aguardando ação por fase">
+              {indicadores.porFase.map((f) => (
+                <li key={f.fase}>
+                  <em>{f.fase}</em>
+                  <span className="home-hero__fase-nome">{f.nome}</span>
+                  <b>{loading ? '--' : f.qtd}</b>
+                </li>
+              ))}
+            </ul>
           </div>
           {/* A cadeia do dinheiro do Estado (portal MG → 331 → 548 → aqui) chegou hoje?
               Verde = empenhos tocados há <30h E régua há <3h. Vermelho diz QUAL elo parou.
@@ -599,15 +624,6 @@ export function HomePage() {
                   : !saudeDados.empenhos.ok
                     ? `⚠ empenhos parados há ${Math.round(saudeDados.empenhos.idadeHoras ?? 0)}h`
                     : `⚠ régua 548 parada há ${Math.round(saudeDados.regua.idadeHoras ?? 0)}h`}
-            </span>
-          </div>
-          <div className="home-hero__metric"
-            title="Vida toda, mesma fonte para os dois lados: pedidos com statusProcesso Ganho e Perda. Registros de carga histórica não entram em nenhum dos dois.">
-            <strong>Ganhos x perdas <small>(vida toda)</small></strong>
-            <span>
-              {loading
-                ? '--'
-                : `${indicadores.ganhosQuantidade}  / ${indicadores.perdasQuantidade} `}
             </span>
           </div>
         </div>

@@ -459,3 +459,11 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
   .home-collapse__head { flex-direction: column; align-items: stretch; padding: 0; }
   .home-collapse__extras { padding: 0 26px 12px; }
 }
+
+/* ---------- Hero: aguardando ação por fase (@R 19/09/2026) ---------- */
+.home-hero__metric--fases { flex-direction: column; align-items: stretch; gap: 6px; }
+.home-hero__metric--fases strong small { font-weight: 400; color: rgba(255,255,255,.7); }
+.home-hero__fases { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.home-hero__fases li { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,.9); }
+.home-hero__fases em { font-style: normal; font-weight: 700; font-size: 11px; text-align: center; padding: 1px 0; border-radius: 4px; background: rgba(255,255,255,.14); }
+.home-hero__fases b { font-family: var(--mc-font-heading); font-size: 16px; color: #fff; }
