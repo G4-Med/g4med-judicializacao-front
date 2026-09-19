@@ -307,6 +307,32 @@ body.dark-theme .p-multiselect {
 .linha-segredo:hover > td { background: #ede9fe !important; }
 /* sem médico E em segredo: o segredo vence — é a restrição mais forte */
 .linha-sem-medico.linha-segredo > td { background: #f5f3ff !important; }
+
+/* ── TEMA ESCURO das linhas coloridas (bug achado em 19/09) ─────────────────
+   As duas classes acima nasceram em 17/09 SEM variante escura. Como o fundo é
+   claro e vem com `!important`, no tema escuro o texto do tema (quase branco)
+   ficava sobre creme/lilás: contraste medido de 1,10:1 e 1,07:1 — praticamente
+   o mesmo tom, ilegível. A `.linha-fora-sla` (linha 73) já tinha a cura e serviu
+   de controle: fundo TRANSLÚCIDO sobre a superfície escura + cor do tema.
+   Mesma semântica nos dois temas, contraste correto nos dois. */
+body.dark-theme .linha-sem-medico > td {
+  background: rgba(245, 158, 11, 0.18) !important;
+  color: var(--mc-ink, #e6eef6);
+}
+body.dark-theme .linha-sem-medico:hover > td {
+  background: rgba(245, 158, 11, 0.26) !important;
+}
+body.dark-theme .linha-segredo > td {
+  background: rgba(139, 92, 246, 0.22) !important;
+  color: var(--mc-ink, #e6eef6);
+}
+body.dark-theme .linha-segredo:hover > td {
+  background: rgba(139, 92, 246, 0.30) !important;
+}
+/* o pedido que é as DUAS coisas: segredo vence, como no tema claro */
+body.dark-theme .linha-sem-medico.linha-segredo > td {
+  background: rgba(139, 92, 246, 0.22) !important;
+}
 .kpi-sem-medico .kpi-value { color: #c2410c; }
 .kpi-segredo .kpi-value { color: #6d28d9; }
 
