@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
-import { conferirOrcamentoPeca, getFichaPedido, getLogAuditoria, reverterHistorico, getConteudoEmail, moverSituacao } from '../../services/api/orders';
+import { listarCandidatosCotacao, convidarCandidatoCotacao, getMedicosCompleto, conferirOrcamentoPeca, getFichaPedido, getLogAuditoria, reverterHistorico, getConteudoEmail, moverSituacao } from '../../services/api/orders';
 import { criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
@@ -124,6 +124,33 @@ export function FichaPedido({
       .catch((e) => setErro(e?.response?.data?.detail ?? 'Não foi possível carregar a ficha deste pedido.'))
       .finally(() => setCarregando(false));
   }, [aberto, orderId]);
+
+  // @R 19/09: "na ficha, ver o médico e adicionar mais de um médico".
+  // Reusa listarCandidatosCotacao/convidarCandidatoCotacao — que já existiam no serviço
+  // e só tinham consumidor em UMA tela. Aqui a ficha passa a mostrar quem foi convidado
+  // e permite convidar mais, sem decidir vencedor (essa regra é do @R e está aberta).
+  const [candidatos, setCandidatos] = useState<any[]>([]);
+  const [medicosLista, setMedicosLista] = useState<any[]>([]);
+  const [convidando, setConvidando] = useState<number | null>(null);
+  const [erroMedico, setErroMedico] = useState<string | null>(null);
+
+  const recarregarCandidatos = useCallback(async () => {
+    if (!orderId) return;
+    try {
+      const r: any = await listarCandidatosCotacao(orderId);
+      setCandidatos(r?.data?.candidatos ?? r?.data ?? []);
+    } catch {
+      setCandidatos([]);   // lista vazia não é erro: a maioria dos pedidos ainda não tem convidado
+    }
+  }, [orderId]);
+
+  useEffect(() => {
+    if (!aberto || !orderId) return;
+    void recarregarCandidatos();
+    getMedicosCompleto()
+      .then((r: any) => setMedicosLista(r?.data ?? []))
+      .catch(() => setMedicosLista([]));
+  }, [aberto, orderId, recarregarCandidatos]);
 
   const voltarFase = async () => {
     if (!orderId) return;
@@ -325,6 +352,64 @@ export function FichaPedido({
                 {' '}— limpar o motivo da perda também limpa esta data.
               </small>
             )}
+          </section>
+
+          <section className="fic__situacao">
+            <header className="fic__situacao-cab">
+              <strong>Médicos deste pedido</strong>
+              <small>Quem está cotando. Adicionar não tira o atual — os dois recebem o pedido.</small>
+            </header>
+            {/* ⚠ a ficha NÃO traz o médico atual no payload (o tipo não tem o campo, e o
+                build denunciou quando eu supus que tinha). Em vez de inventar o dado, a
+                lista de convidados abaixo é o que temos — e ela é o que interessa aqui. */}
+            {candidatos.length === 0 && (
+              <p style={{ margin: '.2rem 0 .5rem', opacity: .7 }}>
+                Nenhum médico convidado ainda por este caminho.
+              </p>
+            )}
+            {candidatos.length > 0 && (
+              <ul style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem' }}>
+                {candidatos.map((c: any) => (
+                  <li key={c.id ?? c.idMedico}>
+                    {c.nomeMedico || c.medico || `médico ${c.idMedico}`}
+                    {c.situacao ? <small style={{ opacity: .7 }}> · {c.situacao}</small> : null}
+                    {c.valorRespondido ? <small style={{ opacity: .7 }}> · R$ {c.valorRespondido}</small> : null}
+                    {c.vencedor ? <strong> · vencedor</strong> : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <select
+                className="fic__situacao-drop"
+                value={convidando ?? ''}
+                onChange={(e) => setConvidando(e.target.value ? Number(e.target.value) : null)}
+              >
+                <option value="">Adicionar outro médico ao orçamento…</option>
+                {medicosLista.map((m: any) => (
+                  <option key={m.id} value={m.id}>{m.nomeSistema || m.nomeCompleto}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="fic__situacao-novo"
+                disabled={!convidando || !orderId}
+                onClick={async () => {
+                  if (!convidando || !orderId) return;
+                  setErroMedico(null);
+                  try {
+                    await convidarCandidatoCotacao(orderId, convidando);
+                    setConvidando(null);
+                    await recarregarCandidatos();
+                  } catch (err: any) {
+                    setErroMedico(err?.response?.data?.error || 'Não consegui adicionar este médico.');
+                  }
+                }}
+              >
+                <i className="pi pi-user-plus" /> adicionar
+              </button>
+            </div>
+            {erroMedico && <p style={{ color: '#b91c1c', marginBottom: 0 }}>{erroMedico}</p>}
           </section>
 
           <div className="fic__topo">
