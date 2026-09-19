@@ -382,6 +382,11 @@ export const getPacoteExames = (orderId: number) =>
   api.get(`/orders/${orderId}/pacote-exames/`);
 export const montarCotacaoMedico = (orderId: number, medico?: string) =>
   api.post(`/orders/${orderId}/solicitar-cotacao-medico/`, { medico });
+/** Uma mensagem para CADA candidato convidado (backend 8a0e542, @R 19/09): nunca uma só com
+ *  todos juntos — os concorrentes não podem se ver. Pula quem recusou e "SEM PROFISSIONAL".
+ *  Resposta: { mensagens: [{ idMedico, medico, assunto, mensagem, situacao }], ...campos do caminho antigo }. */
+export const montarCotacaoTodosCandidatos = (orderId: number) =>
+  api.post(`/orders/${orderId}/solicitar-cotacao-medico/`, { todosCandidatos: true });
 
 // A morada do orçamento de terceiro: por pedido (histórico daquele processo) ou por
 // procedimento (o que outros lugares cobraram pela MESMA cirurgia — a régua de preço).
