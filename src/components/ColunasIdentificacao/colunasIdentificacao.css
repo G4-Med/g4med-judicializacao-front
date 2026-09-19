@@ -121,3 +121,6 @@ body.dark-theme .chip-cadastro--completo { background: rgba(28,122,72,0.16); bor
 .ident-abre-ficha { cursor: pointer; display: inline-flex; border-radius: 6px; }
 .ident-abre-ficha:hover { filter: brightness(.94); text-decoration: underline dotted; text-underline-offset: 3px; }
 .ident-abre-ficha:focus-visible { outline: 2px solid var(--primary-color, #10b981); outline-offset: 2px; }
+/* Reprocessar ao lado do Inteiro teor (@R 19/09/2026) */
+.inteiro-teor-wrap--linha { flex-direction: row; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.inteiro-teor-reprocessar { display: inline-flex; align-items: center; gap: .25rem; }

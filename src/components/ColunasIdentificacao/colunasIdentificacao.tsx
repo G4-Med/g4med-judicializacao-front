@@ -7,7 +7,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
 import { BotaoCopiar } from '../BotaoCopiar/BotaoCopiar';
 import { useFichaPedido } from '../FichaPedido/FichaPedidoContext';
-import { uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos, baixarAnexoDoTipo, salvarBlob } from '../../services/api/orders';
+import { uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos, baixarAnexoDoTipo, salvarBlob, reprocessarDocumentos } from '../../services/api/orders';
 import './colunasIdentificacao.css';
 
 
@@ -599,6 +599,45 @@ function nomeDoEmail(email: string): string {
    (equipe g4med pode passar sem), e ENQUANTO ESTIVER VAZIA qualquer fase pode
    anexá-la — esta célula é esse "qualquer momento": ✓ quando existe, botão
    Anexar quando falta. O upload vai pro bucket R2 (tipo DECISAO_INTEIRO_TEOR). */
+/* REPROCESSAR (@R 19/09/2026): "ao lado de inteiro teor de cada item na coluna um botão
+   reprocessar, que vai pedir a confirmação e vai reprocessar a extração de documentos caso eu
+   precise corrigir alguma". Difere do "tentar extrair" (que nunca sobrescreve): aqui, com a
+   confirmação, as peças voltam à fila de leitura e um CNJ único lido da peça CORRIGE o atual —
+   o anterior fica no acompanhamento do pedido. A confirmação é exigida também pelo servidor. */
+function BotaoReprocessar({ orderId }: { orderId: number }) {
+  const [rodando, setRodando] = useState(false);
+  const [resposta, setResposta] = useState<string | null>(null);
+
+  async function reprocessar() {
+    const ok = window.confirm(
+      'Reprocessar os documentos deste pedido?\n\n' +
+      '• As peças voltam para a fila de leitura (a leitura anterior fica registrada).\n' +
+      '• O número do processo (CNJ) e os SEI são relidos — se a peça trouxer um CNJ diferente do atual, ele SUBSTITUI o atual (o anterior fica no histórico).\n\n' +
+      'Use quando precisar corrigir uma extração errada.');
+    if (!ok) return;
+    setRodando(true); setResposta(null);
+    try {
+      const { data } = await reprocessarDocumentos(orderId);
+      setResposta(data?.mensagem || 'Reprocessamento pedido.');
+    } catch (e: any) {
+      setResposta(e?.response?.data?.error || 'Não consegui pedir o reprocessamento agora.');
+    } finally {
+      setRodando(false);
+    }
+  }
+
+  return (
+    <span className="ident-extrair-wrap">
+      <button type="button" className="ident-extrair inteiro-teor-reprocessar" onClick={reprocessar}
+        disabled={rodando} aria-label="Reprocessar os documentos deste pedido"
+        title="Reprocessar: devolve as peças à fila de leitura e relê CNJ/SEI podendo corrigir (pede confirmação)">
+        <i className={rodando ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'} /> {rodando ? 'reprocessando…' : 'Reprocessar'}
+      </button>
+      {resposta && <small className="ident-extrair-msg" title={resposta}>{resposta}</small>}
+    </span>
+  );
+}
+
 function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
   const [enviado, setEnviado] = useState(false);
   const [baixando, setBaixando] = useState(false);
@@ -616,6 +655,7 @@ function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
     /* ⚠ NÃO usar <a href>: navegação de browser não manda o header Authorization e a rota
        devolve 401 (foi o que aconteceu com o @R em 18/09). O download passa pelo axios. */
     return (
+      <span className="inteiro-teor-wrap inteiro-teor-wrap--linha">
       <button type="button" className="inteiro-teor-baixar" disabled={baixando}
         title={baixando ? 'Baixando…' : 'Baixar a peça de inteiro teor (PDF)'}
         onClick={async () => {
@@ -631,6 +671,8 @@ function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
         }}>
         {baixando ? <i className="pi pi-spin pi-spinner" /> : tag}
       </button>
+      <BotaoReprocessar orderId={linha.id as number} />
+      </span>
     );
   }
   if (!linha.id) return <span className="ident-vazio">—</span>;

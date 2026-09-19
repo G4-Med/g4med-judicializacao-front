@@ -445,6 +445,11 @@ export const decidirCnjSugerido = (orderId: number, sugeridoId: number,
  *  caminho para tentar de novo depois que a leitura melhorou. */
 export const extrairNumerosDosAnexos = (orderId: number) =>
   api.post(`/orders/${orderId}/extrair-numeros/`);
+/** Botão "Reprocessar" ao lado do Inteiro teor (@R 19/09): devolve as peças à fila de leitura
+ *  preservando a leitura anterior e relê CNJ/SEI PODENDO CORRIGIR o CNJ. O servidor exige
+ *  `confirmar: true` — a confirmação é do usuário, mas quem garante é o backend. */
+export const reprocessarDocumentos = (orderId: number) =>
+  api.post(`/orders/${orderId}/reprocessar-documentos/`, { confirmar: true });
 
 /** Os pedidos que esperam alguém escolher o número do processo — de QUALQUER fase.
  *  @R 17/09: a varredura gravou 163 sugestões e 65 dos 69 pedidos estão num status que
