@@ -22,9 +22,19 @@ import { ProgressBar } from 'primereact/progressbar';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
+import { Dropdown } from 'primereact/dropdown';
+import { InputText } from 'primereact/inputtext';
+import { Message } from 'primereact/message';
 import api from '../../services/api';
 
 type Bloco = { total: number; processado: number; pendente: number; processando: number; erro: number; nuncaChamado: number };
+type Item = {
+  anexoId: number; orderId: number; paciente: string | null; fase: string | null;
+  status: string | null; pedidoEm: string | null; ultimoToqueEm: string | null;
+  duracaoMin: number | null; paginas: number | null; paginasOcr: number | null;
+  mensagem: string; erro: boolean;
+};
+
 type Status = {
   naFila: { tipos: Record<string, Bloco>; lidos: number; faltam: number; comErro: number };
   foraDaFila: { tipos: Record<string, Bloco>; total: number };
@@ -55,6 +65,12 @@ function desde(iso: string | null): string {
 
 export function ProcessamentoPage() {
   const [d, setD] = useState<Status | null>(null);
+  const [itens, setItens] = useState<Item[]>([]);
+  const [fases, setFases] = useState<{ fase: string; n: number }[]>([]);
+  const [fStatus, setFStatus] = useState<string | null>('ERRO');
+  const [fFase, setFFase] = useState<string | null>(null);
+  const [busca, setBusca] = useState('');
+  const [reprocessando, setReprocessando] = useState<number | null>(null);
   const [erro, setErro] = useState(false);
   const [carregando, setCarregando] = useState(true);
 
@@ -65,6 +81,28 @@ export function ProcessamentoPage() {
       .catch(() => setErro(true))
       .finally(() => setCarregando(false));
   };
+
+  const buscarItens = () => {
+    const p = new URLSearchParams();
+    if (fStatus) p.set('status', fStatus);
+    if (fFase) p.set('fase', fFase);
+    if (busca.trim()) p.set('busca', busca.trim());
+    api.get(`status-processamento/itens/?${p.toString()}`)
+      .then((r) => { setItens(r.data?.itens ?? []); setFases(r.data?.fases ?? []); })
+      .catch(() => setItens([]));
+  };
+
+  // REPROCESSAR: reusa a rota que já existe (pedir-processamento). Não há caminho novo —
+  // a peça volta para a fila pelo mesmo lugar por onde entra normalmente.
+  const reprocessar = async (anexoId: number) => {
+    setReprocessando(anexoId);
+    try {
+      await api.post(`anexos/${anexoId}/processar/`);
+      buscarItens(); buscar();
+    } finally { setReprocessando(null); }
+  };
+
+  useEffect(() => { buscarItens(); /* eslint-disable-next-line */ }, [fStatus, fFase]);
 
   // Recarrega sozinho a cada 60s: é uma tela de acompanhamento, e um número que não se move
   // sozinho obriga a pessoa a apertar F5 para saber se algo mudou — ela para de olhar.
@@ -139,8 +177,61 @@ export function ProcessamentoPage() {
         </DataTable>
       </Card>
 
+      <Card className="mt-3" title="Peça a peça — quem, quando, quanto demorou e por que falhou">
+        <div className="flex gap-2 flex-wrap mb-3">
+          <Dropdown value={fStatus} options={[
+            { label: 'Com erro', value: 'ERRO' },
+            { label: 'Na fila', value: 'PENDENTE' },
+            { label: 'Sendo lida agora', value: 'PROCESSANDO' },
+            { label: 'Já lidas', value: 'PROCESSADO' },
+            { label: 'Nunca chamadas', value: 'NAO_CHAMADO' },
+            { label: 'Todas', value: null },
+          ]} onChange={(e) => setFStatus(e.value)} placeholder="Situação" style={{ minWidth: '14rem' }} />
+          <Dropdown value={fFase} options={[{ label: 'Todas as fases', value: null },
+            ...fases.map((f) => ({ label: `${f.fase} (${f.n})`, value: f.fase }))]}
+            onChange={(e) => setFFase(e.value)} placeholder="Fase do pedido" style={{ minWidth: '18rem' }} />
+          <span className="p-input-icon-left">
+            <i className="pi pi-search" />
+            <InputText value={busca} onChange={(e) => setBusca(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && buscarItens()} placeholder="Paciente (Enter para buscar)" />
+          </span>
+          <Button label="Buscar" icon="pi pi-filter" outlined onClick={buscarItens} />
+        </div>
+
+        <DataTable value={itens} size="small" paginator rows={20} emptyMessage="Nada nesta situação.">
+          <Column field="orderId" header="Pedido" style={{ width: '6rem' }} />
+          <Column field="paciente" header="Paciente" />
+          <Column field="fase" header="Fase do pedido" />
+          <Column header="Situação" body={(r: Item) => (
+            <Tag severity={r.erro ? 'danger' : r.status === 'PROCESSADO' ? 'success'
+              : r.status === 'PROCESSANDO' ? 'info' : 'warning'}
+              value={r.status ?? 'nunca chamada'} />
+          )} />
+          <Column header="Último toque" body={(r: Item) => (
+            r.ultimoToqueEm ? new Date(r.ultimoToqueEm).toLocaleString('pt-BR') : '—'
+          )} />
+          <Column header="Levou" body={(r: Item) => (r.duracaoMin ? `${r.duracaoMin} min` : '—')} style={{ width: '7rem' }} />
+          <Column header="Páginas" body={(r: Item) => (
+            r.paginas ? `${r.paginas}${r.paginasOcr ? ` (${r.paginasOcr} por imagem)` : ''}` : '—'
+          )} />
+          <Column header="Reprocessar" style={{ width: '9rem' }} body={(r: Item) => (
+            <Button icon="pi pi-replay" label="Reler" size="small" outlined
+              loading={reprocessando === r.anexoId}
+              disabled={r.status === 'PROCESSANDO'}
+              onClick={() => reprocessar(r.anexoId)} />
+          )} />
+        </DataTable>
+
+        {/* O texto do erro fica FORA da tabela, inteiro. Truncado numa célula ele vira enfeite:
+            a mensagem é o único lugar que diz ONDE consertar. */}
+        {itens.filter((i) => i.erro).map((i) => (
+          <Message key={i.anexoId} severity="error" className="mt-2 w-full"
+            text={`Pedido ${i.orderId} — ${i.mensagem}`} />
+        ))}
+      </Card>
+
       <div className="mt-3">
-        <Button label="Atualizar agora" icon="pi pi-refresh" outlined onClick={buscar} loading={carregando} />
+        <Button label="Atualizar agora" icon="pi pi-refresh" outlined onClick={() => { buscar(); buscarItens(); }} loading={carregando} />
       </div>
     </div>
   );
