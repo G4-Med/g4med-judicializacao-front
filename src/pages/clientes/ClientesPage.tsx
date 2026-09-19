@@ -538,27 +538,10 @@ export function ClientesPage() {
     );
   };
 
-  const getDocumentoTag = (value: boolean) => {
-    return (
-      <Tag
-        value={value ? 'Enviado' : 'Não enviado'}
-        icon={value ? 'pi pi-check-circle' : 'pi pi-times-circle'}
-        severity={value ? 'success' : 'danger'}
-        className="mc-status-tag"
-      />
-    );
-  };
-
   const BOOLEAN_FILTRO_OPCOES = [
     { label: 'Todos', value: null, icon: 'pi pi-list', cor: '#5b6b7a' },
     { label: 'Ativo', value: true, icon: 'pi pi-check-circle', cor: '#16a34a' },
     { label: 'Inativo', value: false, icon: 'pi pi-times-circle', cor: '#dc2626' }
-  ];
-
-  const DOCUMENTO_FILTRO_OPCOES = [
-    { label: 'Todos', value: null, icon: 'pi pi-list', cor: '#5b6b7a' },
-    { label: 'Enviado', value: true, icon: 'pi pi-check-circle', cor: '#16a34a' },
-    { label: 'Não enviado', value: false, icon: 'pi pi-times-circle', cor: '#dc2626' }
   ];
 
   const booleanFilterElement = (
@@ -1718,27 +1701,13 @@ const handleSalvarEdicao = async () => {
             style={{ minWidth: '9rem' }}
           />
 
-          <Column
-            field="contrato"
-            header="Contrato"
-            sortable
-            filter
-            showFilterMenu={false}
-            filterElement={(options) => booleanFilterElement(options, DOCUMENTO_FILTRO_OPCOES)}
-            body={(rowData: ClienteTableRow) => getDocumentoTag(rowData.contrato)}
-            style={{ minWidth: '10rem' }}
-          />
-
-          <Column
-            field="procuracao"
-            header="Procuração"
-            sortable
-            filter
-            showFilterMenu={false}
-            filterElement={(options) => booleanFilterElement(options, DOCUMENTO_FILTRO_OPCOES)}
-            body={(rowData: ClienteTableRow) => getDocumentoTag(rowData.procuracao)}
-            style={{ minWidth: '10rem' }}
-          />
+          {/* Contrato e Procuração saíram da TABELA (@R 18/09/2026: "tirarmos o contrato - e
+              procuração"). O DADO CONTINUA: 14 contratos e 16 procurações estão preenchidos, com
+              caminho de arquivo gravado — apagá-los seria destruir registro jurídico por causa de
+              um pedido sobre a TELA. Os dois campos seguem editáveis na aba "Dados Empresa" da
+              ficha do cliente, que é onde se preenche. O que sai daqui é a coluna: numa lista de
+              29 clientes, duas colunas de sim/não empurram para fora da vista o que se usa todo
+              dia (Categoria, Dono, Status). */}
 
           <Column
             header="Editar"
