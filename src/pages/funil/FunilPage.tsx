@@ -13,6 +13,16 @@ import './FunilPage.css';
  *   percentual final conclui "nosso preço não é competitivo" e vai otimizar a
  *   coisa errada.
  *
+ * RÉGUA DE 19/09 (@R): "o funil não deve lidar com as fases até a decisão —
+ *   o que precisamos é o percentual corretamente, o APROVEITAMENTO até a fase 5;
+ *   a fase 6 é a CONVERSÃO de cada mês". Duas medidas, duas âncoras:
+ *   · FUNIL (fases 1-5) — trabalho nosso, coorte pelo mês do PEDIDO. % de cada
+ *     fase = passaram ÷ chegaram (quem ainda corre fica declarado ao lado, não
+ *     some do denominador — antes 5 de 32 aparecia como "71,4%").
+ *   · CONVERSÃO (fase 6) — o juiz, ancorada no mês da DECISÃO: dos processos
+ *     decididos no mês, quantos ganhamos.
+ *   A tela abre no MÊS ATUAL e tem o modo "mês a mês" para comparar.
+ *
  * A DECISÃO DE DESENHO QUE MAIS IMPORTA AQUI:
  *   a barra de cada fase mostra as TRÊS saídas juntas — quem passou, quem
  *   morreu e quem ainda está correndo. Sem a terceira, uma coorte recente
@@ -23,17 +33,28 @@ type Fase = {
   ordem: number; chave: string; nome: string; o_que_e: string; dono: string;
   chegaram: number; saiu_aqui: number; em_curso_aqui: number; ganhou_aqui: number;
   passaram: number; taxa_passagem_pct: number | null; motivo_saida?: string | null;
+  // % sobre quem CHEGOU na fase (em curso conta como "ainda não passou") — a
+  // régua que o @R pediu em 19/09: "o percentual corretamente"
+  pct_passaram?: number | null; pct_saiu?: number | null; pct_em_curso?: number | null;
+  no_funil?: boolean;
+};
+
+type Aproveitamento = {
+  entraram: number; chegaram_ao_estado: number; morreram_antes: number; em_andamento: number;
+  pct: number | null; pct_definido: number | null; o_que_significa: string;
 };
 
 type Conversao = {
   ganhos: number; perdemos_disputando: number; disputados: number;
   aguardando_decisao: number; pct: number | null; pct_provisorio?: number | null;
   maduro: boolean; pode_mudar?: boolean; o_que_significa: string;
+  amostra_pequena?: boolean; rotulo?: string; ancora?: string;
 };
 
 type Janela = {
   rotulo: string; inicio: string; fim: string;
   total_entraram: number; fases: Fase[]; conversao: Conversao;
+  aproveitamento?: Aproveitamento;
   indeterminados: { total: number; nota: string | null };
 };
 
@@ -42,6 +63,11 @@ type Resposta = {
   fases: { chave: string; nome: string; o_que_e: string; dono: string;
            meta_dias: number | null; motivo_saida: string | null }[];
   janelas: Janela[];
+  // fase 6 por janela, ancorada no mês em que o juiz DECIDIU (dataResultado);
+  // alinhada índice a índice com `janelas`
+  conversao_por_periodo?: { janelas: Conversao[]; sem_data_resultado: number;
+                            aguardando_decisao: number };
+  fases_funil?: string[];
   total_geral: Janela;
   motivos_de_perda: { motivo: string; total: number; fase: string;
                       competiu: boolean | null; pct_das_perdas: number | null;
@@ -72,14 +98,20 @@ const DONO_COR: Record<string, string> = {
 const moeda = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
 
+const JANELAS = 12;
+
+const fmtPct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${v}%`);
+
 export function FunilPage() {
-  const [periodo, setPeriodo] = useState('trimestral');
+  // abre no MÊS ATUAL (@R 19/09: "o botão para já vir selecionado do mês atual")
+  const [periodo, setPeriodo] = useState('mensal');
   const [inicio, setInicio] = useState('');
   const [fim, setFim] = useState('');
   const [dados, setDados] = useState<Resposta | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState('');
   const [janelaAtiva, setJanelaAtiva] = useState<number | null>(null);
+  const [comparar, setComparar] = useState(false);
 
   const carregar = async () => {
     if (periodo === 'custom' && (!inicio || !fim)) {
@@ -89,10 +121,12 @@ export function FunilPage() {
     setCarregando(true); setErro('');
     try {
       const resp = await getFunil(
-        periodo === 'custom' ? { periodo, inicio, fim } : { periodo, janelas: 6 }
+        periodo === 'custom' ? { periodo, inicio, fim } : { periodo, janelas: JANELAS }
       );
-      setDados(resp.data);
-      setJanelaAtiva(null);
+      const r: Resposta = resp.data;
+      setDados(r);
+      // a última janela é a atual — é nela que a tela nasce
+      setJanelaAtiva(r.janelas.length ? r.janelas.length - 1 : null);
     } catch (e: any) {
       setErro(e?.response?.data?.error ?? 'Não foi possível carregar o funil.');
     } finally {
@@ -109,10 +143,23 @@ export function FunilPage() {
     return dados.janelas[janelaAtiva] ?? dados.total_geral;
   }, [dados, janelaAtiva]);
 
+  // fase 6 da janela em foco: pelo mês da DECISÃO; "Base inteira" usa a conversão
+  // de toda a vida (mesma régua, sem recorte de mês)
+  const conversaoFoco = useMemo<Conversao | null>(() => {
+    if (!dados) return null;
+    if (janelaAtiva === null) return dados.total_geral.conversao;
+    return dados.conversao_por_periodo?.janelas[janelaAtiva] ?? null;
+  }, [dados, janelaAtiva]);
+
+  const fasesFunil = useMemo(() => (foco ? foco.fases.filter((f) => f.no_funil !== false) : []), [foco]);
+
   const maiorVazamento = useMemo(() => {
-    if (!foco) return null;
-    return [...foco.fases].sort((a, b) => b.saiu_aqui - a.saiu_aqui)[0] ?? null;
-  }, [foco]);
+    if (!fasesFunil.length) return null;
+    return [...fasesFunil].sort((a, b) => b.saiu_aqui - a.saiu_aqui)[0] ?? null;
+  }, [fasesFunil]);
+
+  const ultimaJanela = dados && dados.janelas.length ? dados.janelas.length - 1 : null;
+  const noMesAtual = periodo === 'mensal' && janelaAtiva !== null && janelaAtiva === ultimaJanela;
 
   return (
     <div className="funil">
@@ -120,7 +167,8 @@ export function FunilPage() {
         <div>
           <h1>Funil</h1>
           <p className="funil__sub">
-            Cada fase medida: quantos entram, quantos passam, e onde o pedido morre.
+            Fases 1 a 5: o que a operação controla, pelo mês em que o pedido entrou.
+            Fase 6: a decisão do juiz, pelo mês em que ela saiu.
           </p>
         </div>
         <div className="funil__periodo">
@@ -176,6 +224,31 @@ export function FunilPage() {
       )}
 
       {dados && (
+        <div className="funil__modo">
+          <button
+            type="button"
+            className={`funil__pill ${noMesAtual && !comparar ? 'is-ativo' : ''}`}
+            onClick={() => {
+              setComparar(false);
+              if (periodo !== 'mensal') { setPeriodo('mensal'); return; }
+              setJanelaAtiva(ultimaJanela);
+            }}
+            title="Volta para o mês em que estamos"
+          >
+            Mês atual
+          </button>
+          <button
+            type="button"
+            className={`funil__pill ${comparar ? 'is-ativo' : ''}`}
+            onClick={() => setComparar((v) => !v)}
+            title="Uma coluna por período: fases 1-5, aproveitamento e conversão lado a lado"
+          >
+            {comparar ? 'Ver um período' : 'Ver mês a mês (comparativo)'}
+          </button>
+        </div>
+      )}
+
+      {dados && !comparar && (
         <div className="funil__janelas">
           <button
             type="button"
@@ -199,31 +272,105 @@ export function FunilPage() {
         </div>
       )}
 
-      {foco && (
+      {/* ── MODO COMPARATIVO: períodos em colunas, fases em linhas ────────── */}
+      {dados && comparar && (
+        <section className="funil__comparativo">
+          <h2>Mês a mês</h2>
+          <p className="funil__motivos-sub">
+            Cada célula: <b>passaram / chegaram</b> e o % sobre quem chegou. A linha de
+            conversão usa o mês da <b>decisão</b>, não o do pedido.
+          </p>
+          <div className="funil__comparativo-rolagem">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fase</th>
+                  {dados.janelas.map((j) => <th key={j.rotulo}>{j.rotulo}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="is-total">
+                  <td>Entraram</td>
+                  {dados.janelas.map((j) => <td key={j.rotulo}><b>{j.total_entraram}</b></td>)}
+                </tr>
+                {(dados.fases_funil ?? []).map((chave) => {
+                  const nome = dados.fases.find((f) => f.chave === chave)?.nome ?? chave;
+                  return (
+                    <tr key={chave}>
+                      <td>{nome}</td>
+                      {dados.janelas.map((j) => {
+                        const f = j.fases.find((x) => x.chave === chave);
+                        if (!f || f.chegaram === 0) return <td key={j.rotulo} className="is-vazio">—</td>;
+                        return (
+                          <td key={j.rotulo} title={`${f.saiu_aqui} morreram · ${f.em_curso_aqui} em curso`}>
+                            {f.passaram}/{f.chegaram}
+                            <small>{fmtPct(f.pct_passaram)}</small>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+                <tr className="is-total">
+                  <td>Aproveitamento (chegaram ao Estado)</td>
+                  {dados.janelas.map((j) => (
+                    <td key={j.rotulo} title={j.aproveitamento
+                      ? `${j.aproveitamento.em_andamento} ainda andando · ${j.aproveitamento.morreram_antes} morreram antes`
+                      : ''}>
+                      <b>{fmtPct(j.aproveitamento?.pct)}</b>
+                      <small>{j.aproveitamento?.chegaram_ao_estado ?? 0}/{j.total_entraram}</small>
+                    </td>
+                  ))}
+                </tr>
+                <tr className="is-conversao">
+                  <td>Conversão — decididos no mês (de coortes anteriores)</td>
+                  {dados.janelas.map((j, i) => {
+                    const c = dados.conversao_por_periodo?.janelas[i];
+                    if (!c || !c.disputados) return <td key={j.rotulo} className="is-vazio">—</td>;
+                    return (
+                      <td key={j.rotulo} title={c.amostra_pequena ? 'poucas decisões: o % oscila a cada uma' : ''}>
+                        <b className={c.amostra_pequena ? 'is-provisorio' : ''}>{fmtPct(c.pct)}</b>
+                        <small>{c.ganhos} ganhos · {c.perdemos_disputando} perdidos</small>
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {foco && !comparar && (
         <>
-          <section className="funil__conversao">
-            <div className="funil__conversao-num">
-              {foco.conversao.pct !== null ? (
-                <><strong className={foco.conversao.pode_mudar ? 'is-provisorio' : ''}>
-                    {foco.conversao.pct}%
-                  </strong>
-                  <span>{foco.conversao.pode_mudar ? 'conversão parcial' : 'de conversão'}</span></>
-              ) : (
-                <><strong className="is-imaturo">—</strong><span>ainda sem leitura</span></>
-              )}
-            </div>
-            <div className="funil__conversao-txt">
-              <p>{foco.conversao.o_que_significa}</p>
-              <div className="funil__conversao-detalhe">
-                <span><b>{foco.conversao.ganhos}</b> ganhos</span>
-                <span><b>{foco.conversao.perdemos_disputando}</b> perdidos disputando</span>
-                <span><b>{foco.conversao.aguardando_decisao}</b> ainda no juiz</span>
+          {/* ── APROVEITAMENTO — o funil operacional (fases 1-5) num número ── */}
+          {foco.aproveitamento && (
+            <section className="funil__conversao">
+              <div className="funil__conversao-num">
+                <strong className={foco.aproveitamento.pct === null ? 'is-imaturo' : ''}>
+                  {fmtPct(foco.aproveitamento.pct)}
+                </strong>
+                <span>aproveitamento até a fase 5</span>
               </div>
-            </div>
-          </section>
+              <div className="funil__conversao-txt">
+                <p>{foco.aproveitamento.o_que_significa}</p>
+                <div className="funil__conversao-detalhe">
+                  <span><b>{foco.aproveitamento.entraram}</b> entraram</span>
+                  <span><b>{foco.aproveitamento.chegaram_ao_estado}</b> chegaram ao Estado</span>
+                  <span><b>{foco.aproveitamento.morreram_antes}</b> morreram antes</span>
+                  <span><b>{foco.aproveitamento.em_andamento}</b> ainda andando</span>
+                  {foco.aproveitamento.pct_definido !== null && foco.aproveitamento.em_andamento > 0 && (
+                    <span title="só entre os que já tiveram desfecho nas fases 1-5">
+                      <b>{foco.aproveitamento.pct_definido}%</b> entre os já definidos
+                    </span>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
 
           <section className="funil__fases">
-            {foco.fases.map((f) => {
+            {fasesFunil.map((f) => {
               const cor = DONO_COR[f.dono] ?? '#6B7280';
               const base = f.chegaram || 1;
               const pctPassou = (f.passaram / base) * 100;
@@ -249,13 +396,16 @@ export function FunilPage() {
                   <div className="funil__fase-nums">
                     <span><b>{f.chegaram}</b> chegaram</span>
                     <span className="e-passou"><b>{f.passaram}</b> passaram
-                      {f.taxa_passagem_pct !== null && <> ({f.taxa_passagem_pct}%)</>}</span>
+                      {f.chegaram > 0 && <> ({fmtPct(f.pct_passaram ?? Math.round(pctPassou * 10) / 10)} dos que chegaram)</>}</span>
                     {f.saiu_aqui > 0 && (
                       <span className="e-saiu" title={f.motivo_saida ?? ''}>
                         <b>{f.saiu_aqui}</b> morreram aqui</span>
                     )}
                     {f.em_curso_aqui > 0 && (
-                      <span className="e-curso"><b>{f.em_curso_aqui}</b> ainda em curso</span>
+                      <span className="e-curso"><b>{f.em_curso_aqui}</b> ainda em curso
+                        {f.taxa_passagem_pct !== null && f.taxa_passagem_pct !== f.pct_passaram && (
+                          <> · {f.taxa_passagem_pct}% entre os já definidos</>
+                        )}</span>
                     )}
                   </div>
                   {f.saiu_aqui > 0 && f.motivo_saida && (
@@ -273,6 +423,44 @@ export function FunilPage() {
                 {maiorVazamento.saiu_aqui} pedidos morrem nesta fase — responsabilidade de{' '}
                 {maiorVazamento.dono}. É onde uma melhoria rende mais.
               </p>
+            </section>
+          )}
+
+          {/* ── FASE 6 — a decisão do juiz, pelo mês em que SAIU ──────────── */}
+          {conversaoFoco && (
+            <section className="funil__conversao funil__conversao--fase6">
+              <div className="funil__conversao-num">
+                {conversaoFoco.disputados > 0 ? (
+                  <><strong className={conversaoFoco.amostra_pequena || conversaoFoco.pode_mudar ? 'is-provisorio' : ''}>
+                      {fmtPct(conversaoFoco.pct ?? conversaoFoco.pct_provisorio)}
+                    </strong>
+                    <span>fase 6 · conversão dos {janelaAtiva !== null ? 'decididos no período' : 'decididos'}</span></>
+                ) : (
+                  <><strong className="is-imaturo">—</strong>
+                    <span>fase 6 · {janelaAtiva !== null ? 'nenhuma decisão saiu neste período' : 'sem disputa decidida'}</span></>
+                )}
+              </div>
+              <div className="funil__conversao-txt">
+                <p>
+                  {janelaAtiva !== null
+                    ? (conversaoFoco.disputados > 0
+                        ? `Dos ${conversaoFoco.disputados} processos que o juiz decidiu neste período com o nosso orçamento na mesa, ganhamos ${conversaoFoco.ganhos}.`
+                        + (conversaoFoco.amostra_pequena ? ' Poucas decisões: o % oscila a cada uma que sai.' : '')
+                        : 'O juiz não decidiu nenhum processo com o nosso orçamento neste período.')
+                    : conversaoFoco.o_que_significa}
+                </p>
+                <div className="funil__conversao-detalhe">
+                  <span><b>{conversaoFoco.ganhos}</b> ganhos</span>
+                  <span><b>{conversaoFoco.perdemos_disputando}</b> perdidos disputando</span>
+                  <span><b>{conversaoFoco.aguardando_decisao}</b> ainda no juiz (total)</span>
+                </div>
+                {janelaAtiva !== null && (
+                  <p className="funil__populacao">
+                    População diferente das fases 1-5: são processos que entraram meses antes
+                    (defasagem mediana ~190 dias). Não dividir pelo que entrou no mês.
+                  </p>
+                )}
+              </div>
             </section>
           )}
         </>
@@ -305,7 +493,7 @@ export function FunilPage() {
       )}
       {/* A lista por trás dos números. Fica DEPOIS do funil de propósito:
           primeiro o leitor vê ONDE se perde, depois QUEM se perdeu. */}
-      {dados && <FunilDetalhe inicio={foco?.inicio} fim={foco?.fim} />}
+      {dados && !comparar && <FunilDetalhe inicio={foco?.inicio} fim={foco?.fim} />}
 
     </div>
   );

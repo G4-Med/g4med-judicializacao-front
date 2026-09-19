@@ -204,3 +204,24 @@
 }
 .fdet__paginas button:disabled { opacity: .4; cursor: not-allowed; }
 .fdet__carregando, .fdet__vazio { font-size: .88rem; color: var(--mc-muted, #6b7280); padding: 1.2rem 0; }
+
+/* ── mês atual / comparativo (19/09) ─────────────────────── */
+.funil__modo { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: .9rem; }
+.funil__conversao--fase6 { border-left: 4px solid #B45309; }
+.funil__conversao-num strong.is-provisorio { color: #B45309; }
+.funil__comparativo { margin-bottom: 1.6rem; }
+.funil__comparativo h2 { font-size: 1.1rem; margin: 0 0 .3rem; }
+.funil__comparativo-rolagem { overflow-x: auto; }
+.funil__comparativo table { border-collapse: collapse; font-size: .84rem; min-width: 100%; }
+.funil__comparativo th, .funil__comparativo td {
+  padding: .45rem .6rem; border-bottom: 1px solid var(--mc-border, #e5e7eb);
+  text-align: right; white-space: nowrap; vertical-align: top;
+}
+.funil__comparativo th:first-child, .funil__comparativo td:first-child { text-align: left; }
+.funil__comparativo th { font-weight: 600; color: var(--mc-muted, #6b7280); font-size: .78rem; }
+.funil__comparativo td small { display: block; font-size: .72rem; color: var(--mc-muted, #6b7280); }
+.funil__comparativo td.is-vazio { color: var(--mc-muted, #9CA3AF); }
+.funil__comparativo tr.is-total td { background: var(--mc-surface-2, rgba(0,0,0,.03)); }
+.funil__comparativo tr.is-conversao td { border-top: 2px solid #B45309; }
+.funil__comparativo b.is-provisorio { color: #B45309; }
+.funil__populacao { margin: .5rem 0 0; font-size: .78rem; color: var(--mc-muted, #6b7280); }
