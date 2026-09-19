@@ -24,7 +24,6 @@ export const MENU_CONFIG: MenuConfigItem[] = [
   { label: 'Dashboard', icon: 'pi pi-chart-bar', path: '/dashboard', screen: 'dashboard' },
   { label: 'Processos', icon: 'pi pi-briefcase', path: '/processos', screen: 'processos' },
   { label: 'Clientes', icon: 'pi pi-users', path: '/clientes', screen: 'clientes' },
-  { label: 'Processamento', icon: 'pi pi-server', path: '/processamento', screen: 'processos' },
   {
     label: 'Protocolos',
     icon: 'pi pi-file-edit',

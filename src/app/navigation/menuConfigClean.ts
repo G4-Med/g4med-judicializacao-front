@@ -42,6 +42,10 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
   { label: 'SLA', icon: 'pi pi-clock', path: '/sla', screen: 'sla' },
   { label: 'Notificações', icon: 'pi pi-bell', path: '/notificacoes-historico', screen: 'notificacoesHistorico' },
   { label: 'Base de Processos', icon: 'pi pi-briefcase', path: '/processos', screen: 'processos' },
+  // Processamento: fila de leitura, ritmo e o que NUNCA foi lido. Fica ao lado de Base de
+  // Processos porque responde sobre os MESMOS documentos, do outro ângulo: lá se vê o pedido,
+  // aqui se vê se o que está dentro dele já foi lido.
+  { label: 'Processamento', icon: 'pi pi-server', path: '/processamento', screen: 'processos' },
   { label: 'Acervo de preços', icon: 'pi pi-dollar', path: '/orcamentos-terceiros', screen: 'orcamentosTerceiros' },
   { label: 'Central de E-mails', icon: 'pi pi-inbox', path: '/central-emails', screen: 'centralEmails' },
   { label: 'Lixeira', icon: 'pi pi-trash', path: '/lixeira', screen: 'lixeira' },
