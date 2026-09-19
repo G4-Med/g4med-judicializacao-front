@@ -19,7 +19,7 @@ import { FilterMatchMode } from 'primereact/api';
 import html2canvas from 'html2canvas';
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-import { getOrcamentoMedico, salvarOrcamentoMedico, getAnexosOrder, uploadAnexoOrder, getMedicosCompleto, aplicarStatusOrcamentoManual, trocarMedicoOrcamento } from '../../services/api/orders';
+import { atualizarOrder, getOrcamentoMedico, salvarOrcamentoMedico, getAnexosOrder, uploadAnexoOrder, getMedicosCompleto, aplicarStatusOrcamentoManual, trocarMedicoOrcamento } from '../../services/api/orders';
 import { getBaseOrcamento, getStatusOrcamentoPersonalizado, criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { getStatusTagStyle } from '../../utils/statusTag';
 import { EnviarOrcamentoDialog } from './EnviarOrcamentoDialog';
@@ -37,6 +37,7 @@ import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
 import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, colunaBaixarOrcamento } from '../../components/ColunasEmpenho/colunasEmpenho';
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
+import { ModalStatusFase } from '../../components/StatusFase/ModalStatusFase';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 
 // Meta desta fase (orçamento) — espelha backend/funil.py FASES['orcamento'].meta_dias.
@@ -101,6 +102,8 @@ function calcularIdade(dataNascimento: string | null): number {
 
 
 export function OrcamentoMedicoPage() {
+  // @R 19/09: lápis na coluna Status → modal com o leque da FASE (ver, trocar, criar)
+  const [pedidoStatus, setPedidoStatus] = useState<{ id: number; status: string } | null>(null);
   // A tabela recarrega quando a FICHA muda a situação de um pedido (@R 17/09:
   // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
   // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
@@ -918,8 +921,15 @@ ${blocos}
             style={{ minWidth: '12rem' }} />
           <Column field="dias" header="Dias em Aberto" sortable filter
             dataType="numeric" filterElement={filtroMaiorQue('mais de…')} style={{ minWidth: '10rem' }} />
-          <Column field="statusOrcamento" header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}
-            body={(r) => <Tag value={r.statusOrcamento} style={getStatusTagStyle(r.statusOrcamento)} className="status-tag-custom" />}
+          <Column field="statusOrcamento" header={cabecalhoComHint('Status', 'O que está acontecendo dentro da fase (statusOrcamento). O lápis abre o leque desta fase e permite criar um status novo nela.')}
+            body={(r) => (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}>
+                <Tag value={r.statusOrcamento} style={getStatusTagStyle(r.statusOrcamento)} className="status-tag-custom" />
+                <i className="pi pi-pencil" title="Mudar o status nesta fase"
+                   style={{ cursor: 'pointer', opacity: .55, fontSize: '.8rem' }}
+                   onClick={(e) => { e.stopPropagation(); setPedidoStatus({ id: r.id, status: r.statusOrcamento }); }} />
+              </span>
+            )}
             filter
             showFilterMenu={false}
             filterElement={statusFilterElement}
@@ -1359,6 +1369,21 @@ ${blocos}
           ))}
         </div>
       </Dialog>
+
+      {/* @R 19/09: o lápis da coluna Status. O modal descobre a fase e edita o campo
+          que O SERVIDOR disser ser o operacional dela — nunca um campo fixo daqui. */}
+      {pedidoStatus && (
+        <ModalStatusFase
+          visivel={!!pedidoStatus}
+          pedidoId={pedidoStatus.id}
+          statusAtual={pedidoStatus.status}
+          aoFechar={() => setPedidoStatus(null)}
+          aoSalvar={async (campo, valor) => {
+            await atualizarOrder(pedidoStatus.id, { [campo]: valor });
+            await carregarDados();
+          }}
+        />
+      )}
     </div>
   );
 }
