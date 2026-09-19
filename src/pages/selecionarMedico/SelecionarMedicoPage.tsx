@@ -27,6 +27,7 @@ import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
+import { ModalMedico } from '../../components/TrocarMedico/CelulaMedico';
 import './SelecionarMedicoPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
@@ -101,6 +102,8 @@ export function SelecionarMedicoPage() {
   const [processos, setProcessos] = useState<ProcessoResumo[]>([]);
   const [selectedProcessos, setSelectedProcessos] = useState<ProcessoResumoTableRow[]>([]);
   const [medicosOptions, setMedicosOptions] = useState<MedicoOption[]>([]);
+  // lista CRUA (com especialidades) — o ModalMedico ordena por quem atende a área do pedido
+  const [medicosCrus, setMedicosCrus] = useState<any[]>([]);
   /* ═══ MAIS DE UM MÉDICO NO MESMO PEDIDO (@R 18/09) ═══
      ⟦"precisamos poder selecionar mais de um médico para mandar os orçamentos, tem
      orçamentos que temos que mandar para mais de um médico"⟧
@@ -125,9 +128,7 @@ export function SelecionarMedicoPage() {
   const [dialogVisible, setDialogVisible] = useState(false);
   const [dialogMassaVisible, setDialogMassaVisible] = useState(false);
   const [processoSelecionado, setProcessoSelecionado] = useState<ProcessoResumoTableRow | null>(null);
-  const [medicoSelecionado, setMedicoSelecionado] = useState<number | null>(null);
   const [medicoSelecionadoMassa, setMedicoSelecionadoMassa] = useState<number | null>(null);
-  const [salvandoMedico, setSalvandoMedico] = useState(false);
   const [executandoAcaoMassa, setExecutandoAcaoMassa] = useState(false);
   const [iaLoadingId, setIaLoadingId] = useState<number | null>(null);
   const [iaDialogVisible, setIaDialogVisible] = useState(false);
@@ -196,6 +197,7 @@ export function SelecionarMedicoPage() {
         Array.isArray(medicosRes.data) ? medicosRes.data : [],
         (item: any) => item?.id
       );
+      setMedicosCrus(medicos.filter((item: any) => item.id !== 1));
       const medicosLookup = new Map<number, string>(
         medicos.map((item: any) => [item.id, item.nomeSistema ?? item.nomeCompleto ?? ''])
       );
@@ -313,30 +315,10 @@ export function SelecionarMedicoPage() {
 
   const abrirDialog = (rowData: ProcessoResumoTableRow) => {
     setProcessoSelecionado(rowData);
-    setMedicoSelecionado(rowData.idMedico ?? null);
     setDialogVisible(true);
   };
 
-  const handleSalvarMedico = async () => {
-    if (!processoSelecionado || !medicoSelecionado) {
-      alert('Selecione um médico.');
-      return;
-    }
-
-    setSalvandoMedico(true);
-    try {
-      await atualizarOrder(processoSelecionado.id, { idMedico: medicoSelecionado });
-      await carregarDados();
-      setDialogVisible(false);
-      setProcessoSelecionado(null);
-      setMedicoSelecionado(null);
-    } catch (error) {
-      console.error('Erro ao selecionar médico:', error);
-      alert('Erro ao salvar o médico do processo.');
-    } finally {
-      setSalvandoMedico(false);
-    }
-  };
+  // handleSalvarMedico/salvandoMedico removidos 19/09: o salvar vive no ModalMedico (peça única).
 
   const handleMarcarSemProfissional = async (rowData: ProcessoResumoTableRow) => {
     try {
@@ -754,61 +736,19 @@ export function SelecionarMedicoPage() {
 </DataTable>
       </div>
 
-      <Dialog
-        header="Selecionar Médico"
-        visible={dialogVisible}
-        style={{ width: '60rem', maxWidth: '96vw' }}
-        modal
-        onHide={() => setDialogVisible(false)}
-        className="selecionar-medico-dialog"
-      >
-        {processoSelecionado && (
-          <div className="selecionar-medico-dialog-content">
-            <div className="selecionar-medico-resumo">
-              <div>
-                <span className="resumo-label">Paciente</span>
-                <strong>{processoSelecionado.paciente}</strong>
-              </div>
-              <div>
-                <span className="resumo-label">Procedimento</span>
-                <strong>{processoSelecionado.procedimento}</strong>
-              </div>
-              <div>
-                <span className="resumo-label">Área</span>
-                <strong>{processoSelecionado.area || '-'}</strong>
-              </div>
-              <div>
-                <span className="resumo-label">Subárea</span>
-                <strong>{processoSelecionado.subarea || '-'}</strong>
-              </div>
-            </div>
-
-            <div className="field">
-              <label>Médico</label>
-              <Dropdown
-                value={medicoSelecionado}
-                options={medicosOptions}
-                onChange={(e) => setMedicoSelecionado(e.value)}
-                placeholder="Selecione o médico"
-                filter
-                disabled={readOnly}
-              />
-            </div>
-
-            <div className="dialog-footer-actions">
-              <Button label="Cancelar" outlined onClick={() => setDialogVisible(false)} />
-              {!readOnly && (
-                <Button
-                  label={salvandoMedico ? 'Salvando...' : 'Salvar'}
-                  icon="pi pi-check"
-                  onClick={handleSalvarMedico}
-                  loading={salvandoMedico}
-                />
-              )}
-            </div>
-          </div>
-        )}
-      </Dialog>
+      {/* 19/09: o Dialog próprio desta tela foi substituído pelo ModalMedico — a MESMA peça
+          das telas de Orçamento e Processos. Ganha "Adicionar ao orçamento" e a ordenação
+          por quem atende a área do pedido (o @R viu HOME CARE oferecido para cirurgia
+          cerebral aqui). Uma peça, todas as telas. */}
+      {processoSelecionado && (
+        <ModalMedico
+          row={processoSelecionado}
+          medicos={medicosCrus}
+          aberto={dialogVisible}
+          aoFechar={() => setDialogVisible(false)}
+          aoTrocar={async () => { await carregarDados(); setProcessoSelecionado(null); }}
+        />
+      )}
 
       <Dialog
         header="Selecionar Médico em Massa"
