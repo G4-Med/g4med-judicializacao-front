@@ -50,7 +50,7 @@ export function ModalStatusFase({ visivel, aoFechar, pedidoId, statusAtual, fase
     if (!visivel) return;
     setCarregando(true);
     setErro(null);
-    api.get('/status/')
+    api.get('/orders/status/')
       .then((r) => setFases(r.data?.fases ?? []))
       .catch(() => setErro('Não consegui carregar os status. Tente de novo.'))
       .finally(() => setCarregando(false));
@@ -94,7 +94,7 @@ export function ModalStatusFase({ visivel, aoFechar, pedidoId, statusAtual, fase
     setErro(null);
     try {
       await api.post('/client/status-orcamento-personalizado/', { nome, fase: fase.chave, ativo: true });
-      const r = await api.get('/status/');
+      const r = await api.get('/orders/status/');
       setFases(r.data?.fases ?? []);
       setNovoNome('');
     } catch {
