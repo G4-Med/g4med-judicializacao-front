@@ -39,6 +39,14 @@ type Status = {
   naFila: { tipos: Record<string, Bloco>; lidos: number; faltam: number; comErro: number };
   foraDaFila: { tipos: Record<string, Bloco>; total: number };
   esteira: { ritmoHora: number; parada: boolean; ultimaConclusao: string | null; horasParaZerar: number | null };
+  /* O LEITOR na máquina do Rapha (@R 19/09): vivo? por que parou? o que fazer? Vem do batimento
+     que o cron manda ao servidor a cada tick — sem ele a tela só sabia dizer "PARADA". */
+  leitor?: {
+    estado: 'VERDE' | 'AMARELO' | 'VERMELHO';
+    ultimoBatimento: string | null; ultimoFim: string | null; host: string | null;
+    rc: number | string | null; carga: number | null; teto: number | null; killSwitch: boolean | null;
+    diagnostico: { nivel: 'VERDE' | 'AMARELO' | 'VERMELHO'; causa: string; conserto: string | null }[];
+  };
 };
 
 const ROTULO: Record<string, string> = {
@@ -153,6 +161,46 @@ export function ProcessamentoPage() {
           </Card>
         </div>
       </div>
+
+      {/* @R 19/09/2026: "saber que tudo está funcional com o sistema do nosso computador e diagnosticar
+          caso não esteja, na aba da rota". O card mostra o que o CRON da máquina do Rapha mandou como
+          batimento e, quando algo está errado, a CAUSA medida e o CONSERTO (comando) — não "verifique". */}
+      <Card className="mt-3" title="Leitor de peças — máquina do Rapha">
+        {!d.leitor ? (
+          <p className="mt-0 text-color-secondary">Esta versão do servidor ainda não manda o estado do leitor.</p>
+        ) : (
+          <>
+            <div className="flex align-items-center gap-3 flex-wrap">
+              <Tag severity={d.leitor.estado === 'VERDE' ? 'success' : d.leitor.estado === 'AMARELO' ? 'warning' : 'danger'}
+                value={d.leitor.estado === 'VERDE' ? 'VIVO' : d.leitor.estado === 'AMARELO' ? 'ATENÇÃO' : 'PARADO'} />
+              <span className="text-color-secondary">
+                último batimento {desde(d.leitor.ultimoBatimento)}
+                {d.leitor.host ? ` · ${d.leitor.host}` : ''}
+                {d.leitor.carga != null && d.leitor.teto != null ? ` · carga ${d.leitor.carga}/${d.leitor.teto}` : ''}
+                {d.leitor.ultimoFim ? ` · último ciclo concluído ${desde(d.leitor.ultimoFim)}` : ''}
+              </span>
+            </div>
+            <ul className="mt-2 mb-0 pl-3">
+              {d.leitor.diagnostico.map((x, i) => (
+                <li key={i} className="mb-2">
+                  <span className={x.nivel === 'VERDE' ? 'text-green-600' : x.nivel === 'AMARELO' ? 'text-orange-600' : 'text-red-600'}>
+                    <strong>{x.nivel === 'VERDE' ? '✓' : x.nivel === 'AMARELO' ? '⚠' : '✖'}</strong> {x.causa}
+                  </span>
+                  {x.conserto && (
+                    <div className="text-sm text-color-secondary mt-1">
+                      Conserto: <code style={{ whiteSpace: 'pre-wrap' }}>{x.conserto}</code>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm text-color-secondary mb-0 mt-2">
+              O leitor roda no computador do Rapha (cron a cada 10 min, 3 peças por vez). O servidor só guarda a fila.
+              Sem batimento por mais de 25 min = o cron não está rodando lá.
+            </p>
+          </>
+        )}
+      </Card>
 
       <Card className="mt-3" title="A fila de leitura">
         <ProgressBar value={pct} />
