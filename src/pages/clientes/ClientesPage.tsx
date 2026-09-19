@@ -26,6 +26,7 @@ import { FilterMatchMode } from 'primereact/api';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import AreaDoCliente from '../../components/AreaDoCliente/AreaDoCliente';
+import { GruposWhatsappCliente } from '../../components/GruposWhatsapp/GruposWhatsappCliente';
 import { MultiSelect } from 'primereact/multiselect';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { useAccess } from '../../access/AccessContext';
@@ -1975,7 +1976,9 @@ const handleSalvarEdicao = async () => {
                     <small className="ajuda-campo">Para hospital: marque TODAS as especialidades que ele atende. É por elas que o jurídico escolhe na hora de cotar.</small>
                   </div>
                   <div className="field field-span-2"><label>Keywords</label><InputText value={clienteEditando.keywords} onChange={(e) => updateClienteEditando('keywords', e.target.value)} /></div>
-                  <div className="field field-span-2"><label>Grupo WhatsApp</label><InputText value={clienteEditando.grupoWhatsapp} onChange={(e) => updateClienteEditando('grupoWhatsapp', e.target.value)} /></div>
+                  <div className="field field-span-2"><label>Grupo WhatsApp (campo antigo, texto livre)</label><InputText value={clienteEditando.grupoWhatsapp} onChange={(e) => updateClienteEditando('grupoWhatsapp', e.target.value)} /></div>
+                  {/* 1:N com função e JID do catálogo — ver GruposWhatsappCliente (@R 19/09/2026) */}
+                  <GruposWhatsappCliente idMedico={clienteEditando.id} />
                   <div className="field">
                     <label>Take Rate (%)</label>
                     <InputNumber

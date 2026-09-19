@@ -72,3 +72,28 @@ export const uploadArquivoStorage = (file: File) => {
 export const getMinhaSessao = () => api.get('/usuarios/minha-sessao/');
 export const trocarMinhaSenha = (senhaAtual: string, senhaNova: string) =>
   api.post('/usuarios/trocar-minha-senha/', { senhaAtual, senhaNova });
+
+// ── Grupos de WhatsApp do cliente (1:N com FUNÇÃO · @R 19/09/2026) ──────────
+// `envioAtivo` nasce false no servidor e só quem tem permissão liga, cliente a cliente.
+// O catálogo é a lista dos grupos que EXISTEM (JID vindo do roteador, não digitado).
+export type GrupoWhatsappCliente = {
+  id: number;
+  idMedico: number;
+  grupoJid: string;
+  grupoNome: string;
+  funcao: 'CONVERSA' | 'PRECO' | 'SOLICITACAO' | 'OUTRO';
+  especialidadeAtendida: string | null;
+  envioAtivo: boolean;
+  confirmadoPor: string | null;
+  createDate: string;
+};
+export type GrupoWhatsappCatalogo = { grupoNome: string; grupoJid: string; agenteDestino: string };
+export const getGruposWhatsappCliente = (idMedico: number) =>
+  api.get<GrupoWhatsappCliente[]>(`/client/grupos-whatsapp/?idMedico=${idMedico}`);
+export const criarGrupoWhatsappCliente = (data: Partial<GrupoWhatsappCliente>) =>
+  api.post<GrupoWhatsappCliente>('/client/grupos-whatsapp/', data);
+export const atualizarGrupoWhatsappCliente = (id: number, data: Partial<GrupoWhatsappCliente>) =>
+  api.patch<GrupoWhatsappCliente>(`/client/grupos-whatsapp/${id}/`, data);
+export const removerGrupoWhatsappCliente = (id: number) => api.delete(`/client/grupos-whatsapp/${id}/`);
+export const getCatalogoGruposWhatsapp = () =>
+  api.get<{ grupos: GrupoWhatsappCatalogo[]; total: number; geradoEm: string | null }>('/client/grupos-whatsapp-catalogo/');

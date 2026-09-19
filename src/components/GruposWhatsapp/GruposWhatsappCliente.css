@@ -1,0 +1,14 @@
+.gw-bloco { grid-column: 1 / -1; display: flex; flex-direction: column; gap: .5rem; padding: .75rem; border: 1px solid var(--surface-border, #dfe7ef); border-radius: 8px; }
+.gw-cabecalho { display: flex; flex-direction: column; gap: .15rem; }
+.gw-erro { color: var(--red-600, #b42318); font-size: .9rem; }
+.gw-vazio { color: var(--text-color-secondary, #6b7280); }
+.gw-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
+.gw-item { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .35rem .5rem; border-radius: 6px; background: var(--surface-50, #f8fafc); }
+.gw-item__nome { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; min-width: 0; }
+.gw-item__acoes { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+.gw-envio { display: inline-flex; align-items: center; gap: .35rem; font-size: .85rem; cursor: pointer; }
+.gw-adicionar { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; gap: .5rem; align-items: center; }
+.gw-adicionar__grupo { min-width: 0; }
+@media (max-width: 640px) { .gw-adicionar { grid-template-columns: 1fr; } .gw-item { flex-direction: column; align-items: flex-start; } }
+body.dark-theme .gw-bloco { border-color: rgba(255,255,255,.14); }
+body.dark-theme .gw-item { background: rgba(255,255,255,.06); }
