@@ -25,6 +25,16 @@ import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repe
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 
+/** Data+hora em pt-BR a partir do ISO que o backend manda. Devolve '' quando não
+ *  há valor — a coluna decide o que mostrar no lugar, e o vazio é dado legítimo
+ *  (perda antiga sem autoria registrada), não erro. */
+function formatarDataHora(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
 interface PerdaProcesso {
   id: number;
   paciente: string;
@@ -45,6 +55,17 @@ interface PerdaProcesso {
   valor: number;
   resultado: string;
   idMedico?: number | null;
+  // @R 18/09: "quem deu perda" + "quem foi o último que alterou, e data e hora".
+  // Vêm de OrderStatusHistorico. Ausentes quando a perda veio da carga de planilha
+  // ou é anterior ao histórico — nesse caso ninguém sabe quem foi, e a coluna
+  // mostra "—" de propósito (medido 18/09: 33 de 283 têm autor).
+  perdaPor?: string | null;
+  perdaEm?: string | null;
+  perdaOrigem?: string | null;
+  ultimaAlteracaoPor?: string | null;
+  ultimaAlteracaoEm?: string | null;
+  ultimaAlteracaoCampo?: string | null;
+  ultimaAlteracaoOrigem?: string | null;
 }
 
 interface PerdaProcessoTableRow extends PerdaProcesso {
@@ -443,6 +464,19 @@ export function PerdasPage() {
           />
           <Column field="dataStatusPerda" header={cabecalhoComHint('Perda em', 'Data em que a perda foi registrada.')} sortable style={{ minWidth: '8rem' }}
             body={(r: any) => (r.dataStatusPerda ? r.dataStatusPerda.split('-').reverse().join('/') : '—')} />
+          <Column field="perdaPor" header={cabecalhoComHint('Quem deu a perda', 'Usuário que registrou a perda, com data e hora. Fica vazio nas perdas antigas, que vieram da carga de planilha e não têm autor registrado — ninguém sabe quem foi.')} sortable style={{ minWidth: '10rem' }}
+            body={(r: any) => (r.perdaPor
+              ? (<span title={`${r.perdaEm ? formatarDataHora(r.perdaEm) : ''}${r.perdaOrigem ? ` · via ${r.perdaOrigem}` : ''}`}>
+                   {r.perdaPor}<br /><small style={{ opacity: .7 }}>{formatarDataHora(r.perdaEm)}</small>
+                 </span>)
+              : <span style={{ opacity: .5 }} title="Perda anterior ao registro de autoria (carga de planilha) — não há quem atribuir.">—</span>)} />
+          <Column field="ultimaAlteracaoPor" header={cabecalhoComHint('Última alteração', 'Quem mexeu por último neste registro, quando, e em qual campo.')} sortable style={{ minWidth: '11rem' }}
+            body={(r: any) => (r.ultimaAlteracaoPor || r.ultimaAlteracaoEm
+              ? (<span title={r.ultimaAlteracaoOrigem ? `via ${r.ultimaAlteracaoOrigem}` : undefined}>
+                   {r.ultimaAlteracaoPor || <em style={{ opacity: .7 }}>automático</em>}
+                   <br /><small style={{ opacity: .7 }}>{formatarDataHora(r.ultimaAlteracaoEm)}{r.ultimaAlteracaoCampo ? ` · ${r.ultimaAlteracaoCampo}` : ''}</small>
+                 </span>)
+              : <span style={{ opacity: .5 }}>—</span>)} />
           <Column
             field="valor"
             header={cabecalhoComHint('Valor', 'Valor do orçamento que enviamos ao Estado por este pedido.')}
