@@ -8,6 +8,7 @@ import { DashboardPage } from '../../pages/dashboard/DashboardPage';
 import { HomePage } from '../../pages/home/HomePage';
 import { ProcessosPage } from '../../pages/processos/ProcessosPage';
 import { ClientesPage } from '../../pages/clientes/ClientesPage';
+import { ProcessamentoPage } from '../../pages/processamento/ProcessamentoPage';
 import { ParaProtocolarPage } from '../../pages/paraProtocolar/ParaProtocolarPage';
 import { ProtocoladosPage } from '../../pages/protocolados/ProtocoladosPage';
 import { EnviadoSesPage } from '../../pages/enviadoSes/EnviadoSesPage';
@@ -59,6 +60,7 @@ export function AppRoutes() {
 
         <Route path="/processos" element={<ProtectedScreen screen="processos"><ProcessosPage /></ProtectedScreen>} />
         <Route path="/clientes" element={<ProtectedScreen screen="clientes"><ClientesPage /></ProtectedScreen>} />
+        <Route path="/processamento" element={<ProtectedScreen screen="processos"><ProcessamentoPage /></ProtectedScreen>} />
 
         <Route path="/para-protocolar" element={<ProtectedScreen screen="paraProtocolar"><ParaProtocolarPage /></ProtectedScreen>} />
         <Route path="/protocolados" element={<ProtectedScreen screen="protocolados"><ProtocoladosPage /></ProtectedScreen>} />
