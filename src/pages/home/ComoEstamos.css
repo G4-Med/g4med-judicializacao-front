@@ -76,3 +76,27 @@ body.dark-theme .ce-serie__semdata td { color: #fbbf24; background: rgba(180, 83
   background: #f8fafc; border-top: 1px solid #e2e8f0; line-height: 1.5;
 }
 body.dark-theme .ce-serie__semvalor td { background: #0d1b2a; color: #94a3b8; border-color: #1e2d42; }
+
+/* ── hint "?" por coluna (@R 19/09) — botão real, alcançável por teclado ─── */
+.ce-hint {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.15rem; height: 1.15rem; margin-left: .3rem; padding: 0;
+  border: 1px solid currentColor; border-radius: 50%; background: transparent;
+  color: inherit; font: inherit; font-size: .7rem; line-height: 1; cursor: pointer;
+  opacity: .65; vertical-align: middle;
+}
+.ce-hint:hover, .ce-hint:focus-visible { opacity: 1; outline: 2px solid #0f766e; outline-offset: 2px; }
+.ce-hint__dl { margin: 0; display: grid; grid-template-columns: 9rem 1fr; gap: .45rem .9rem; font-size: .92rem; }
+.ce-hint__dl dt { font-weight: 700; color: #40534a; }
+.ce-hint__dl dd { margin: 0; line-height: 1.5; }
+.ce-hint__dl code { font-size: .82em; background: #edf1ee; padding: .1em .35em; border-radius: 3px; }
+.ce-hint__regua { font-family: ui-monospace, monospace; font-size: .72rem; font-weight: 700;
+  padding: .1em .5em; border-radius: 3px; margin-right: .25rem; }
+.ce-hint__regua--coorte   { background: #e3f1e9; color: #0f5c3f; }
+.ce-hint__regua--fluxo    { background: #e6eef5; color: #1f4a6b; }
+.ce-hint__regua--contagem { background: #edf1ee; color: #40534a; }
+.ce-hint__legenda { margin: 1rem 0 0; padding-top: .8rem; border-top: 1px solid #d2dcd5; font-size: .82rem; color: #40534a; }
+@media (max-width: 560px) { .ce-hint__dl { grid-template-columns: 1fr; gap: .15rem .5rem; } .ce-hint__dl dt { margin-top: .4rem; } }
+body.dark-theme .ce-hint__dl dt, body.dark-theme .ce-hint__legenda { color: #aec0b5; }
+body.dark-theme .ce-hint__dl code { background: #1c2722; }
+body.dark-theme .ce-hint__legenda { border-top-color: #2b3932; }

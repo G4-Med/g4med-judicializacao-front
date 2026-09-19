@@ -1,5 +1,143 @@
 import { useMemo, useState } from 'react';
+import { Dialog } from 'primereact/dialog';
 import './ComoEstamos.css';
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HINT TÉCNICO POR COLUNA (@R 19/09/2026 16:36):
+   ⟦"marcar, tecnicamente, ao lado de cada coluna no mês a mês o significado de
+   cada uma... um hint com um modal que indica o que é cada uma, para corrigirmos
+   depois e saber que cada uma significa"⟧
+
+   POR QUE UM MODAL E NÃO SÓ O `title`: o title some ao tirar o mouse, não abre
+   no toque, e leitor de tela não o anuncia como conteúdo. O @R quer LER a régua
+   para depois CORRIGIR — isso pede um texto que fique aberto.
+
+   CADA DEFINIÇÃO ABAIXO FOI LIDA DO CÓDIGO DESTE ARQUIVO, não da memória. Se
+   alguém mudar a conta e não mudar o texto, o hint passa a mentir — por isso o
+   campo `campo` e `regua` são explícitos: é o que se confere contra o código.
+   ═══════════════════════════════════════════════════════════════════════════ */
+type DefColuna = {
+  titulo: string;
+  oQueE: string;        // em linguagem de quem usa
+  campo: string;        // o campo do banco que manda
+  regua: 'COORTE' | 'FLUXO' | 'CONTAGEM';
+  reguaExplicada: string;
+  cuidado?: string;     // o que engana ao ler
+};
+
+const DEFINICOES: Record<string, DefColuna> = {
+  pedidos: {
+    titulo: 'Pedidos',
+    oQueE: 'Quantos pedidos ENTRARAM na G4MED naquele mês. Conta todos, com ou sem valor.',
+    campo: 'Order.dataPedido (contagem)',
+    regua: 'CONTAGEM',
+    reguaExplicada: 'O pedido conta no mês em que entrou. Base completa: 1.163 pedidos, 1.163 com data.',
+  },
+  oportunidade: {
+    titulo: 'Oportunidade',
+    oQueE: 'Tudo que passou pela G4MED naquele mês, em valor — o que orçamos MAIS o que deixamos de orçar.',
+    campo: 'orçado → Order.valorOrcamento · não-orçado → Order.refPreco',
+    regua: 'COORTE',
+    reguaExplicada: 'Cada pedido conta no mês em que ENTROU. Quem foi orçado entra pelo valor do orçamento; quem não foi, pelo preço de referência. Por isso Oportunidade = Orçamos + Deixamos de mandar, exato.',
+    cuidado: 'Testei medir tudo pela referência: 3 meses davam "deixamos de mandar" NEGATIVO, porque 202 pedidos foram orçados ACIMA da referência. A régua atual é a única que fecha sem sobra.',
+  },
+  orcamos: {
+    titulo: 'Orçamos',
+    oQueE: 'Do que entrou naquele mês, quanto virou orçamento enviado ao solicitante.',
+    campo: 'Σ Order.valorOrcamento dos pedidos com dataPedido no mês E valorOrcamento > 0',
+    regua: 'COORTE',
+    reguaExplicada: 'São os MESMOS pedidos da coluna Oportunidade — não é o orçamento assinado no mês, é o orçamento DAQUELES pedidos, mesmo que tenha sido feito meses depois.',
+  },
+  deixamos: {
+    titulo: 'Deixamos de mandar',
+    oQueE: 'Do que entrou naquele mês, quanto NÃO virou orçamento. É oportunidade que ficou na mesa.',
+    campo: 'Σ Order.refPreco dos pedidos com dataPedido no mês E valorOrcamento = 0',
+    regua: 'COORTE',
+    reguaExplicada: 'Mesma coorte de Oportunidade e Orçamos. Um pedido está aqui OU em Orçamos, nunca nos dois.',
+    cuidado: 'É PISO, não teto: 136 pedidos da base não têm preço de referência e entram como R$ 0 aqui. O valor real que ficou na mesa é MAIOR do que a coluna mostra. "sem preço" aparece quando há pedido sem orçamento mas nenhum tem referência.',
+  },
+  pctOrcado: {
+    titulo: '% orçado',
+    oQueE: 'Quanto da oportunidade do mês virou orçamento, em valor.',
+    campo: 'Orçamos ÷ Oportunidade',
+    regua: 'COORTE',
+    reguaExplicada: 'Numerador e denominador são os mesmos pedidos, por isso nunca passa de 100%.',
+    cuidado: 'A antiga "Taxa envio" dividia o orçado no mês (data do orçamento) pelo recebido no mês (data do pedido) — populações diferentes — e por isso dava 122%, 130%, 700%. Foi removida em 19/09.',
+  },
+  perdido: {
+    titulo: 'Perdido',
+    oQueE: 'Valor dos pedidos que viraram PERDA naquele mês — no mês da perda, não no mês do pedido.',
+    campo: 'Σ Order.valorOrcamento onde statusProcesso = "Perda", por Order.dataStatusPerda',
+    regua: 'FLUXO',
+    reguaExplicada: 'Conta no mês em que a perda foi DECIDIDA. Um pedido que entrou em maio e foi perdido em setembro aparece em setembro.',
+    cuidado: 'ATENÇÃO: esta coluna e a "% perdido" ao lado usam RÉGUAS DIFERENTES. Esta é fluxo (mês da perda); a outra é coorte (mês do pedido). Por isso set/26 pode mostrar R$ 3,5 mi perdidos (perdas antigas decididas agora) e só 16% (dos 38 que entraram em setembro). Não é erro de conta — é leitura, e é candidata a correção.',
+  },
+  pctPerdido: {
+    titulo: '% perdido',
+    oQueE: 'Dos pedidos que ENTRARAM naquele mês, quantos por cento já viraram perda.',
+    campo: 'count(statusProcesso = "Perda") ÷ Pedidos, ambos por dataPedido',
+    regua: 'COORTE',
+    reguaExplicada: 'Mesma coorte de Oportunidade. Mês recente tende a mostrar pouco: a maior parte ainda não foi decidida — é cedo, não é bom.',
+    cuidado: 'Régua DIFERENTE da coluna "Perdido" ao lado (que é por mês da perda). Ver o hint dela.',
+  },
+  ganho: {
+    titulo: 'Ganho (marcado)',
+    oQueE: 'Valor dos pedidos que alguém MARCOU como ganho na tela, no mês em que marcou.',
+    campo: 'Σ (Order.valorGanho ou valorOrcamento) onde statusProcesso = "Ganho", por Order.dataResultado',
+    regua: 'FLUXO',
+    reguaExplicada: 'Conta no mês do resultado. Depende de alguém lembrar de marcar.',
+    cuidado: 'Medido em 18/09: 19 ganhos MARCADOS contra 345 pedidos com pagamento de sinal forte no dado do Estado. A distância entre esta coluna e a "Pago (548)" É a informação: mede o atraso da marcação manual em relação ao dinheiro real.',
+  },
+  pago548: {
+    titulo: 'Pago (548)',
+    oQueE: 'EMPENHOS PAGOS pelo Estado nos nossos processos — dinheiro que de fato saiu do cofre público, no mês do pagamento.',
+    campo: 'Σ EmpenhoPagamento548.valorPago com sinal PAGO_APOS_O_PEDIDO, por ultimoPagamento',
+    regua: 'FLUXO',
+    reguaExplicada: 'Fonte: portal de transparência do Estado (dado do 548), não marcação de tela. Só entra o pagamento POSTERIOR ao nosso pedido — pagamento anterior é de outro item do processo, e contá-lo nos daria crédito por dinheiro que não é nosso.',
+    cuidado: 'Medido em 19/09 nos 544 processos nossos com empenho: empenhado R$ 31,49 mi, pago R$ 31,39 mi — sobram R$ 104 mil não pagos (0,3%). MAS o dado foi atualizado em 28/08: "não pago" pode ser "ainda não revisitado". Tempo mediano do protocolo ao pagamento: 30 dias (100 pagamentos medidos).',
+  },
+};
+
+/** O "?" ao lado do cabeçalho: abre o modal com a definição técnica da coluna. */
+function HintColuna({ chave }: { chave: keyof typeof DEFINICOES }) {
+  const [aberto, setAberto] = useState(false);
+  const d = DEFINICOES[chave];
+  if (!d) return null;
+  return (
+    <>
+      <button
+        type="button"
+        className="ce-hint"
+        aria-label={`O que significa ${d.titulo}`}
+        title={`O que significa ${d.titulo}`}
+        onClick={(e) => { e.stopPropagation(); setAberto(true); }}
+      >?</button>
+      <Dialog
+        header={`${d.titulo} — o que esta coluna mede`}
+        visible={aberto}
+        onHide={() => setAberto(false)}
+        style={{ width: 'min(560px, 94vw)' }}
+        dismissableMask
+      >
+        <dl className="ce-hint__dl">
+          <dt>O que é</dt><dd>{d.oQueE}</dd>
+          <dt>Campo que manda</dt><dd><code>{d.campo}</code></dd>
+          <dt>Régua</dt>
+          <dd>
+            <span className={`ce-hint__regua ce-hint__regua--${d.regua.toLowerCase()}`}>{d.regua}</span>
+            {' '}{d.reguaExplicada}
+          </dd>
+          {d.cuidado && (<><dt>Cuidado ao ler</dt><dd>{d.cuidado}</dd></>)}
+        </dl>
+        <p className="ce-hint__legenda">
+          <strong>COORTE</strong> = o pedido conta no mês em que ENTROU, do começo ao fim.{' '}
+          <strong>FLUXO</strong> = o evento conta no mês em que ACONTECEU, venha de que pedido vier.
+          Coorte e fluxo na mesma linha não se somam nem se dividem.
+        </p>
+      </Dialog>
+    </>
+  );
+}
 
 /**
  * COMO ESTAMOS — três lentes sobre a mesma base (@R 17/09/2026).
@@ -101,7 +239,13 @@ function medir(linhas: Linha[], dentro: (d: Date) => boolean, vidaToda = false) 
      NÃO IMPLEMENTADO de propósito: estimar por mediana do procedimento cobriria mais 13
      pedidos (R$ 220.934 = 0,3% do total) e exigiria trazer `procedimento` ao payload.
      O ganho não paga misturar número estimado com número medido nesta tela. */
-  const valorOportunidade = (l: Linha) => num(l.refPreco) || num(l.valorOrcamento);
+  /* ★ MESMA RÉGUA DO MÊS A MÊS (@R 19/09 16:40: "aqui em como estamos não tá batendo com o
+     valor mês a mês de oportunidades"). Antes era `refPreco || valorOrcamento` e dava
+     R$ 65,2 mi; o mês a mês dava R$ 72,97 mi. Duas réguas de "oportunidade" na mesma tela.
+     Agora as duas contam igual: quem foi ORÇADO entra pelo orçamento; quem não foi, pela
+     referência. Soma dos meses == este total, por construção. */
+  const valorOportunidade = (l: Linha) =>
+    num(l.valorOrcamento) > 0 ? num(l.valorOrcamento) : num(l.refPreco);
   const recebidos = entraram.filter((l) => valorOportunidade(l) > 0);
   const enviados = linhas.filter((l) => num(l.valorOrcamento) > 0
     && (vidaToda || noPeriodo(l.dataStatusOrcamento, dentro)));
@@ -328,15 +472,15 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
       <table>
         <thead>
           <tr>
-            <th>Mês</th><th>Pedidos</th>
-            <th title="Tudo que passou pela G4MED naquele mês, em valor. Quem foi orçado entra pelo valor do orçamento; quem não foi, pelo preço de referência. Por isso esta coluna é exatamente a soma das duas seguintes.">Oportunidade</th>
-            <th title="Do que entrou naquele mês, quanto virou orçamento enviado. São os MESMOS pedidos da coluna anterior — não é o orçamento assinado no mês, é o orçamento DAQUELES pedidos.">Orçamos</th>
-            <th title="Do que entrou naquele mês, quanto NÃO virou orçamento. É oportunidade que ficou na mesa. ATENÇÃO: é PISO, não teto — 136 pedidos da base não têm preço de referência e entram como zero aqui, então o valor real é maior.">Deixamos de mandar</th>
-            <th title="Quanto da oportunidade do mês virou orçamento, em VALOR (orçamos ÷ oportunidade). Nunca passa de 100% porque numerador e denominador são os mesmos pedidos. A antiga 'Taxa envio' dividia o orçado no mês pelo recebido no mês — populações diferentes, e por isso dava 122%, 130%, 700%.">% orçado</th>
-            <th>Perdido</th>
-            <th title="Dos pedidos que ENTRARAM neste mês, quantos % já viraram perda. Mesma coorte do % enviado. Mês recente tende a mostrar pouco: a maior parte ainda não foi decidida — é cedo, não é bom.">% perdido</th>
-            <th title="Ganho MARCADO na tela por alguém. Medido em 18/09: 19 marcados — contra 345 pedidos com pagamento de sinal forte no dado do Estado.">Ganho (marcado)</th>
-            <th title="PAGO pelo Estado DEPOIS do nosso pedido, no dado do 548 (sinal PAGO_APOS_O_PEDIDO). É fato medido, não marcação de tela. Entra no mês do pagamento.">Pago (548)</th>
+            <th>Mês</th><th>Pedidos <HintColuna chave="pedidos" /></th>
+            <th title="Tudo que passou pela G4MED naquele mês, em valor. Quem foi orçado entra pelo valor do orçamento; quem não foi, pelo preço de referência. Por isso esta coluna é exatamente a soma das duas seguintes.">Oportunidade <HintColuna chave="oportunidade" /></th>
+            <th title="Do que entrou naquele mês, quanto virou orçamento enviado. São os MESMOS pedidos da coluna anterior — não é o orçamento assinado no mês, é o orçamento DAQUELES pedidos.">Orçamos <HintColuna chave="orcamos" /></th>
+            <th title="Do que entrou naquele mês, quanto NÃO virou orçamento. É oportunidade que ficou na mesa. ATENÇÃO: é PISO, não teto — 136 pedidos da base não têm preço de referência e entram como zero aqui, então o valor real é maior.">Deixamos de mandar <HintColuna chave="deixamos" /></th>
+            <th title="Quanto da oportunidade do mês virou orçamento, em VALOR (orçamos ÷ oportunidade). Nunca passa de 100% porque numerador e denominador são os mesmos pedidos. A antiga 'Taxa envio' dividia o orçado no mês pelo recebido no mês — populações diferentes, e por isso dava 122%, 130%, 700%.">% orçado <HintColuna chave="pctOrcado" /></th>
+            <th>Perdido <HintColuna chave="perdido" /></th>
+            <th title="Dos pedidos que ENTRARAM neste mês, quantos % já viraram perda. Mesma coorte do % enviado. Mês recente tende a mostrar pouco: a maior parte ainda não foi decidida — é cedo, não é bom.">% perdido <HintColuna chave="pctPerdido" /></th>
+            <th title="Ganho MARCADO na tela por alguém. Medido em 18/09: 19 marcados — contra 345 pedidos com pagamento de sinal forte no dado do Estado.">Ganho (marcado) <HintColuna chave="ganho" /></th>
+            <th title="PAGO pelo Estado DEPOIS do nosso pedido, no dado do 548 (sinal PAGO_APOS_O_PEDIDO). É fato medido, não marcação de tela. Entra no mês do pagamento.">Pago (548) <HintColuna chave="pago548" /></th>
           </tr>
         </thead>
         <tbody>
@@ -571,14 +715,13 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
       <p className="ce__regua">
         {lente === 'vida' ? (
           <>
-            Toda a base, desde o primeiro pedido registrado. Aqui os valores <strong>não</strong>{' '}
-            são filtrados por data do evento — exigir a data esconderia o que não a tem.
+            Toda a base, desde o primeiro pedido registrado. Oportunidade e orçamento contam
+            pelo mês em que o <strong>pedido entrou</strong> — a mesma régua do mês a mês, então
+            os totais daqui são <strong>exatamente</strong> a soma das linhas de lá.
             {foco.nEnviadoSemData > 0 && (
               <>
-                {' '}Por isso o total enviado <strong>não bate</strong> com a soma dos meses:{' '}
-                <strong>{moeda(foco.enviadoSemData)}</strong> em {foco.nEnviadoSemData}{' '}
-                orçamentos não têm data de envio e não aparecem em mês nenhum. Soma dos
-                meses + esse valor = total. Recebido e perdido fecham (nenhum sem data).
+                {' '}({foco.nEnviadoSemData} orçamentos, {moeda(foco.enviadoSemData)}, não têm
+                data de envio registrada — mas têm data de pedido, então contam normalmente.)
               </>
             )}
           </>
