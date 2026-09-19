@@ -47,6 +47,7 @@ type Aproveitamento = {
 type Conversao = {
   ganhos: number; perdemos_disputando: number; disputados: number;
   aguardando_decisao: number; pct: number | null; pct_provisorio?: number | null;
+  encerrados_sem_disputa?: number;
   maduro: boolean; pode_mudar?: boolean; o_que_significa: string;
   amostra_pequena?: boolean; rotulo?: string; ancora?: string;
 };
@@ -73,10 +74,10 @@ type Resposta = {
                       competiu: boolean | null; pct_das_perdas: number | null;
                       valor_perdido: number }[];
   auditoria_vocabulario: { ok: boolean; veredito: string;
-                           motivos_desconhecidos: { motivo: string; pedidos: number }[];
+                           motivos_desconhecidos: { motivo: string; pedidos: number; ids?: number[] }[];
                            status_processo_desconhecidos?: { status: string; pedidos: number }[];
                            fases_sem_saida: { fase: string; esperava: string }[] };
-  cobertura: { total: number; sem_data_pedido: number; nota: string | null };
+  cobertura: { total: number; sem_data_pedido: number; historicos_fora?: number; nota: string | null };
 };
 
 const PERIODOS = [
@@ -206,7 +207,7 @@ export function FunilPage() {
           {dados.auditoria_vocabulario.motivos_desconhecidos.length > 0 && (
             <p>Motivos que o funil não conhece:{' '}
               {dados.auditoria_vocabulario.motivos_desconhecidos
-                .map((m) => `${m.motivo} (${m.pedidos})`).join(' · ')}</p>
+                .map((m) => `${m.motivo} (${m.pedidos}${m.ids?.length ? ` — pedidos ${m.ids.join(', ')}` : ''})`).join(' · ')}</p>
           )}
           {(dados.auditoria_vocabulario.status_processo_desconhecidos ?? []).length > 0 && (
             <p>Status que o funil não conhece:{' '}
@@ -453,6 +454,10 @@ export function FunilPage() {
                   <span><b>{conversaoFoco.ganhos}</b> ganhos</span>
                   <span><b>{conversaoFoco.perdemos_disputando}</b> perdidos disputando</span>
                   <span><b>{conversaoFoco.aguardando_decisao}</b> ainda no juiz (total)</span>
+                  {(conversaoFoco.encerrados_sem_disputa ?? 0) > 0 && (
+                    <span title="extinto/arquivado no juiz: saiu, mas ninguém escolheu outro preço — não entra na conversão">
+                      <b>{conversaoFoco.encerrados_sem_disputa}</b> encerrados sem disputa</span>
+                  )}
                 </div>
                 {janelaAtiva !== null && (
                   <p className="funil__populacao">
@@ -479,7 +484,7 @@ export function FunilPage() {
             </thead>
             <tbody>
               {dados.motivos_de_perda.map((m) => (
-                <tr key={m.motivo} className={m.competiu ? 'competiu' : ''}>
+                <tr key={`${m.motivo}|${m.fase}`} className={m.competiu ? 'competiu' : ''}>
                   <td>{m.motivo}{m.competiu && <span className="tag-competiu">competiu</span>}</td>
                   <td>{m.fase}</td>
                   <td>{m.total}</td>
