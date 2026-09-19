@@ -34,6 +34,7 @@ import './ProcessosPage.css';
 import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaOrigem, filtroMaiorQue, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
+import { CelulaMedico } from '../../components/TrocarMedico/CelulaMedico';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
 import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
@@ -2196,9 +2197,17 @@ ${linhasAnexos}
           />
           <Column
             field="medico"
-            header={cabecalhoComHint('Médico', 'Profissional da rede que cotou (ou vai cotar) este procedimento.')}
+            header={cabecalhoComHint('Médico', 'Profissional da rede que cotou (ou vai cotar) este procedimento. O lápis troca o médico ou ADICIONA outro ao orçamento, sem abrir o pedido.')}
             sortable
             filter
+            /* @R 19/09: "na tela de processos estou sem o lápis para escolher os médicos".
+               Reuso da MESMA célula que a tela de orçamento já usa — não uma 9ª implementação.
+               Ela traz junto o "Adicionar ao orçamento" (convida sem tirar o atual) e a lista
+               de quem já foi convidado. */
+            body={(r: any) => (
+              <CelulaMedico row={r} medicos={medicos}
+                aoTrocar={async () => { await carregarDados(); }} />
+            )}
             filterElement={(options) => dropdownFilterElement(options, 'Selecione', medicosFilterOptions)}
             style={{ minWidth: '14rem' }}
           />
