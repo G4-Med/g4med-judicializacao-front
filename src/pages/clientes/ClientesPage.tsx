@@ -1633,8 +1633,13 @@ const handleSalvarEdicao = async () => {
           />
 
           <Column
-            field="razaoSocial"
-            header="Razão Social"
+            /* NOME, ¬razão social (@R 18/09/2026: "tirar a razão social de aparecer ali, o que
+               precisamos é do nome"). A razão social é o nome do CNPJ — "HOSPITAL X LTDA",
+               "CLINICA Y SERVICOS MEDICOS EIRELI" — e não é assim que ninguém aqui chama o
+               cliente. Ela continua na ficha, na aba Dados Empresa, que é onde faz falta
+               (contrato, nota, dados bancários). Na lista fica o nome pelo qual se procura. */
+            field="nomeMedico"
+            header="Nome"
             sortable
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}
