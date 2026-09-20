@@ -585,6 +585,19 @@ export function ClientesPage() {
     void carregarGrupos();
   };
 
+  /* Reunião 20/09 (00:55:34): o Fabrício criou "Cirurgia de cabeça e pescoço" em Configurações e
+     ela "não apareceu" — o cadastro de cliente tinha carregado as especialidades ao abrir a página
+     e nunca mais. Ao abrir a ficha (criar/editar), a lista é relida: o que foi criado em outra
+     aba entra sem recarregar a página. */
+  const recarregarEspecialidades = () => {
+    Promise.all([getEspecialidades(), getSubespecialidades()])
+      .then(([e, s]) => {
+        setEspecialidadeOptions(normalizarOptions(e.data, 'especialidade'));
+        setSubespecialidadeOptions(normalizarOptions(s.data, 'subespecialidade'));
+      })
+      .catch(() => { /* lista antiga continua valendo; nada a quebrar */ });
+  };
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -1898,6 +1911,7 @@ const handleSalvarEdicao = async () => {
       {/* Modal cadastrar */}
       <Dialog
         header="Cadastrar Cliente"
+        onShow={recarregarEspecialidades}
         visible={createDialogVisible}
         style={{ width: '82rem', maxWidth: '96vw' }}
         modal
@@ -2123,6 +2137,7 @@ const handleSalvarEdicao = async () => {
       {/* Modal editar */}
       <Dialog
         header="Editar Cliente"
+        onShow={recarregarEspecialidades}
         visible={editDialogVisible}
         style={{ width: '82rem', maxWidth: '96vw' }}
         modal

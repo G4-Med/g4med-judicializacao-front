@@ -488,12 +488,19 @@ export function HomePage() {
        tem sufixo — um filtro por 'Enviado à SES' devolvia zero em silêncio). */
     const contarFase = (...status: string[]) =>
       pedidosEmAberto.filter((item) => status.includes(item.statusProcesso ?? '')).length;
+    /* Reunião @R × Fabrício 20/09 (00:10:54): "selecionar médico tá com zero, mas era legal ela
+       mostrar aqui que ela tá com zero". Fase 2 (Selecionar médico) e fase 3 (Orçamento) têm o
+       MESMO statusProcesso; o que separa é ter médico (idMedico > 1) ou não. A fase 2 aparece
+       SEMPRE, inclusive com 0 — zero visível é informação; fase ausente é dúvida. */
+    const emOrcamento = pedidosEmAberto.filter((item) => item.statusProcesso === 'Aguardando Orçamento');
+    const semMedico = (item: any) => !item.idMedico || Number(item.idMedico) === 1;
     const porFase = [
       { fase: '1', nome: 'Jurídico', qtd: contarFase('Aguardando Juridico') },
-      { fase: '2', nome: 'Orçamento', qtd: contarFase('Aguardando Orçamento') },
-      { fase: '3', nome: 'Protocolar', qtd: contarFase('Aguardando Protocolar') },
-      { fase: '4', nome: 'Aguardando resposta', qtd: contarFase('Aguardando Resposta', 'Aguardando Resposta - Segredo de Justiça') },
-      { fase: '4b', nome: 'Enviado à SES (sem protocolo)', qtd: contarFase('Enviado à SES - Sem Protocolo') },
+      { fase: '2', nome: 'Selecionar médico', qtd: emOrcamento.filter(semMedico).length },
+      { fase: '3', nome: 'Orçamento', qtd: emOrcamento.filter((item) => !semMedico(item)).length },
+      { fase: '4', nome: 'Protocolar', qtd: contarFase('Aguardando Protocolar') },
+      { fase: '5', nome: 'Aguardando resposta', qtd: contarFase('Aguardando Resposta', 'Aguardando Resposta - Segredo de Justiça') },
+      { fase: '5b', nome: 'Enviado à SES (sem protocolo)', qtd: contarFase('Enviado à SES - Sem Protocolo') },
     ];
 
     return {

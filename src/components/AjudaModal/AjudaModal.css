@@ -35,11 +35,9 @@ body.dark-theme .ajuda-modal__vazio { color: var(--mc-muted, #94a3b8); }
 .mc-prefs__intro { margin: .2rem 0 .9rem; opacity: .8; font-size: .92em; }
 .mc-prefs__erro { color: #b91c1c; font-size: .9em; margin: 0 0 .7rem; }
 .mc-prefs__linha { display: flex; gap: .8rem; align-items: flex-start; margin-bottom: .9rem; }
-.mc-prefs__texto { margin: .2rem 0 0; font-size: .9em; opacity: .8; line-height: 1.45; }
-
-/* Preferências de avisos (@R 18/09) — o lugar único onde se liga/desliga o que o sistema
-   mostra. Fica na Ajuda porque é para lá que o próprio aviso manda a pessoa. */
-.mc-prefs__intro { margin: .2rem 0 .9rem; opacity: .8; font-size: .92em; }
-.mc-prefs__erro { color: #b91c1c; font-size: .9em; margin: 0 0 .7rem; }
-.mc-prefs__linha { display: flex; gap: .8rem; align-items: flex-start; margin-bottom: .9rem; }
+/* Reunião 20/09 (00:15:54, Fabrício: "tá escrito ovo ali" — o interruptor comia a 1ª letra do
+   título). O switch não encolhe nem sobrepõe: largura fixa; o texto ocupa o resto e quebra. */
+.mc-prefs__linha > .p-inputswitch { flex: 0 0 auto; margin-top: .1rem; }
+.mc-prefs__linha > div { flex: 1 1 auto; min-width: 0; }
+.mc-prefs__linha strong { display: block; overflow-wrap: anywhere; }
 .mc-prefs__texto { margin: .2rem 0 0; font-size: .9em; opacity: .8; line-height: 1.45; }

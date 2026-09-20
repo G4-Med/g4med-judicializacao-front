@@ -37,6 +37,8 @@ type EmailRecebido = { id: number; remetente: string | null; assunto: string | n
 type EmailOriginal = { anexoId: number; nome: string; quando: string; link: string };
 type Situacao = {
   statusProcesso: string | null;
+  /** fase 2 e 3 têm o mesmo statusProcesso; o servidor diz qual é (rótulo virtual "Selecionar Médico…") */
+  faseExibida?: string | null;
   statusJuridico: string | null;
   statusOrcamento: string | null;
   statusPerda: string | null;
@@ -105,6 +107,7 @@ export function FichaPedido({
     urgencia?: Urgencia; emails?: Emails;
     orcamentosDaPeca?: OrcamentoDaPeca[]; pecasLidas?: PecaLida[];
     situacao?: Situacao; situacaoOpcoes?: SituacaoOpcoes;
+    medicoAtual?: { id: number; nome: string; categoria: string | null } | null;
   } | null>(null);
   const [mudandoCampo, setMudandoCampo] = useState<string | null>(null);
   // conteúdo de e-mail carregado SOB DEMANDA: abrir a ficha não deve baixar .eml do R2
@@ -432,7 +435,11 @@ export function FichaPedido({
             </header>
             <div className="fic__situacao-grade">
               {(['statusProcesso', 'statusJuridico', 'statusOrcamento', 'statusPerda'] as const).map((campo) => {
-                const atual = (dados.situacao as Record<string, string | null> | undefined)?.[campo] ?? null;
+                // Fase: o que a tela mostra é a fase EXIBIDA (fase 2 e 3 dividem o mesmo status;
+                // o servidor diz qual é pelo médico) — reunião 20/09, 00:38:51.
+                const atual = campo === 'statusProcesso'
+                  ? (dados.situacao?.faseExibida ?? dados.situacao?.statusProcesso ?? null)
+                  : ((dados.situacao as Record<string, string | null> | undefined)?.[campo] ?? null);
                 const opcoes = dados.situacaoOpcoes?.[campo] ?? [];
                 return (
                   <div className="fic__situacao-item" key={campo}>
@@ -481,10 +488,18 @@ export function FichaPedido({
               <strong>Médicos deste pedido</strong>
               <small>Quem está cotando. Adicionar não tira o atual — os dois recebem o pedido.</small>
             </header>
-            {/* ⚠ a ficha NÃO traz o médico atual no payload (o tipo não tem o campo, e o
-                build denunciou quando eu supus que tinha). Em vez de inventar o dado, a
-                lista de convidados abaixo é o que temos — e ela é o que interessa aqui. */}
-            {candidatos.length === 0 && (
+            {/* Reunião 20/09 (00:31:43): "ele tem médico como hospital Santa Rita, mas aqui não
+                apareceu". O prestador PRINCIPAL agora vem no payload (medicoAtual) e abre a lista;
+                os convidados seguem abaixo. */}
+            {dados.medicoAtual ? (
+              <p style={{ margin: '.2rem 0 .4rem' }}>
+                <strong>{dados.medicoAtual.nome}</strong>
+                <small style={{ opacity: .7 }}> · principal{dados.medicoAtual.categoria ? ` · ${dados.medicoAtual.categoria.toLowerCase()}` : ''}</small>
+              </p>
+            ) : (
+              <p style={{ margin: '.2rem 0 .4rem', opacity: .7 }}>Sem médico principal (pedido em Selecionar Médico).</p>
+            )}
+            {candidatos.length === 0 && !dados.medicoAtual && (
               <p style={{ margin: '.2rem 0 .5rem', opacity: .7 }}>
                 Nenhum médico convidado ainda por este caminho.
               </p>
