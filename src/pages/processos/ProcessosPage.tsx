@@ -115,6 +115,8 @@ interface Processo {
   subarea: string;
   dataSolicitacao: string;
   status: string;
+  /** @R 20/09 (Fase 6): "onde está" — a fase pelo nome, vinda do servidor (2 × 3 mudam pelo médico) */
+  ondeEsta: string;
   statusJuridico: string;
   dataStatusJuridico: string;
   statusMedico: string;
@@ -376,6 +378,7 @@ export function ProcessosPage() {
       subarea: o.subarea ?? '',
       dataSolicitacao: o.dataPedido ?? '',
       status: o.statusProcesso ?? '',
+      ondeEsta: o.faseExibida ?? o.statusProcesso ?? '',
       statusJuridico: o.statusJuridico ?? '',
       dataStatusJuridico: o.dataStatusJuridico ?? '',
       statusMedico: o.statusOrcamento ?? '',
@@ -2243,6 +2246,15 @@ ${linhasAnexos}
             filterElement={filtroMaiorQue('mais de…')}
             body={diasBodyTemplate}
             style={{ minWidth: '7rem' }}
+          />
+          <Column
+            field="ondeEsta"
+            header={cabecalhoComHint('Onde está', 'A fase em que o pedido está agora, pelo nome — inclui "Selecionar Médico (fase 2)" quando ainda não tem médico.')}
+            sortable
+            filter
+            filterElement={(options) => filterElement(options, 'Buscar fase')}
+            body={(rowData: ProcessoTableRow) => <span className="mc-onde-esta">{rowData.ondeEsta || '—'}</span>}
+            style={{ minWidth: '13rem' }}
           />
           <Column
             field="status"
