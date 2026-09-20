@@ -499,3 +499,11 @@ export const getOrcamentoMedicoPorMedico = () =>
 export const registrarRespostaCotacao = (orderId: number, resposta: RespostaCotacao | null, observacao?: string) =>
   api.post<{ ok: boolean; devolvidoABusca: boolean; cotacaoRecusadaPor: string | null }>(
     `/orders/${orderId}/resposta-cotacao/`, { resposta, origem: 'plataforma', observacao: observacao || '' });
+
+/** Anotações internas do pedido (reunião Fabrício 20/09, Fase 5). */
+export interface Anotacao { id: number; texto: string; usuario: string | null; createDate: string }
+export const getAnotacoes = (orderId: number) => api.get<{ orderId: number; total: number; itens: Anotacao[] }>(`/orders/${orderId}/anotacoes/`);
+export const criarAnotacao = (orderId: number, texto: string) => api.post<{ orderId: number; total: number; itens: Anotacao[] }>(`/orders/${orderId}/anotacoes/`, { texto });
+export const apagarAnotacao = (orderId: number, anotacaoId: number) => api.delete(`/orders/${orderId}/anotacoes/${anotacaoId}/`);
+/** ids dos pedidos com anotação → o "!" nas filas (1 chamada por tela) */
+export const getAnotacoesIds = () => api.get<{ ids: Record<string, number> }>('/orders/anotacoes/ids/');

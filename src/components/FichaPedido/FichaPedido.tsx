@@ -5,6 +5,7 @@ import { criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
 import './FichaPedido.css';
+import { BlocoAnotacoes } from '../Anotacoes/BlocoAnotacoes';
 
 import { baixarAnexo, salvarBlob, uploadAnexoOrder, getOrcamentoVersoes, criarOrcamentoVersao, reenviarOrcamentoVersao, promoverOrcamentoVersao, getWhatsappGrupoPedido, enviarWhatsappGrupoPedido } from '../../services/api/orders';
 
@@ -482,6 +483,10 @@ export function FichaPedido({
               </small>
             )}
           </section>
+
+          {/* Reunião 20/09 (Fase 5): anotações INTERNAS — memória da equipe sobre o caso; nas filas
+              o nome do paciente ganha "!" enquanto houver anotação. Nunca sai para fora. */}
+          {orderId && <BlocoAnotacoes orderId={orderId} />}
 
           <section className="fic__situacao">
             <header className="fic__situacao-cab">

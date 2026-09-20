@@ -8,6 +8,7 @@ import { InputNumber } from 'primereact/inputnumber';
 import { BotaoCopiar } from '../BotaoCopiar/BotaoCopiar';
 import { useFichaPedido } from '../FichaPedido/FichaPedidoContext';
 import { uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos, baixarAnexoDoTipo, salvarBlob, reprocessarDocumentos } from '../../services/api/orders';
+import { MarcadorAnotacao } from '../Anotacoes/MarcadorAnotacao';
 import './colunasIdentificacao.css';
 
 
@@ -781,8 +782,10 @@ export function tagTipoPaciente(tipo?: string | null) {
 }
 
 /** Célula de nome com botão de copiar — para a coluna Paciente que cada tela já tem. */
-export function nomeComCopiar(nome: string | null | undefined) {
-  return <>{nome}<BotaoCopiar valor={nome} rotulo="nome do paciente" /></>;
+/** @R 20/09 (reunião Fabrício, Fase 5): "!" na frente do nome quando o pedido tem anotação
+ *  interna. Ponto único: as 10 filas passam por aqui, então todas ganham o marcador de uma vez. */
+export function nomeComCopiar(nome: string | null | undefined, orderId?: number | null) {
+  return <>{orderId ? <MarcadorAnotacao orderId={orderId} /> : null}{nome}<BotaoCopiar valor={nome} rotulo="nome do paciente" /></>;
 }
 
 

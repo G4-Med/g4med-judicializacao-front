@@ -631,7 +631,7 @@ export function SelecionarMedicoPage() {
             field="paciente" className="col-paciente-upper"
             body={(r: any) => (
               <>
-                {nomeComCopiar(r.paciente)}
+                {nomeComCopiar(r.paciente, r.id)}
                 {/* #510 (@R 20/09): o médico recusou cotar e o pedido voltou para cá — é o mais urgente
                     da fila (já perdeu um cotador). O aviso some quando outro médico é escolhido. */}
                 {r.cotacaoRecusadaPor && (

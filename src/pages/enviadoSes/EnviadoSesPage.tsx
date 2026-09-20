@@ -268,7 +268,7 @@ export function EnviadoSesPage() {
               : null)) as any)(r)}</>, excluir: carregar })}
           <Column field="paciente" className="col-paciente-upper" header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')} filter
             filterElement={(o) => filterElement(o, 'Buscar')}
-            body={(r: LinhaEnviadoSes) => nomeComCopiar(r.paciente)} style={{ minWidth: '16rem' }}  frozen alignFrozen="left" />
+            body={(r: LinhaEnviadoSes) => nomeComCopiar(r.paciente, r.id)} style={{ minWidth: '16rem' }}  frozen alignFrozen="left" />
           {colunaOrigem(linhas)}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}

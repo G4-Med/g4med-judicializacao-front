@@ -819,7 +819,7 @@ ${blocos}
             filterElement={(o) => filterElement(o, 'Buscar')} style={{ minWidth: '16rem' }}
             body={(r: ProcessoOrcamentoRow) => (
               <span className="orcamento-paciente-cel col-paciente-upper">
-                {nomeComCopiar(r.paciente)}
+                {nomeComCopiar(r.paciente, r.id)}
               </span>
             )}  frozen alignFrozen="left" />
           {colunaOrigem(dataComMedico)}
