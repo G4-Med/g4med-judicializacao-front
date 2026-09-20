@@ -1,7 +1,21 @@
 import { useEffect, useState } from 'react';
 import { ETAPAS, DONOS } from '../../pages/processoOperacional/conteudo';
 import { readAuthProfile } from '../../access/authProfile';
+import { getPreferencia, salvarPreferencia } from '../../services/api/orders';
 import './PrimeiraVisitaInfo.css';
+
+/** @R 20/09 16:52: "quando a gente marca 'não mostrar de novo', tem que desmarcar para AQUELA
+ *  rota, e tem que ter como reativar em Ajuda". Antes vivia só no localStorage (por navegador —
+ *  voltava em outro computador e não tinha onde religar). Agora é preferência do usuário no
+ *  servidor, uma lista de fases dispensadas, e a Ajuda → Avisos lista cada fase com um switch. */
+export const CHAVE_FASES = 'fases_dispensadas';
+export async function lerFasesDispensadas(): Promise<string[]> {
+  const r = await getPreferencia(CHAVE_FASES);
+  return (r.data?.valor?.ids as string[] | undefined) ?? [];
+}
+export async function salvarFasesDispensadas(ids: string[]) {
+  await salvarPreferencia(CHAVE_FASES, { ids });
+}
 
 /**
  * PRIMEIRA VISITA — o lembrete que só aparece uma vez.
@@ -38,23 +52,40 @@ export function PrimeiraVisitaInfo({ etapaId }: { etapaId: string }) {
 
   useEffect(() => {
     if (!etapa) return;
-    try {
-      if (!localStorage.getItem(chave)) setVisivel(true);
-    } catch {
-      setVisivel(true);
-    }
+    let vivo = true;
+    (async () => {
+      try {
+        const ids = await lerFasesDispensadas();
+        if (!vivo) return;
+        if (ids.includes(etapaId)) { setVisivel(false); return; }
+        // migração: quem já dispensou no localStorage (antes de 20/09) não vê de novo — e o
+        // servidor passa a saber, para a Ajuda poder religar.
+        let noLocal = false;
+        try { noLocal = !!localStorage.getItem(chave); } catch { /* sem storage */ }
+        if (noLocal) {
+          setVisivel(false);
+          salvarFasesDispensadas(Array.from(new Set([...ids, etapaId]))).catch(() => {});
+          return;
+        }
+        setVisivel(true);
+      } catch {
+        // servidor indisponível: cai no comportamento antigo (localStorage)
+        try { setVisivel(!localStorage.getItem(chave)); } catch { setVisivel(true); }
+      }
+    })();
+    return () => { vivo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etapaId]);
 
   if (!etapa || !visivel) return null;
 
-  const fechar = () => {
+  const fechar = async () => {
     setVisivel(false);
+    try { localStorage.setItem(chave, '1'); } catch { /* sem storage, só fecha nesta sessão */ }
     try {
-      localStorage.setItem(chave, '1');
-    } catch {
-      /* sem storage, só fecha nesta sessão */
-    }
+      const ids = await lerFasesDispensadas();
+      await salvarFasesDispensadas(Array.from(new Set([...ids, etapaId])));
+    } catch { /* fica só no navegador; a Ajuda ainda religa quando o servidor voltar */ }
   };
 
   const cor = DONOS[etapa.dono].cor;

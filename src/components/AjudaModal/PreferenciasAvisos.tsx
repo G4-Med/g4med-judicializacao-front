@@ -15,10 +15,31 @@ import { useEffect, useState } from 'react';
 import { InputSwitch } from 'primereact/inputswitch';
 import { NOVIDADES, CHAVE_AVISOS, type NovidadeId } from '../AvisoNovidade/AvisoNovidade';
 import { getPreferencia, salvarPreferencia } from '../../services/api/orders';
+import { ETAPAS } from '../../pages/processoOperacional/conteudo';
+import { readAuthProfile } from '../../access/authProfile';
+import { lerFasesDispensadas, salvarFasesDispensadas } from '../PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 
 export function PreferenciasAvisos() {
   const [dispensados, setDispensados] = useState<string[] | null>(null);
   const [erro, setErro] = useState('');
+  // @R 20/09: a explicação de cada fase (o card "Entendi, não mostrar de novo") também se religa aqui.
+  const [fasesDispensadas, setFasesDispensadas] = useState<string[] | null>(null);
+  useEffect(() => {
+    lerFasesDispensadas().then(setFasesDispensadas).catch(() => setFasesDispensadas([]));
+  }, []);
+  const alternarFase = async (id: string, ligado: boolean) => {
+    const atual = fasesDispensadas ?? [];
+    const novos = ligado ? atual.filter((x) => x !== id) : Array.from(new Set([...atual, id]));
+    setFasesDispensadas(novos);
+    try {
+      await salvarFasesDispensadas(novos);
+      if (ligado) { try { localStorage.removeItem(`mc_1a_visita_${id}_${readAuthProfile()?.username || 'anonimo'}`); } catch { /* ok */ } }
+      setErro('');
+    } catch {
+      setFasesDispensadas(atual);
+      setErro('Não consegui guardar essa mudança. Tente de novo em instantes.');
+    }
+  };
 
   useEffect(() => {
     getPreferencia(CHAVE_AVISOS)
@@ -62,6 +83,26 @@ export function PreferenciasAvisos() {
               <div>
                 <strong>{NOVIDADES[id].titulo}</strong>
                 <p className="mc-prefs__texto">{NOVIDADES[id].texto}</p>
+              </div>
+            </div>
+          );
+        })}
+
+      <h4 className="mc-prefs__sub">Explicação de cada fase</h4>
+      <p className="mc-prefs__intro">
+        O card que explica a fase (quem é dono, SLA, o que a tela espera) aparece na primeira visita
+        e some quando você clica em "Entendi". Ligue aqui para ele voltar naquela fase.
+      </p>
+      {fasesDispensadas === null && <p>Carregando…</p>}
+      {fasesDispensadas !== null &&
+        ETAPAS.filter((e) => e.rota).map((e) => {
+          const ligado = !fasesDispensadas.includes(e.id);
+          return (
+            <div key={e.id} className="mc-prefs__linha">
+              <InputSwitch checked={ligado} onChange={(ev) => alternarFase(e.id, !!ev.value)} />
+              <div>
+                <strong>{e.numero}. {e.titulo}</strong>
+                <p className="mc-prefs__texto">{e.rota}</p>
               </div>
             </div>
           );
