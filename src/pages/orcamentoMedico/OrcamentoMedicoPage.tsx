@@ -4,7 +4,7 @@ import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgenci
 import { CelulaMedico } from '../../components/TrocarMedico/CelulaMedico';
 import { CelulaCotacaoConcorrente, DialogCotacaoConcorrente } from '../../components/CotacaoConcorrente/CotacaoConcorrente';
 import { FaixaDaPeca } from '../../components/CotacaoConcorrente/FaixaDaPeca';
-import { registrarCotacaoPedida } from '../../services/api/orders';
+import { registrarCotacaoPedida, montarCotacaoMedico } from '../../services/api/orders';
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
@@ -450,6 +450,16 @@ const copiarParaWhatsapp = async (rowData: ProcessoOrcamentoRow, recarregar?: ()
   }
   const cnjDaLinha = ((rowData as any).cnj ?? (rowData as any).nprocesso ?? '').toString().trim();
   if (!cnjDaLinha && !window.confirm('Este pedido está SEM número de processo (CNJ).\n\nEnviar ao prestador mesmo assim?')) return;
+  /* #505 (20/09): a especialidade do pedido bate com o cadastro do prestador? O servidor
+     compara (especialidade, subespecialidade, lista e grupos de WhatsApp) e devolve o aviso.
+     Caso fundador: #1238, cabeça e pescoço enviado ao Santa Rita, que não opera isso — a
+     recusa só apareceu depois. É AVISO com confirmação, não bloqueio: o cadastro é texto
+     livre e incompleto; quem opera decide. Se a API falhar, o Copiar segue (ajuda ≠ gate). */
+  try {
+    const av: any = await montarCotacaoMedico(rowData.id)
+    const avisosEsp: string[] = (av?.data?.avisos || []).filter((a: string) => a.startsWith('Especialidade'))
+    if (avisosEsp.length && !window.confirm(avisosEsp.join('\n\n') + '\n\nCopiar mesmo assim?')) return
+  } catch { /* aviso é ajuda, não gate */ }
   /* OS ANEXOS PRECISAM DIZER O QUE SÃO (@R 18/09: "arrumar a mensagem para falar o que
      é cada anexo que estamos mandando").
 
