@@ -141,6 +141,16 @@ export const atualizarConfiguracaoEmail = (
 export function enviarOrcamentoArquivo(orderId: number, valorTotal: number) {
   return api.post('/api/orcamento/arquivo/', { orderId, valorTotal })
 }
+// #485 A (@R 19/09) — VERSÕES do orçamento: a equipe refaz, a nova vira vigente; reenvio só com clique
+export const getOrcamentoVersoes = (orderId: number) => api.get(`/orders/${orderId}/orcamento-versoes/`);
+export const criarOrcamentoVersao = (orderId: number, data: {
+  valorTotal: number; dataEmissao?: string; validade?: string | null; totalImpresso?: number | null;
+  equipeMedicaValor?: number | null; anestesistaValor?: number | null; taxasHospitalaresValor?: number | null;
+  opmeMateriaisValor?: number | null; anexoId?: number | null; observacao?: string;
+}) => api.post(`/orders/${orderId}/orcamento-versoes/`, data);
+export const reenviarOrcamentoVersao = (orderId: number, versaoId: number) =>
+  api.post(`/orders/${orderId}/orcamento-versoes/${versaoId}/reenviar/`, {});
+
 export const uploadAnexoOrder = (orderId: number, file: File, tipo: string) => {
   const form = new FormData();
   form.append('file', file);

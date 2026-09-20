@@ -116,3 +116,18 @@ body.dark-theme .fic__situacao-novo { color: #7fb2ff; }
 .fic__orcpeca-conferir { margin-left: .4rem; font-size: .72rem; padding: 1px 7px;
   border: 1px solid #16a34a; color: #15803d; background: transparent; border-radius: 10px; cursor: pointer; }
 .fic__orcpeca-conferir:hover { background: rgba(22,163,74,.1); }
+
+/* ── versões do orçamento (#485 A · 19/09) ─────────────────────────── */
+.fic__versoes .fic__fase{align-items:center}
+.fic__btn{border:1px solid #d1d5db;background:#fff;border-radius:6px;padding:.3rem .7rem;font-size:.82rem;cursor:pointer}
+.fic__btn--primario{background:#0F766E;border-color:#0F766E;color:#fff}
+.fic__btn:disabled{opacity:.6;cursor:default}
+.fic__link{border:0;background:none;color:#0F766E;text-decoration:underline;cursor:pointer;font-size:inherit;padding:0}
+.fic__nota{font-size:.82rem;color:#6b7280;margin:.25rem 0}
+.fic__erro{font-size:.85rem;color:#B91C1C}
+.fic__form{display:flex;flex-direction:column;gap:.55rem}
+.fic__form label{display:flex;flex-direction:column;gap:.2rem;font-size:.85rem}
+.fic__form input{border:1px solid #d1d5db;border-radius:6px;padding:.35rem .5rem;font:inherit}
+.fic__rubricas{border:1px solid #e5e7eb;border-radius:6px;padding:.5rem .75rem;display:grid;grid-template-columns:1fr 1fr;gap:.4rem .8rem}
+.fic__rubricas legend{font-size:.82rem;color:#374151;padding:0 .3rem}
+.fic__rubricas p{grid-column:1/-1}

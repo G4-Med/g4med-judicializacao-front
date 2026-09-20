@@ -6,7 +6,7 @@ import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
 import './FichaPedido.css';
 
-import { baixarAnexo, salvarBlob } from '../../services/api/orders';
+import { baixarAnexo, salvarBlob, uploadAnexoOrder, getOrcamentoVersoes, criarOrcamentoVersao, reenviarOrcamentoVersao } from '../../services/api/orders';
 
 /**
  * FICHA DO PEDIDO — a rastreabilidade numa tela só.
@@ -133,6 +133,84 @@ export function FichaPedido({
   const [medicosLista, setMedicosLista] = useState<any[]>([]);
   const [convidando, setConvidando] = useState<number | null>(null);
   const [erroMedico, setErroMedico] = useState<string | null>(null);
+
+  /* ── VERSÕES DO ORÇAMENTO (#485 A · @R 19/09) ──────────────────────────────────
+     A equipe REFAZ o orçamento (documento novo, que nasce fora e volta como PDF); a nova
+     versão vira a VIGENTE e o valor do pedido a acompanha. Reenvio ao solicitante é clique
+     separado e diz que SUBSTITUI. Nada apaga PDF antigo (já é peça processual). */
+  type Versao = {
+    id: number; numeroVersao: number | null; vigente: boolean; valorTotal: number | null;
+    totalImpresso: number | null; somaRubricas: number | null; divergencia: number | null;
+    dataEmissao: string | null; validade: string | null; semValidadeDeclarada: boolean;
+    equipeMedicaValor: number | null; anestesistaValor: number | null;
+    taxasHospitalaresValor: number | null; opmeMateriaisValor: number | null;
+    anexoId: number | null; anexoUrl: string | null; anexoNome: string | null;
+    substituiId: number | null; observacao: string | null; criadoPor: string | null;
+    criadoEm: string | null; reenviadoEm: string | null; reenviadoPor: string | null;
+  };
+  const [versoes, setVersoes] = useState<Versao[]>([]);
+  const [valorPedido, setValorPedido] = useState<number | null>(null);
+  const [novaVersaoAberta, setNovaVersaoAberta] = useState(false);
+  const [salvandoVersao, setSalvandoVersao] = useState(false);
+  const [erroVersao, setErroVersao] = useState<string | null>(null);
+  const [nv, setNv] = useState({ valorTotal: '', dataEmissao: new Date().toISOString().slice(0, 10), validade: '',
+    totalImpresso: '', equipeMedicaValor: '', anestesistaValor: '', taxasHospitalaresValor: '', opmeMateriaisValor: '',
+    observacao: '', arquivo: null as File | null });
+  const num = (v: string) => (v.trim() === '' ? null : Number(v.replace(/\./g, '').replace(',', '.')));
+  const brl = (v: number | null | undefined) => (v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
+  const dataBr = (v: string | null | undefined) => (v ? new Date(v + (v.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('pt-BR') : '—');
+  const carregarVersoes = useCallback(async () => {
+    if (!orderId) return;
+    try {
+      const r = (await getOrcamentoVersoes(orderId)).data;
+      setVersoes(r?.versoes ?? []); setValorPedido(r?.valorOrcamentoPedido ?? null);
+    } catch { setVersoes([]); }
+  }, [orderId]);
+  useEffect(() => { if (aberto && orderId) void carregarVersoes(); }, [aberto, orderId, carregarVersoes]);
+  const somaNv = [nv.equipeMedicaValor, nv.anestesistaValor, nv.taxasHospitalaresValor, nv.opmeMateriaisValor]
+    .map(num).filter((x): x is number => x != null);
+  const somaRubricasNv = somaNv.length ? somaNv.reduce((a, b) => a + b, 0) : null;
+  const totalRefNv = num(nv.totalImpresso) ?? num(nv.valorTotal);
+  const salvarNovaVersao = async () => {
+    if (!orderId) return;
+    const valor = num(nv.valorTotal);
+    if (!valor || valor <= 0) { setErroVersao('Informe o valor total da nova versão.'); return; }
+    setSalvandoVersao(true); setErroVersao(null);
+    try {
+      let anexoId: number | null = null;
+      if (nv.arquivo) {
+        const up = await uploadAnexoOrder(orderId, nv.arquivo, 'ORCAMENTO');
+        anexoId = up.data?.id ?? null;
+      }
+      await criarOrcamentoVersao(orderId, {
+        valorTotal: valor, dataEmissao: nv.dataEmissao || undefined, validade: nv.validade || null,
+        totalImpresso: num(nv.totalImpresso), equipeMedicaValor: num(nv.equipeMedicaValor),
+        anestesistaValor: num(nv.anestesistaValor), taxasHospitalaresValor: num(nv.taxasHospitalaresValor),
+        opmeMateriaisValor: num(nv.opmeMateriaisValor), anexoId, observacao: nv.observacao,
+      });
+      setNovaVersaoAberta(false);
+      setNv({ ...nv, valorTotal: '', validade: '', totalImpresso: '', equipeMedicaValor: '', anestesistaValor: '',
+        taxasHospitalaresValor: '', opmeMateriaisValor: '', observacao: '', arquivo: null });
+      await carregarVersoes();
+    } catch (e: any) {
+      setErroVersao(e?.response?.data?.error ?? 'Não foi possível salvar a versão.');
+    } finally { setSalvandoVersao(false); }
+  };
+  const reenviar = async (v: Versao) => {
+    if (!orderId) return;
+    const anterior = versoes.find((x) => x.id === v.substituiId);
+    const quando = anterior ? dataBr(anterior.dataEmissao ?? anterior.criadoEm) : null;
+    if (!window.confirm(`Reenviar ao solicitante a versão ${v.numeroVersao ?? ''} (${brl(v.valorTotal)})?` +
+      (quando ? `\n\nO e-mail dirá que este orçamento SUBSTITUI o enviado em ${quando}.` : '') +
+      '\n\nO PDF desta versão vai anexado. Só admin, gerente ou supervisor.')) return;
+    try {
+      const r = await reenviarOrcamentoVersao(orderId, v.id);
+      alert(`E-mail colocado na fila: "${r.data?.assunto}".`);
+      await carregarVersoes();
+    } catch (e: any) {
+      alert(e?.response?.data?.error ?? 'Não foi possível reenviar.');
+    }
+  };
 
   const recarregarCandidatos = useCallback(async () => {
     if (!orderId) return;
@@ -500,6 +578,91 @@ export function FichaPedido({
               CADA LINHA CARREGA DE ONDE VEIO (documento + página). Valor sem origem é
               boato: quem for usá-lo para julgar uma cotação precisa poder abrir a página
               e ver com os próprios olhos. */}
+          {(versoes.length > 0 || valorPedido != null) && (
+            <section className="fic__bloco fic__versoes">
+              <header className="fic__fase">
+                <strong>Versões do nosso orçamento ({versoes.length})</strong>
+                <small>
+                  A equipe refaz o orçamento quando precisa (documento novo); a versão nova vira a
+                  vigente e o valor do pedido a acompanha. O reenvio ao solicitante é um clique
+                  separado e diz que substitui a anterior. PDF antigo nunca some.
+                </small>
+                <button type="button" className="fic__btn" onClick={() => { setErroVersao(null); setNovaVersaoAberta(true); }}>
+                  Refazer orçamento (nova versão)
+                </button>
+              </header>
+              {versoes.length === 0 && (
+                <p className="fic__nota">Ainda sem versão registrada; o valor atual do pedido é {brl(valorPedido)}.</p>
+              )}
+              <ul className="fic__orcpeca-lista">
+                {versoes.map((v) => (
+                  <li key={v.id} className="fic__orcpeca-item" style={{ opacity: v.vigente ? 1 : 0.75 }}>
+                    <span className="fic__orcpeca-valor">v{v.numeroVersao ?? '?'} · {brl(v.valorTotal)}</span>
+                    <span className="fic__orcpeca-quem">
+                      {v.vigente ? <b style={{ color: '#0F766E' }}>vigente</b> : 'substituída'}
+                      {' · emitido '}{dataBr(v.dataEmissao ?? v.criadoEm)}
+                      {' · '}{v.semValidadeDeclarada ? <em style={{ color: '#B45309' }}>sem validade declarada</em> : `válido até ${dataBr(v.validade)}`}
+                    </span>
+                    {v.somaRubricas != null && (
+                      <span className="fic__orcpeca-proc">
+                        equipe {brl(v.equipeMedicaValor)} · anestesista {brl(v.anestesistaValor)} · taxas {brl(v.taxasHospitalaresValor)} · OPME {brl(v.opmeMateriaisValor)}
+                        {v.divergencia != null && Math.abs(v.divergencia) >= 0.01 && (
+                          <em style={{ color: '#B91C1C' }}> · soma das rubricas difere do total em {brl(v.divergencia)}</em>
+                        )}
+                      </span>
+                    )}
+                    {v.somaRubricas == null && <span className="fic__orcpeca-proc"><em>sem decomposição declarada</em></span>}
+                    <span className="fic__orcpeca-origem">
+                      {v.anexoUrl ? <a href={v.anexoUrl} target="_blank" rel="noreferrer">{v.anexoNome || 'PDF'}</a> : 'sem PDF anexado'}
+                      {v.criadoPor ? ` · por ${v.criadoPor}` : ''}
+                      {v.reenviadoEm ? ` · reenviado ${dataHora(v.reenviadoEm)}${v.reenviadoPor ? ` por ${v.reenviadoPor}` : ''}` : ''}
+                      {v.observacao ? ` · ${v.observacao}` : ''}
+                      {v.vigente && v.anexoUrl && (
+                        <>
+                          {' · '}
+                          <button type="button" className="fic__link" onClick={() => void reenviar(v)}>reenviar ao solicitante (substitui)</button>
+                        </>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Dialog header="Refazer orçamento — nova versão" visible={novaVersaoAberta} style={{ width: '46rem', maxWidth: '96vw' }} modal onHide={() => setNovaVersaoAberta(false)}>
+                <div className="fic__form">
+                  <p className="fic__nota">A versão nova passa a ser a vigente e o valor do pedido muda para ela. Nada é enviado por e-mail agora.</p>
+                  <label>Valor total (R$) *<input value={nv.valorTotal} onChange={(e) => setNv({ ...nv, valorTotal: e.target.value })} placeholder="0,00" /></label>
+                  <label>Data de emissão<input type="date" value={nv.dataEmissao} onChange={(e) => setNv({ ...nv, dataEmissao: e.target.value })} /></label>
+                  <label>Validade <small>(vazio = "sem validade declarada", fica visível)</small><input type="date" value={nv.validade} onChange={(e) => setNv({ ...nv, validade: e.target.value })} /></label>
+                  <label>Total impresso no PDF (R$) <small>(se diferente do valor)</small><input value={nv.totalImpresso} onChange={(e) => setNv({ ...nv, totalImpresso: e.target.value })} placeholder="0,00" /></label>
+                  <fieldset className="fic__rubricas">
+                    <legend>Decomposição (opcional — as 4 rubricas das petições)</legend>
+                    <label>Equipe médica<input value={nv.equipeMedicaValor} onChange={(e) => setNv({ ...nv, equipeMedicaValor: e.target.value })} /></label>
+                    <label>Anestesista<input value={nv.anestesistaValor} onChange={(e) => setNv({ ...nv, anestesistaValor: e.target.value })} /></label>
+                    <label>Taxas hospitalares<input value={nv.taxasHospitalaresValor} onChange={(e) => setNv({ ...nv, taxasHospitalaresValor: e.target.value })} /></label>
+                    <label>OPME / materiais<input value={nv.opmeMateriaisValor} onChange={(e) => setNv({ ...nv, opmeMateriaisValor: e.target.value })} /></label>
+                    {somaRubricasNv != null && totalRefNv != null && (
+                      <p className="fic__nota">
+                        Soma das rubricas: <b>{brl(somaRubricasNv)}</b>
+                        {Math.abs(somaRubricasNv - totalRefNv) >= 0.01
+                          ? <span style={{ color: '#B91C1C' }}> · difere do total em {brl(totalRefNv - somaRubricasNv)} (fica registrado, não some)</span>
+                          : <span style={{ color: '#0F766E' }}> · bate com o total</span>}
+                      </p>
+                    )}
+                  </fieldset>
+                  <label>PDF da nova versão<input type="file" accept="application/pdf" onChange={(e) => setNv({ ...nv, arquivo: e.target.files?.[0] ?? null })} /></label>
+                  <label>Observação<input value={nv.observacao} onChange={(e) => setNv({ ...nv, observacao: e.target.value })} placeholder="ex.: OPME renegociado com o Lauro" /></label>
+                  {erroVersao && <p className="fic__erro">{erroVersao}</p>}
+                  <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" className="fic__btn" onClick={() => setNovaVersaoAberta(false)}>Cancelar</button>
+                    <button type="button" className="fic__btn fic__btn--primario" disabled={salvandoVersao} onClick={() => void salvarNovaVersao()}>
+                      {salvandoVersao ? 'Salvando…' : 'Salvar como versão vigente'}
+                    </button>
+                  </div>
+                </div>
+              </Dialog>
+            </section>
+          )}
+
           {dados.orcamentosDaPeca && dados.orcamentosDaPeca.length > 0 && (
             <section className="fic__bloco fic__orcpeca">
               <header className="fic__fase">
