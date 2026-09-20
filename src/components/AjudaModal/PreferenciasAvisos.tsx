@@ -13,7 +13,7 @@
  */
 import { useEffect, useState } from 'react';
 import { InputSwitch } from 'primereact/inputswitch';
-import { NOVIDADES, CHAVE_AVISOS, type NovidadeId } from '../AvisoNovidade/AvisoNovidade';
+import { NOVIDADES, CHAVE_AVISOS, chaveNovidade, type NovidadeId } from '../AvisoNovidade/AvisoNovidade';
 import { getPreferencia, salvarPreferencia } from '../../services/api/orders';
 import { ETAPAS } from '../../pages/processoOperacional/conteudo';
 import { readAuthProfile } from '../../access/authProfile';
@@ -53,7 +53,8 @@ export function PreferenciasAvisos() {
   const alternar = async (id: NovidadeId, ligado: boolean) => {
     const atual = dispensados ?? [];
     // ligado = a pessoa QUER ver o aviso ⇒ ele sai da lista de dispensados.
-    const novos = ligado ? atual.filter((x) => x !== id) : Array.from(new Set([...atual, id]));
+    const k = chaveNovidade(id);
+    const novos = ligado ? atual.filter((x) => x !== k) : Array.from(new Set([...atual, k]));
     setDispensados(novos); // resposta imediata: o switch não deve esperar a rede para reagir
     try {
       await salvarPreferencia(CHAVE_AVISOS, { ids: novos });
@@ -76,7 +77,7 @@ export function PreferenciasAvisos() {
       {dispensados === null && <p>Carregando…</p>}
       {dispensados !== null &&
         ids.map((id) => {
-          const ligado = !dispensados.includes(id);
+          const ligado = !dispensados.includes(chaveNovidade(id));
           return (
             <div key={id} className="mc-prefs__linha">
               <InputSwitch checked={ligado} onChange={(e) => alternar(id, !!e.value)} />

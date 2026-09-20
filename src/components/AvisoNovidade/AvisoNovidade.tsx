@@ -26,8 +26,11 @@ const CHAVE = CHAVE_AVISOS;
 
 export type NovidadeId = 'ficha-pedido' | 'voltar-fase';
 
-export const NOVIDADES: Record<NovidadeId, { titulo: string; texto: string; comoUsar: string }> = {
+/** @R 20/09 17:22: "a novidade tem que ganhar uma versão para voltar" — quem dispensou a v1
+ *  não vê de novo; quando o texto/funcionalidade mudar, sobe `versao` e o aviso volta uma vez. */
+export const NOVIDADES: Record<NovidadeId, { titulo: string; texto: string; comoUsar: string; versao: number }> = {
   'ficha-pedido': {
+    versao: 1,
     titulo: 'Novo: a ficha do pedido',
     texto:
       'Agora dá para ver tudo o que foi feito em cada fase de um pedido — o que foi preenchido, ' +
@@ -35,6 +38,7 @@ export const NOVIDADES: Record<NovidadeId, { titulo: string; texto: string; como
     comoUsar: 'Clique em "Ficha do pedido" na linha do pedido.',
   },
   'voltar-fase': {
+    versao: 1,
     titulo: 'Novo: voltar o pedido para a fase anterior',
     texto:
       'Avançou um pedido sem querer? Agora dá para voltar. O sistema mostra quem fez a mudança ' +
@@ -42,6 +46,9 @@ export const NOVIDADES: Record<NovidadeId, { titulo: string; texto: string; como
     comoUsar: 'Clique em "Voltar fase" na linha do pedido.',
   },
 };
+
+/** chave gravada = id@versão — dispensar a v1 não cala a v2 */
+export const chaveNovidade = (id: NovidadeId) => `${id}@v${NOVIDADES[id].versao}`;
 
 export function AvisoNovidade({ id }: { id: NovidadeId }) {
   const [visivel, setVisivel] = useState(false);
@@ -54,7 +61,7 @@ export function AvisoNovidade({ id }: { id: NovidadeId }) {
         if (!vivo) return;
         const lista: string[] = r.data?.valor?.ids ?? [];
         setDispensados(lista);
-        setVisivel(!lista.includes(id));
+        setVisivel(!lista.includes(chaveNovidade(id)));
       })
       .catch(() => {
         // servidor mudo: mostra. Errar informando custa 1 clique; errar calando esconde
@@ -71,7 +78,7 @@ export function AvisoNovidade({ id }: { id: NovidadeId }) {
 
   const dispensar = async () => {
     setVisivel(false);
-    const novos = Array.from(new Set([...dispensados, id]));
+    const novos = Array.from(new Set([...dispensados, chaveNovidade(id)]));
     try {
       await salvarPreferencia(CHAVE, { ids: novos });
       setDispensados(novos);

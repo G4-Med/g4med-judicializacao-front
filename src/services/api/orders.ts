@@ -447,8 +447,10 @@ export const lerOrcamentoDoArquivo = (orderId: number, arquivo: File) => {
 export const getPreferencia = (chave: string) =>
   api.get(`/preferencias/${chave}/`);
 
+// ⚠ PUT, não POST (medido 20/09 no nginx: POST devolvia 405 e o "Já sei, não mostrar mais"
+// nunca gravava — o aviso voltava em toda tela; o back aceita GET/PUT).
 export const salvarPreferencia = (chave: string, valor: Record<string, unknown>) =>
-  api.post(`/preferencias/${chave}/`, { valor });
+  api.put(`/preferencias/${chave}/`, { valor });
 
 /** O jurídico escolhe (ou descarta) um dos números de processo que o documento trazia.
  *  Decisão @R 17/09/2026: com mais de um CNJ na peça, nada é gravado sozinho — quem

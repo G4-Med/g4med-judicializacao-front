@@ -41,7 +41,7 @@ interface Props {
 }
 
 export function Header({ onMenuClick }: Props) {
-  const [dark, setDark] = useState(false)
+  const [, setDark] = useState(false)
   const [emailsPendentes, setEmailsPendentes] = useState(0)
   const [notificacoesAbertas, setNotificacoesAbertas] = useState(false)
   const [ajudaAberta, setAjudaAberta] = useState(false)
@@ -59,7 +59,8 @@ export function Header({ onMenuClick }: Props) {
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') || 'light'
-    if (savedTheme === 'dark') { setDark(true); setTheme('dark') } else { setTheme('light') }
+    // tema escuro removido (@R 20/09): preferência antiga é ignorada e o claro é forçado
+    void savedTheme; setDark(false); setTheme('light')
   }, [])
 
   useEffect(() => {
@@ -175,9 +176,6 @@ export function Header({ onMenuClick }: Props) {
     }
   }
 
-  const toggleTheme = () => {
-    const nd = !dark; setDark(nd); setTheme(nd ? 'dark' : 'light')
-  }
 
   return (
     <header className="mc-header">
@@ -199,12 +197,9 @@ export function Header({ onMenuClick }: Props) {
         </div>
 
       <div className="mc-header__tools">
-        <Button
-          icon={dark ? 'pi pi-sun' : 'pi pi-moon'}
-          text rounded onClick={toggleTheme} className="mc-iconbtn"
-          tooltip={dark ? 'Tema claro' : 'Tema escuro'}
-          tooltipOptions={{ position: 'bottom' }}
-        />
+        {/* @R 20/09 (reunião com o Fabrício, Fase 6): tema escuro REMOVIDO — ninguém usava e as
+            telas novas não eram testadas nele. `toggleTheme` fica só para quem tiver a preferência
+            antiga gravada: o boot força claro (abaixo). */}
 
         <div className="mc-notif" ref={notificacoesRef}>
           <Button
