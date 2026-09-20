@@ -284,9 +284,13 @@ export function FichaPedido({
         campo: 'statusProcesso',
         excluir_origem: 'reversao',
       });
-      const ultima = (log.data?.itens ?? [])[0];
+      // @R 20/09 13:36 ("erro para voltar fase em qualquer pedido"): a linha da CRIAÇÃO do pedido
+      // (e a da restauração da lixeira) não tem valor anterior — "voltar" para ela mandava fase
+      // vazia ao banco e dava 500. Só uma mudança REAL de fase (com "de" e "para") é desfazível.
+      const itens: Array<{ valorAnterior?: string | null }> = log.data?.itens ?? [];
+      const ultima = itens.find((i) => i.valorAnterior != null && i.valorAnterior !== '') as any;
       if (!ultima) {
-        alert('Este pedido não tem mudança de fase registrada para desfazer.');
+        alert('Este pedido ainda não mudou de fase desde que entrou — não há fase anterior para voltar. Use "Situação do pedido" para escolher a fase.');
         return;
       }
       const ok = window.confirm(

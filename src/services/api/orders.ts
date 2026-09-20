@@ -477,18 +477,23 @@ export const getCnjAConfirmar = () => api.get('/cnj-a-confirmar/');
 export interface CasoPorMedico {
   id: number; paciente: string; procedimento: string; area: string; subarea: string;
   enviadoEm: string | null; diasEsperando: number | null;
-  respostaCotacao: 'ACEITOU' | 'RECUSOU' | null; respostaCotacaoEm: string | null;
+  respostaCotacao: RespostaCotacao | null; respostaCotacaoEm: string | null;
   respostaCotacaoPor: string | null; respostaCotacaoOrigem: string | null;
+  /** #509: com CONDICIONADO, o que o médico precisa antes de cotar (ex.: "ressonância de joelho"). */
+  respostaCotacaoObs: string | null;
   cotacoesPedidas: number | null; ultimaCotacaoPedidaEm: string | null;
 }
+/** ACEITOU quer · RECUSOU não quer (e o pedido VOLTA à busca de cotador, #510) · CONDICIONADO quer mas espera algo (#509). */
+export type RespostaCotacao = 'ACEITOU' | 'RECUSOU' | 'CONDICIONADO';
 export interface MedicoComCasos {
   medico: { id: number; nome: string; categoria: string | null; grupoWhatsapp: string | null };
-  total: number; semResposta: number; aceitou: number; recusou: number;
+  total: number; semResposta: number; aceitou: number; recusou: number; condicionado: number;
   casos: CasoPorMedico[]; mensagem: string;
 }
 export const getOrcamentoMedicoPorMedico = () =>
   api.get<{ medicos: MedicoComCasos[]; totalPedidos: number; foraPorSegredo: number; prazoHoras: number }>(
     '/orders/orcamento-medico/por-medico/');
 /** null limpa a marcação. `origem` fica 'plataforma' aqui; a Eliza-urgência manda 'eliza'. */
-export const registrarRespostaCotacao = (orderId: number, resposta: 'ACEITOU' | 'RECUSOU' | null, observacao?: string) =>
-  api.post(`/orders/${orderId}/resposta-cotacao/`, { resposta, origem: 'plataforma', observacao: observacao || '' });
+export const registrarRespostaCotacao = (orderId: number, resposta: RespostaCotacao | null, observacao?: string) =>
+  api.post<{ ok: boolean; devolvidoABusca: boolean; cotacaoRecusadaPor: string | null }>(
+    `/orders/${orderId}/resposta-cotacao/`, { resposta, origem: 'plataforma', observacao: observacao || '' });

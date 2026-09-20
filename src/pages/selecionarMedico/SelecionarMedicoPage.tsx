@@ -4,6 +4,7 @@ import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgenci
 import type { DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
+import { Tag } from 'primereact/tag';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { MultiSelect } from 'primereact/multiselect';
@@ -615,7 +616,21 @@ export function SelecionarMedicoPage() {
             largura: '17rem',
           })}
           <Column
-            field="paciente" className="col-paciente-upper" body={(r: any) => nomeComCopiar(r.paciente)}
+            field="paciente" className="col-paciente-upper"
+            body={(r: any) => (
+              <>
+                {nomeComCopiar(r.paciente)}
+                {/* #510 (@R 20/09): o médico recusou cotar e o pedido voltou para cá — é o mais urgente
+                    da fila (já perdeu um cotador). O aviso some quando outro médico é escolhido. */}
+                {r.cotacaoRecusadaPor && (
+                  <div style={{ marginTop: 2 }}>
+                    <Tag severity="danger" icon="pi pi-user-minus"
+                      value={`recusado por ${r.cotacaoRecusadaPor}${r.cotacaoRecusadaEm ? ` em ${new Date(r.cotacaoRecusadaEm).toLocaleDateString('pt-BR')}` : ''} — trocar médico`}
+                      title="Este médico respondeu que NÃO quer cotar. Escolha outro médico da mesma área." />
+                  </div>
+                )}
+              </>
+            )}
             header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')}
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}
