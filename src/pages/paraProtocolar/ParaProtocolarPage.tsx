@@ -1485,18 +1485,15 @@ const handleConfirmarProtocolacao = async () => {
             {(naoProtocolarOpcao === 'perda') && (
               <div className="field field-span-4">
                 <label>Motivo da perda <span style={{ color: '#ef4444' }}>*obrigatório</span> — é o que entra no indicador</label>
+                {/* @R 19/09 (PROTOCOLO17): nesta fase o orçamento já existe — só cabem os
+                    motivos de quem tinha o orçamento na mão e não protocolou. Medido: 17
+                    perdas aqui estavam com motivo da triagem e a fase 5 do funil lia zero.
+                    O backend recusa qualquer outro (salvar_protocolar). */}
                 <Dropdown value={motivoPerdaCat} onChange={(e) => setMotivoPerdaCat(e.value)}
                   options={[
-                    { label: 'Paciente já foi operado — nada a fazer', value: 'JA_OPERADO' },
-                    { label: 'Diretoria orientou não protocolar', value: 'DIRETORIA_ORIENTOU' },
-                    { label: 'Decidimos não cotar', value: 'NAO_COTAR' },
-                    { label: 'Não localizamos o médico', value: 'MEDICO_NAO_LOCALIZADO' },
-                    { label: 'Não conseguimos o orçamento', value: 'ORCAMENTO_NAO_OBTIDO' },
-                    { label: 'O médico recusou o pedido', value: 'MEDICO_RECUSOU' },
-                    { label: 'Orçamento não chegou em tempo hábil', value: 'ORCAMENTO_FORA_DO_PRAZO' },
-                    { label: 'Sem exames — médico não quis cotar', value: 'SEM_EXAMES' },
-                    { label: 'Perda por segredo de justiça', value: 'SEGREDO_DE_JUSTICA' },
-                    { label: 'Outro (ver justificativa)', value: 'OUTRO' },
+                    { label: 'Paciente já foi operado / Estado pagou outro orçamento — nada a fazer', value: 'JA_OPERADO' },
+                    { label: 'Jurídico recusou depois do orçamento', value: 'JURIDICO_RECUSOU_POS_ORCAMENTO' },
+                    { label: 'Perda de prazo de protocolação (o processo se perdeu, não foi à SES)', value: 'PRAZO_PROTOCOLACAO' },
                   ]}
                   placeholder="Escolha o motivo" showClear />
               </div>
