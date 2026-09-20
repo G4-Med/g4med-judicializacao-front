@@ -6,7 +6,7 @@ import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
 import './FichaPedido.css';
 
-import { baixarAnexo, salvarBlob, uploadAnexoOrder, getOrcamentoVersoes, criarOrcamentoVersao, reenviarOrcamentoVersao, getWhatsappGrupoPedido, enviarWhatsappGrupoPedido } from '../../services/api/orders';
+import { baixarAnexo, salvarBlob, uploadAnexoOrder, getOrcamentoVersoes, criarOrcamentoVersao, reenviarOrcamentoVersao, promoverOrcamentoVersao, getWhatsappGrupoPedido, enviarWhatsappGrupoPedido } from '../../services/api/orders';
 
 /**
  * FICHA DO PEDIDO — a rastreabilidade numa tela só.
@@ -150,6 +150,7 @@ export function FichaPedido({
     criadoEm: string | null; reenviadoEm: string | null; reenviadoPor: string | null;
   };
   const [versoes, setVersoes] = useState<Versao[]>([]);
+  const [troca, setTroca] = useState<{ anterior: number | null; em: string | null; por: string | null }>({ anterior: null, em: null, por: null });
   /* ── GRUPO WHATSAPP DO CLIENTE (#485 F · @R 19/09) ─────────────────────────────────
      Só aparece se o cliente do pedido tem grupo com envio LIGADO. Texto da cotação + link
      autenticado; nenhum PDF no grupo. Entra numa fila; o relay envia e registra quem/quando. */
@@ -181,7 +182,7 @@ export function FichaPedido({
   const [erroVersao, setErroVersao] = useState<string | null>(null);
   const [nv, setNv] = useState({ valorTotal: '', dataEmissao: new Date().toISOString().slice(0, 10), validade: '',
     totalImpresso: '', equipeMedicaValor: '', anestesistaValor: '', taxasHospitalaresValor: '', opmeMateriaisValor: '',
-    observacao: '', origemRefacao: '', arquivo: null as File | null });
+    observacao: '', origemRefacao: '', jaTrocar: false, arquivo: null as File | null });
   const num = (v: string) => (v.trim() === '' ? null : Number(v.replace(/\./g, '').replace(',', '.')));
   const brl = (v: number | null | undefined) => (v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
   const dataBr = (v: string | null | undefined) => (v ? new Date(v + (v.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('pt-BR') : '—');
@@ -190,6 +191,7 @@ export function FichaPedido({
     try {
       const r = (await getOrcamentoVersoes(orderId)).data;
       setVersoes(r?.versoes ?? []); setValorPedido(r?.valorOrcamentoPedido ?? null);
+      setTroca({ anterior: r?.valorOrcamentoAnterior ?? null, em: r?.orcamentoTrocadoEm ?? null, por: r?.orcamentoTrocadoPor ?? null });
     } catch { setVersoes([]); }
   }, [orderId]);
   useEffect(() => { if (aberto && orderId) void carregarVersoes(); }, [aberto, orderId, carregarVersoes]);
@@ -213,15 +215,26 @@ export function FichaPedido({
         totalImpresso: num(nv.totalImpresso), equipeMedicaValor: num(nv.equipeMedicaValor),
         anestesistaValor: num(nv.anestesistaValor), taxasHospitalaresValor: num(nv.taxasHospitalaresValor),
         opmeMateriaisValor: num(nv.opmeMateriaisValor), anexoId, observacao: nv.observacao,
-        origemRefacao: nv.origemRefacao || undefined,
+        origemRefacao: nv.origemRefacao || undefined, vigente: nv.jaTrocar,
       });
       setNovaVersaoAberta(false);
       setNv({ ...nv, valorTotal: '', validade: '', totalImpresso: '', equipeMedicaValor: '', anestesistaValor: '',
-        taxasHospitalaresValor: '', opmeMateriaisValor: '', observacao: '', origemRefacao: '', arquivo: null });
+        taxasHospitalaresValor: '', opmeMateriaisValor: '', observacao: '', origemRefacao: '', jaTrocar: false, arquivo: null });
       await carregarVersoes();
     } catch (e: any) {
       setErroVersao(e?.response?.data?.error ?? 'Não foi possível salvar a versão.');
     } finally { setSalvandoVersao(false); }
+  };
+  const trocar = async (v: Versao) => {
+    if (!orderId) return;
+    if (!window.confirm(`Trocar o orçamento atual (${brl(valorPedido)}) pela versão ${v.numeroVersao ?? ''} (${brl(v.valorTotal)})?` +
+      '\n\nO valor do pedido passa a ser o desta versão. O valor anterior fica guardado e aparece na ficha. Só admin, gerente ou supervisor.')) return;
+    try {
+      await promoverOrcamentoVersao(orderId, v.id);
+      await carregarVersoes();
+    } catch (e: any) {
+      alert(e?.response?.data?.error ?? 'Não foi possível trocar.');
+    }
   };
   const reenviar = async (v: Versao) => {
     if (!orderId) return;
@@ -642,9 +655,13 @@ export function FichaPedido({
               <header className="fic__fase">
                 <strong>Versões do nosso orçamento ({versoes.length})</strong>
                 <small>
-                  A equipe refaz o orçamento quando precisa (documento novo); a versão nova vira a
-                  vigente e o valor do pedido a acompanha. O reenvio ao solicitante é um clique
-                  separado e diz que substitui a anterior. PDF antigo nunca some.
+                  Orçamento atual do pedido: <b>{brl(valorPedido)}</b>
+                  {troca.anterior != null && (
+                    <> · <span style={{ color: '#7C2D12' }}>anterior {brl(troca.anterior)}, trocado {dataHora(troca.em)}{troca.por ? ` por ${troca.por}` : ''}</span></>
+                  )}
+                  <br />
+                  A versão refeita entra como <b>proposta</b>: o orçamento atual continua até alguém clicar em
+                  &quot;Trocar pelo atual&quot;. O reenvio ao solicitante é outro clique e diz que substitui a anterior. PDF antigo nunca some.
                 </small>
                 <button type="button" className="fic__btn" onClick={() => { setErroVersao(null); setNovaVersaoAberta(true); }}>
                   Refazer orçamento (nova versão)
@@ -666,7 +683,7 @@ export function FichaPedido({
                       </span>
                     )}
                     <span className="fic__orcpeca-quem">
-                      {v.vigente ? <b style={{ color: '#0F766E' }}>vigente</b> : 'substituída'}
+                      {v.vigente ? <b style={{ color: '#0F766E' }}>vigente</b> : (versoes.some((x) => x.vigente && (x.numeroVersao ?? 0) > (v.numeroVersao ?? 0)) ? 'substituída' : <b style={{ color: '#B45309' }}>proposta (não trocada)</b>)}
                       {' · emitido '}{dataBr(v.dataEmissao ?? v.criadoEm)}
                       {' · '}{v.semValidadeDeclarada ? <em style={{ color: '#B45309' }}>sem validade declarada</em> : `válido até ${dataBr(v.validade)}`}
                     </span>
@@ -690,13 +707,23 @@ export function FichaPedido({
                           <button type="button" className="fic__link" onClick={() => void reenviar(v)}>reenviar ao solicitante (substitui)</button>
                         </>
                       )}
+                      {!v.vigente && (
+                        <>
+                          {' · '}
+                          <button type="button" className="fic__link" onClick={() => void trocar(v)}>trocar o orçamento atual por esta versão</button>
+                        </>
+                      )}
                     </span>
                   </li>
                 ))}
               </ul>
               <Dialog header="Refazer orçamento — nova versão" visible={novaVersaoAberta} style={{ width: '46rem', maxWidth: '96vw' }} modal onHide={() => setNovaVersaoAberta(false)}>
                 <div className="fic__form">
-                  <p className="fic__nota">A versão nova passa a ser a vigente e o valor do pedido muda para ela. Nada é enviado por e-mail agora.</p>
+                  <p className="fic__nota">A versão nova entra como PROPOSTA: o orçamento atual do pedido continua até a troca manual. Nada é enviado por e-mail agora.</p>
+                  <label style={{ flexDirection: 'row', alignItems: 'center', gap: '.5rem' }}>
+                    <input type="checkbox" checked={nv.jaTrocar} onChange={(e) => setNv({ ...nv, jaTrocar: e.target.checked })} />
+                    Já trocar o orçamento atual por esta versão agora (o valor do pedido muda; o anterior fica guardado)
+                  </label>
                   <label>Por que está refazendo? (quem pediu, onde, quando) — fica registrado como REFAÇÃO
                     <input value={nv.origemRefacao} onChange={(e) => setNv({ ...nv, origemRefacao: e.target.value })} placeholder="ex.: pedido do Dr. X no grupo Y em 18/09 · desconto sai da equipe" />
                   </label>
