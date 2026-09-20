@@ -440,6 +440,16 @@ const abrirDetalhe = (rowData: ProcessoOrcamentoRow) => {
 // carregarDados dele — sem isso, a marca de "pedido" gravaria no banco e a linha só
 // mostraria na próxima abertura da tela (a cicatriz de 17/09: peça provada, ¬instalada).
 const copiarParaWhatsapp = async (rowData: ProcessoOrcamentoRow, recarregar?: () => void) => {
+  /* SEGREDO DE JUSTIÇA NÃO VAI A PRESTADOR (mandato @R via eliza-urgencia, 20/09 02:08): 7 pedidos em
+     segredo foram disparados a canais de prestador nesta madrugada. O servidor também recusa
+     (409 segredo_de_justica em cotacao-pedida e solicitar-cotacao-medico); aqui barramos ANTES de
+     copiar, porque o texto copiado já é o vazamento. */
+  if ((rowData.statusJuridico || '').trim().toLowerCase() === 'segredo de justiça') {
+    alert('Este processo está em SEGREDO DE JUSTIÇA e não pode ser enviado a prestador.\n\nNada foi copiado. Se o segredo caiu, desmarque em "Segredo de Justiça" antes.');
+    return;
+  }
+  const cnjDaLinha = ((rowData as any).cnj ?? (rowData as any).nprocesso ?? '').toString().trim();
+  if (!cnjDaLinha && !window.confirm('Este pedido está SEM número de processo (CNJ).\n\nEnviar ao prestador mesmo assim?')) return;
   /* OS ANEXOS PRECISAM DIZER O QUE SÃO (@R 18/09: "arrumar a mensagem para falar o que
      é cada anexo que estamos mandando").
 
@@ -510,7 +520,9 @@ const copiarParaWhatsapp = async (rowData: ProcessoOrcamentoRow, recarregar?: ()
   // "dias em aberto" saiu da mensagem: é o nosso controle de fila, e dito ao médico soa
   // como cobrança antes do primeiro pedido. O cálculo foi junto — código que só existia
   // para alimentar uma linha removida vira ruído na próxima leitura.
-  const orcamentos = rowData.orcamentosJuridico?.trim() || 'Nenhum orçamento registrado'
+  /* 'Orçamentos citados nos autos' é campo do BLOCO DE DECISÃO JURÍDICA (interno): estratégia e teto
+     de preço. Saía no WhatsApp do prestador sob 'ORÇAMENTOS JÁ REGISTRADOS NESTE PROCESSO' — removido
+     20/09 (mandato @R). Se um dia o médico precisar saber disso, será um campo PRÓPRIO redigido para sair. */
 
   /* A MENSAGEM QUE VAI AO MÉDICO (@R 18/09) — reescrita com três mudanças:
      · os documentos dizem O QUE SÃO (ver o bloco de anexos acima)
@@ -564,7 +576,6 @@ Os arquivos abaixo foram extraídos do processo e estão identificados por tipo.
 abrir cada link — não é necessário cadastro.
 
 ${linhasAnexos}
-${orcamentos && orcamentos !== 'Nenhum orçamento registrado' ? `\n*ORÇAMENTOS JÁ REGISTRADOS NESTE PROCESSO*\n${orcamentos}\n` : ''}
 *O QUE PRECISAMOS*
 Valor do procedimento, com a composição (equipe, hospitalar e OPME quando houver). Se
 faltar algum exame para você fechar o valor, responda dizendo qual — nós buscamos.
