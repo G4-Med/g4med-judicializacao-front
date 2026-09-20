@@ -6,7 +6,10 @@ export const getMedico = (id: number) => api.get(`/client/medicos/${id}/`);
 export const createMedico = (data: any) => api.post('/client/medicos/', data);
 export const updateMedico = (id: number, data: any) => api.patch(`/client/medicos/${id}/`, data);
 export const deleteMedico = (id: number) => api.delete(`/client/medicos/${id}/`);
-export const getMedicosCompleto = () => api.get('/client/medico-completo/lista/');
+// #495 (@R 19/09): a lista esconde INATIVOS por padrão (seletores, cotação, ficha…);
+// só a tela /clientes pede `incluirInativos` para ver e reativar.
+export const getMedicosCompleto = (opts: { incluirInativos?: boolean } = {}) =>
+  api.get('/client/medico-completo/lista/', { params: opts.incluirInativos ? { incluir_inativos: 1 } : {} });
 
 /** A ÁREA do cliente (@R 17/09): taxa de resposta, perdas POR RESPONSABILIDADE, SLA,
  *  experiência por subárea. `pacientes=1` inclui a lista nominal (PII, sob demanda). */

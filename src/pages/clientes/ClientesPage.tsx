@@ -20,6 +20,7 @@ import {
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { FilterMatchMode } from 'primereact/api';
@@ -485,8 +486,32 @@ export function ClientesPage() {
   };
   useEffect(() => { void carregarGrupos(); }, []);
 
+  /** #495 — inativo sai de todas as listagens (a API já esconde por padrão), mas o
+   *  cadastro e os pedidos dele ficam intactos; reativar é o mesmo botão ao contrário. */
+  const confirmarInativar = (r: ClienteTableRow) => {
+    const inativo = r.status === false;
+    confirmDialog({
+      header: inativo ? 'Reativar cliente' : 'Inativar cliente',
+      message: inativo
+        ? `Reativar "${r.nomeSistema ?? r.nomeMedico ?? r.id}"? Ele volta a aparecer na seleção de médicos e nas cotações.`
+        : `Inativar "${r.nomeSistema ?? r.nomeMedico ?? r.id}"? Ele some da seleção de médicos, das cotações e das listagens. Os pedidos e o histórico dele continuam como estão. Dá para reativar depois nesta tela (filtro Inativos).`,
+      icon: inativo ? 'pi pi-replay' : 'pi pi-ban',
+      acceptLabel: inativo ? 'Reativar' : 'Inativar',
+      rejectLabel: 'Cancelar',
+      acceptClassName: inativo ? 'p-button-success' : 'p-button-danger',
+      accept: async () => {
+        try {
+          await updateMedico(r.id, { status: inativo });
+          await carregarClientes();
+        } catch (e: any) {
+          alert(e?.response?.data?.error ?? e?.response?.data?.detail ?? 'Não foi possível alterar o status.');
+        }
+      },
+    });
+  };
+
   const carregarClientes = async () => {
-    const { data } = await getMedicosCompleto();
+    const { data } = await getMedicosCompleto({ incluirInativos: true });
     setClientes(mapearClientesTabela(data));
     void carregarGrupos();
   };
@@ -494,7 +519,7 @@ export function ClientesPage() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      getMedicosCompleto(),
+      getMedicosCompleto({ incluirInativos: true }),
       getEspecialidades(),
       getSubespecialidades(),
       getHospitais(),
@@ -1611,9 +1636,24 @@ const handleSalvarEdicao = async () => {
       </div>
       </PainelKpis>
 
+      <ConfirmDialog />
       <div className="card">
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />Médicos cadastrados como cliente — dados, contrato e procuração</h2>
           <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
+            {/* #495 (@R 19/09): inativo some de TODAS as listagens do sistema; aqui é o único
+                lugar que o vê — para conferir e reativar. Os pills só mexem no filtro da
+                coluna Status (mesmo filtro que já existia). */}
+            <span className="mc-pills-status" role="group" aria-label="Ativos, inativos ou todos">
+              {([['ativos', 'Ativos', true], ['inativos', 'Inativos', false], ['todos', 'Todos', '']] as const).map(([k, rotulo, v]) => {
+                const atual = (filters.status as any)?.value;
+                const ativo = atual === v || (k === 'todos' && (atual === '' || atual === null || atual === undefined));
+                return (
+                  <Button key={k} label={rotulo} size="small" text={!ativo} outlined={ativo}
+                    severity={k === 'inativos' ? 'danger' : 'secondary'}
+                    onClick={() => setFilters((f) => ({ ...f, status: { value: v, matchMode: FilterMatchMode.EQUALS } }))} />
+                );
+              })}
+            </span>
             <BotaoExportarExcel todos={dataComSequencial} nome="clientes" />
             {colunasCfg.botao}
           </AcoesTabela>
@@ -1749,6 +1789,16 @@ const handleSalvarEdicao = async () => {
               <span style={{ display: 'inline-flex', gap: '.35rem' }}>
                 {editarBodyTemplate(r)}
                 {areaBodyTemplate(r)}
+                {!readOnly && (
+                  <Button
+                    icon={r.status === false ? 'pi pi-replay' : 'pi pi-ban'}
+                    rounded outlined
+                    severity={r.status === false ? 'success' : 'danger'}
+                    aria-label={r.status === false ? `Reativar ${r.nomeSistema ?? r.id}` : `Inativar ${r.nomeSistema ?? r.id}`}
+                    tooltip={r.status === false ? 'Reativar: volta a aparecer nas listagens' : 'Inativar: some das listagens (seleção de médico, cotação); o histórico dos pedidos fica'}
+                    onClick={() => confirmarInativar(r)}
+                  />
+                )}
               </span>
             )}
             style={{ minWidth: '4rem' }}
