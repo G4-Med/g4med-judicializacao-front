@@ -28,7 +28,8 @@ const fmtDataBr = (iso: string | null | undefined) => {
 };
 
 const NOMES_TIPO_ANEXO: Record<string, string> = {
-  ORCAMENTO: 'Orçamento', EMAIL_ORIGINAL: 'E-mail original', PROCESSO: 'Processo',
+  ORCAMENTO: 'Orçamento (nosso)', ORCAMENTO_TERCEIRO: 'Orçamento de terceiro (veio na peça)',
+  EMAIL_ORIGINAL: 'E-mail original', PROCESSO: 'Processo',
   RELATORIO: 'Relatório', PROTOCOLO: 'Protocolo', ACOMPANHAMENTO: 'Acompanhamento',
   DECISAO_INTEIRO_TEOR: 'Decisão — inteiro teor', OUTRO: 'Outro',
 };
