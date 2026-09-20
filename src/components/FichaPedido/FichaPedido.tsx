@@ -145,7 +145,8 @@ export function FichaPedido({
     equipeMedicaValor: number | null; anestesistaValor: number | null;
     taxasHospitalaresValor: number | null; opmeMateriaisValor: number | null;
     anexoId: number | null; anexoUrl: string | null; anexoNome: string | null;
-    substituiId: number | null; observacao: string | null; criadoPor: string | null;
+    substituiId: number | null; substituiNumero?: number | null; observacao: string | null; criadoPor: string | null;
+    origemRefacao?: string | null; refeita?: boolean;
     criadoEm: string | null; reenviadoEm: string | null; reenviadoPor: string | null;
   };
   const [versoes, setVersoes] = useState<Versao[]>([]);
@@ -180,7 +181,7 @@ export function FichaPedido({
   const [erroVersao, setErroVersao] = useState<string | null>(null);
   const [nv, setNv] = useState({ valorTotal: '', dataEmissao: new Date().toISOString().slice(0, 10), validade: '',
     totalImpresso: '', equipeMedicaValor: '', anestesistaValor: '', taxasHospitalaresValor: '', opmeMateriaisValor: '',
-    observacao: '', arquivo: null as File | null });
+    observacao: '', origemRefacao: '', arquivo: null as File | null });
   const num = (v: string) => (v.trim() === '' ? null : Number(v.replace(/\./g, '').replace(',', '.')));
   const brl = (v: number | null | undefined) => (v == null ? '—' : v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
   const dataBr = (v: string | null | undefined) => (v ? new Date(v + (v.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('pt-BR') : '—');
@@ -212,10 +213,11 @@ export function FichaPedido({
         totalImpresso: num(nv.totalImpresso), equipeMedicaValor: num(nv.equipeMedicaValor),
         anestesistaValor: num(nv.anestesistaValor), taxasHospitalaresValor: num(nv.taxasHospitalaresValor),
         opmeMateriaisValor: num(nv.opmeMateriaisValor), anexoId, observacao: nv.observacao,
+        origemRefacao: nv.origemRefacao || undefined,
       });
       setNovaVersaoAberta(false);
       setNv({ ...nv, valorTotal: '', validade: '', totalImpresso: '', equipeMedicaValor: '', anestesistaValor: '',
-        taxasHospitalaresValor: '', opmeMateriaisValor: '', observacao: '', arquivo: null });
+        taxasHospitalaresValor: '', opmeMateriaisValor: '', observacao: '', origemRefacao: '', arquivo: null });
       await carregarVersoes();
     } catch (e: any) {
       setErroVersao(e?.response?.data?.error ?? 'Não foi possível salvar a versão.');
@@ -654,7 +656,15 @@ export function FichaPedido({
               <ul className="fic__orcpeca-lista">
                 {versoes.map((v) => (
                   <li key={v.id} className="fic__orcpeca-item" style={{ opacity: v.vigente ? 1 : 0.75 }}>
-                    <span className="fic__orcpeca-valor">v{v.numeroVersao ?? '?'} · {brl(v.valorTotal)}</span>
+                    <span className="fic__orcpeca-valor">
+                      v{v.numeroVersao ?? '?'} · {brl(v.valorTotal)}
+                      {v.refeita && <b className="fic__badge-refeita" title={v.origemRefacao ?? ''}> REFEITA</b>}
+                    </span>
+                    {v.refeita && (
+                      <span className="fic__orcpeca-proc" style={{ color: '#7C2D12' }}>
+                        refeita{v.substituiNumero != null ? ` · substitui a v${v.substituiNumero}` : ''}{v.origemRefacao ? ` · ${v.origemRefacao}` : ''}
+                      </span>
+                    )}
                     <span className="fic__orcpeca-quem">
                       {v.vigente ? <b style={{ color: '#0F766E' }}>vigente</b> : 'substituída'}
                       {' · emitido '}{dataBr(v.dataEmissao ?? v.criadoEm)}
@@ -687,6 +697,9 @@ export function FichaPedido({
               <Dialog header="Refazer orçamento — nova versão" visible={novaVersaoAberta} style={{ width: '46rem', maxWidth: '96vw' }} modal onHide={() => setNovaVersaoAberta(false)}>
                 <div className="fic__form">
                   <p className="fic__nota">A versão nova passa a ser a vigente e o valor do pedido muda para ela. Nada é enviado por e-mail agora.</p>
+                  <label>Por que está refazendo? (quem pediu, onde, quando) — fica registrado como REFAÇÃO
+                    <input value={nv.origemRefacao} onChange={(e) => setNv({ ...nv, origemRefacao: e.target.value })} placeholder="ex.: pedido do Dr. X no grupo Y em 18/09 · desconto sai da equipe" />
+                  </label>
                   <label>Valor total (R$) *<input value={nv.valorTotal} onChange={(e) => setNv({ ...nv, valorTotal: e.target.value })} placeholder="0,00" /></label>
                   <label>Data de emissão<input type="date" value={nv.dataEmissao} onChange={(e) => setNv({ ...nv, dataEmissao: e.target.value })} /></label>
                   <label>Validade <small>(vazio = "sem validade declarada", fica visível)</small><input type="date" value={nv.validade} onChange={(e) => setNv({ ...nv, validade: e.target.value })} /></label>

@@ -131,3 +131,5 @@ body.dark-theme .fic__situacao-novo { color: #7fb2ff; }
 .fic__rubricas{border:1px solid #e5e7eb;border-radius:6px;padding:.5rem .75rem;display:grid;grid-template-columns:1fr 1fr;gap:.4rem .8rem}
 .fic__rubricas legend{font-size:.82rem;color:#374151;padding:0 .3rem}
 .fic__rubricas p{grid-column:1/-1}
+
+.fic__badge-refeita { margin-left: .4rem; padding: 0 .4rem; border-radius: .3rem; background: #FFEDD5; color: #7C2D12; font-size: .72rem; letter-spacing: .03em; }

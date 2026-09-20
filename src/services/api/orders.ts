@@ -151,7 +151,7 @@ export const getOrcamentoVersoes = (orderId: number) => api.get(`/orders/${order
 export const criarOrcamentoVersao = (orderId: number, data: {
   valorTotal: number; dataEmissao?: string; validade?: string | null; totalImpresso?: number | null;
   equipeMedicaValor?: number | null; anestesistaValor?: number | null; taxasHospitalaresValor?: number | null;
-  opmeMateriaisValor?: number | null; anexoId?: number | null; observacao?: string;
+  opmeMateriaisValor?: number | null; anexoId?: number | null; observacao?: string; origemRefacao?: string;
 }) => api.post(`/orders/${orderId}/orcamento-versoes/`, data);
 export const reenviarOrcamentoVersao = (orderId: number, versaoId: number) =>
   api.post(`/orders/${orderId}/orcamento-versoes/${versaoId}/reenviar/`, {});
