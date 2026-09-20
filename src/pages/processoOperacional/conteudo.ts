@@ -58,6 +58,8 @@ export const ETAPAS: Etapa[] = [
       'Marque COTAR, NÃO COTAR ou SEGREDO DE JUSTIÇA.',
       'Se já houver orçamentos concorrentes nos autos, registre o nome do local completo e o valor — isso vira inteligência de preço.',
       'Se marcar NÃO COTAR, escreva o motivo. Sem motivo, não salva.',
+      'Para COTAR, registre os orçamentos citados nos autos (ou "nenhum") e a observação — a fase de orçamento lê os dois.',
+      'Falta algo para decidir? Marque PENDÊNCIA JURÍDICA (1.1) dizendo o que falta: o pedido fica aqui, com a pendência visível, até o escritório resolver.',
       'Sem a peça de inteiro teor ou sem o CNJ, o sistema avisa o que se perde e deixa você decidir: sem peça não dá para extrair exames e orçamentos que vêm dentro dela; sem CNJ não é possível protocolar.',
     ],
     exemplos: [

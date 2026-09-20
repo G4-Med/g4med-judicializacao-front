@@ -312,6 +312,16 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
       setObsObrigatorio(true);
       return;
     }
+    // Reunião Fabrício 20/09 (Fase 4): para COTAR, os orçamentos citados nos autos e a observação
+    // são obrigatórios (mesma regra no servidor). Pendência jurídica (1.1) exige dizer o que falta.
+    if (statusJuridico === 'Cotar' && orcamentos.trim().length < 3) {
+      alert('Registre os orçamentos citados nos autos antes de marcar Cotar (se não houver nenhum, escreva "nenhum").');
+      return;
+    }
+    if ((statusJuridico === 'Cotar' || statusJuridico === 'Pendência jurídica') && obs.trim().length < 10) {
+      setObsObrigatorio(true);
+      return;
+    }
 
     const decidindo = statusJuridico === 'Cotar' || statusJuridico === 'Não Cotar';
     // @R 15/09 12:17: número digitado com dígito errado travava num alerta sem saída (3 tentativas no
@@ -860,6 +870,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                   <li><strong>Cotar</strong> — o jurídico aprovou o caso: segue para cotação de orçamento com os médicos (exige o nº do processo).</li>
                   <li><strong>Não Cotar</strong> — o jurídico recusou o caso (inviável ou fora do escopo): não segue para orçamento (exige o motivo em Observações).</li>
                   <li><strong>Segredo de Justiça</strong> — processo sob sigilo judicial: tratamento diferenciado, com fluxo próprio de resposta.</li>
+                  <li><strong>Pendência jurídica (1.1)</strong> — falta algo para decidir (documento, número, esclarecimento): o pedido fica na fase 1, marcado com o que falta, e volta para o escritório resolver. Escreva o que falta em Observações.</li>
                 </ul>
               </div>
             </div>
@@ -890,21 +901,27 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
             </div>
 
             <div className="field field-span-4">
-              <label>Orçamentos</label>
+              <label>
+                Orçamentos citados nos autos
+                {statusJuridico === 'Cotar' && <span style={{ color: '#ef4444', marginLeft: '4px' }}>*obrigatório — se não houver, escreva "nenhum"</span>}
+              </label>
               <InputTextarea
                 value={orcamentos}
                 onChange={(e) => setOrcamentos(e.target.value)}
                 rows={4}
                 autoResize
-                placeholder="Descreva os orçamentos recebidos..."
+                placeholder="Nome completo do local e valor de cada orçamento que já está nos autos — ou 'nenhum'"
               />
             </div>
 
             <div className="field field-span-4">
               <label>
                 Observações
-                {statusJuridico === 'Não Cotar' && (
+                {(statusJuridico === 'Não Cotar' || statusJuridico === 'Cotar') && (
                   <span style={{ color: '#ef4444', marginLeft: '4px' }}>*obrigatório</span>
+                )}
+                {statusJuridico === 'Pendência jurídica' && (
+                  <span style={{ color: '#ef4444', marginLeft: '4px' }}>*obrigatório — diga o que falta</span>
                 )}
               </label>
               <InputTextarea
