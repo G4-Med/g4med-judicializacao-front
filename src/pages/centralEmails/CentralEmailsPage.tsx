@@ -457,7 +457,18 @@ function Respostas({ statusInicial }: { statusInicial: string | null }) {
         <Column field="destinatario" header="Para" sortable style={{ minWidth: '15rem' }} />
         <Column field="paciente" header="Paciente / pedido" sortable style={{ minWidth: '14rem' }}
           body={(r) => <span>{r.paciente || '—'}{r.orderId ? <span className="acv-pedido-id col-paciente-upper"> #{r.orderId}</span> : null}</span>} />
-        <Column field="tipoEmail" header="Tipo" sortable style={{ width: '11rem' }} body={(r) => ROTULO_TIPO[r.tipoEmail] ?? r.tipoEmail} />
+        <Column field="tipoEmail" header="Tipo" sortable style={{ width: '13rem' }}
+          body={(r) => (
+            <span>
+              {ROTULO_TIPO[r.tipoEmail] ?? r.tipoEmail}
+              {/* @R 20/09 (Fase 6): quem deu a perda — mesmo dado da tela de Perdas; vazio = ninguém sabe */}
+              {r.tipoEmail === 'DAR_PERDA' && (
+                <span className="ce-sub" title={r.perdaEm ? `em ${fmtDt(r.perdaEm)}` : undefined}>
+                  {' '}· {r.perdaPor ? `perda por ${r.perdaPor}` : 'perda sem autor registrado'}
+                </span>
+              )}
+            </span>
+          )} />
         <Column field="criadoEm" header="Montada em" sortable style={{ width: '8rem' }} body={(r) => fmtDt(r.criadoEm)} />
         <Column field="enviadoEm" header="Enviada em" sortable style={{ width: '8rem' }} body={(r) => fmtDt(r.enviadoEm)} />
         <Column header="Entrega" style={{ width: '11rem' }} body={entrega} />
