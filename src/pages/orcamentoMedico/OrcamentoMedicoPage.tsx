@@ -15,6 +15,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
+import ListagemPorMedico from './ListagemPorMedico';
 import { FilterMatchMode } from 'primereact/api';
 import html2canvas from 'html2canvas';
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
@@ -140,6 +141,7 @@ export function OrcamentoMedicoPage() {
   const [previewTipo, setPreviewTipo] = useState<'pdf' | 'imagem' | 'outro'>('outro');
   const [previewNome, setPreviewNome] = useState('');
   const [cobrancaVisible, setCobrancaVisible] = useState(false);
+  const [porMedicoVisible, setPorMedicoVisible] = useState(false); // #507 listagem por médico
 
   // status manual (etiqueta livre) + troca de médico — 26/08
   const [statusPersonalizados, setStatusPersonalizados] = useState<{ id: number; nome: string }[]>([]);
@@ -712,6 +714,13 @@ ${blocos}
           subtitulo="Processos aguardando orçamento do médico" />
         <div className="page-actions">
           <Button
+            label="Por médico"
+            icon="pi pi-users"
+            outlined
+            title="Lista o que está com cada médico (dia de envio) e copia a listagem para pedir a confirmação em 48 h"
+            onClick={() => setPorMedicoVisible(true)}
+          />
+          <Button
             label="Cobrança"
             icon="pi pi-whatsapp"
             outlined
@@ -720,6 +729,7 @@ ${blocos}
         </div>
       </div>
 
+      <ListagemPorMedico visible={porMedicoVisible} onHide={() => setPorMedicoVisible(false)} onMudou={carregarDados} />
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid">
         <KpisValorEUrgencia linhas={visibleProcessos} todas={dataComMedico} valorDe={(p:any)=>p.refPreco ?? 0} />

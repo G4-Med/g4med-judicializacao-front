@@ -472,3 +472,23 @@ export const reprocessarDocumentos = (orderId: number) =>
  *  @R 17/09: a varredura gravou 163 sugestões e 65 dos 69 pedidos estão num status que
  *  nenhuma tela lista. A fase é o que esconde; por isso esta fila não filtra por ela. */
 export const getCnjAConfirmar = () => api.get('/cnj-a-confirmar/');
+
+// ── #507 (@R 20/09): os casos da fase 3 AGRUPADOS POR MÉDICO + a resposta "quer cotar / não quer" ──
+export interface CasoPorMedico {
+  id: number; paciente: string; procedimento: string; area: string; subarea: string;
+  enviadoEm: string | null; diasEsperando: number | null;
+  respostaCotacao: 'ACEITOU' | 'RECUSOU' | null; respostaCotacaoEm: string | null;
+  respostaCotacaoPor: string | null; respostaCotacaoOrigem: string | null;
+  cotacoesPedidas: number | null; ultimaCotacaoPedidaEm: string | null;
+}
+export interface MedicoComCasos {
+  medico: { id: number; nome: string; categoria: string | null; grupoWhatsapp: string | null };
+  total: number; semResposta: number; aceitou: number; recusou: number;
+  casos: CasoPorMedico[]; mensagem: string;
+}
+export const getOrcamentoMedicoPorMedico = () =>
+  api.get<{ medicos: MedicoComCasos[]; totalPedidos: number; foraPorSegredo: number; prazoHoras: number }>(
+    '/orders/orcamento-medico/por-medico/');
+/** null limpa a marcação. `origem` fica 'plataforma' aqui; a Eliza-urgência manda 'eliza'. */
+export const registrarRespostaCotacao = (orderId: number, resposta: 'ACEITOU' | 'RECUSOU' | null, observacao?: string) =>
+  api.post(`/orders/${orderId}/resposta-cotacao/`, { resposta, origem: 'plataforma', observacao: observacao || '' });
