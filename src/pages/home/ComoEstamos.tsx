@@ -66,11 +66,11 @@ const DEFINICOES: Record<string, DefColuna> = {
   },
   perdido: {
     titulo: 'Perdido',
-    oQueE: 'Valor dos pedidos que viraram PERDA naquele mês — no mês da perda, não no mês do pedido.',
-    campo: 'Σ Order.valorOrcamento onde statusProcesso = "Perda", por Order.dataStatusPerda',
-    regua: 'FLUXO',
-    reguaExplicada: 'Conta no mês em que a perda foi DECIDIDA. Um pedido que entrou em maio e foi perdido em setembro aparece em setembro.',
-    cuidado: 'ATENÇÃO: esta coluna e a "% perdido" ao lado usam RÉGUAS DIFERENTES. Esta é fluxo (mês da perda); a outra é coorte (mês do pedido). Por isso set/26 pode mostrar R$ 3,5 mi perdidos (perdas antigas decididas agora) e só 16% (dos 38 que entraram em setembro). Não é erro de conta — é leitura, e é candidata a correção.',
+    oQueE: 'Dos pedidos que ENTRARAM naquele mês, o valor dos que já viraram PERDA.',
+    campo: 'Σ (Order.valorOrcamento ou refPreco) onde statusProcesso = "Perda", por Order.dataPedido',
+    regua: 'COORTE',
+    reguaExplicada: 'Mesma coorte de Oportunidade: Oportunidade = Ganho + Perdido + Em aberto, exato. Um pedido que entrou em maio e foi perdido em setembro conta em MAIO.',
+    cuidado: 'Era FLUXO (mês da perda) até 20/09 e mostrava R$ 3,5 mi em set/26 — 39 dos 53 eram o lote de conciliação de pedidos antigos fechado em 08/09 (reunião 20/09: "não tem como ter 3 milhões perdidos recebendo 2,7"). Perdas decididas no período aparecem como nota no card, não como a coluna.',
   },
   pctPerdido: {
     titulo: '% perdido',
@@ -294,8 +294,18 @@ function medir(linhas: Linha[], dentro: (d: Date) => boolean, vidaToda = false) 
       linhas.filter((l) => num(l.valorOrcamento) > 0 && !l.dataStatusOrcamento),
       (l) => num(l.valorOrcamento)),
     nEnviadoSemData: linhas.filter((l) => num(l.valorOrcamento) > 0 && !l.dataStatusOrcamento).length,
-    valorPerdido: soma(perdidos, (l) => num(l.valorOrcamento)),
-    nPerdidos: perdidos.length,
+    /* ★ REUNIÃO @R × FABRÍCIO 20/09 (00:11:48): "esse valor perdido, o indicador tá errado,
+       porque não tem como eu ter 3 milhões [perdidos], sendo que eu só [recebi 2,7]".
+       Medido no banco 20/09: 53 perdas DECIDIDAS em setembro somam R$ 3,57 mi — e 39 delas
+       são "Perda (encontro de contas Wesley)", o lote de conciliação de pedidos antigos
+       fechado em 08/09. O card ao lado de "recebido" (coorte) mostrava um fluxo de outra
+       população. Agora o card é COORTE, como o recebido: quem entrou no período e virou
+       perda, pelo mesmo valor de oportunidade — e recebido = ganho + perdido + em aberto
+       fecha por construção. O fluxo (decididas no período) continua disponível como nota. */
+    valorPerdido: coortePerda.reduce((a, l) => a + valorDe(l), 0),
+    nPerdidos: coortePerda.length,
+    valorPerdidoDecidido: soma(perdidos, (l) => num(l.valorOrcamento)),
+    nPerdidosDecidido: perdidos.length,
   };
 }
 
@@ -418,7 +428,10 @@ function SerieMensal({ linhas, moeda }: { linhas: Linha[]; moeda: (v: number) =>
     }
     por(l.dataPedido, 'rec', num(l.refPreco));
     por(l.dataStatusOrcamento, 'env', num(l.valorOrcamento));
-    if (l.statusProcesso === 'Perda') por(l.dataStatusPerda, 'per', num(l.valorOrcamento));
+    /* Reunião 20/09: Perdido virou COORTE (mês em que o pedido ENTROU, pelo mesmo valor de
+       oportunidade das outras colunas). Por fluxo, set/26 mostrava R$ 3,57 mi — 39 de 53 eram
+       o lote de conciliação de pedidos antigos fechado em 08/09. Mesma régua do card. */
+    if (l.statusProcesso === 'Perda') por(l.dataPedido, 'per', num(l.valorOrcamento) > 0 ? num(l.valorOrcamento) : num(l.refPreco));
     if (l.statusProcesso === 'Ganho') por(l.dataResultado, 'gan', num(l.valorGanho) || num(l.valorOrcamento));
     /* PAGO PELO ESTADO (@R 18/09: "os pagos temos que classificar com o que foi pago de
        orçamentos nossos, não vamos por ganhos, concorda").
@@ -669,7 +682,12 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
         <div className="ce__card">
           <span className="ce__rotulo">Valor perdido</span>
           <strong className="ce__valor ce__valor--perda">{moeda(foco.valorPerdido)}</strong>
-          <span className="ce__nota">{foco.nPerdidos} pedido{foco.nPerdidos === 1 ? '' : 's'} com orçamento</span>
+          <span className="ce__nota">
+            {foco.nPerdidos} de {foco.pedidos} que entraram {lente === 'mes' ? 'no mês' : lente === 'ano' ? 'no ano' : 'na vida toda'}
+            {lente !== 'vida' && foco.nPerdidosDecidido > 0 && (
+              <> · decididas no período: {moeda(foco.valorPerdidoDecidido)} ({foco.nPerdidosDecidido}, inclui pedidos antigos)</>
+            )}
+          </span>
         </div>
 
         <div className="ce__card">
