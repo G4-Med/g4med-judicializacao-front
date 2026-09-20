@@ -230,7 +230,7 @@ export const GROUP_PERMISSIONS: Record<UserGroup, GroupPermissionConfig> = {
 export const SCREEN_PATHS: Record<ScreenKey, string> = {
   home: '/home',
   dashboard: '/dashboard',
-  processos: '/processos',
+  processos: '/base-processos',
   clientes: '/clientes',
   juridico: '/juridico',
   selecionarMedico: '/selecionar-medico',

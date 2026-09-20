@@ -1,9 +1,14 @@
 /* O lápis acompanha o nome, some quando ninguém está mexendo naquela linha e
    reaparece no hover, no foco por teclado e sempre no toque (que não tem hover). */
-.mc-celula-medico { display: inline-flex; align-items: center; gap: .25rem; }
+.mc-celula-medico { display: flex; align-items: center; gap: .25rem; width: 100%; min-width: 0; }
+/* @R 20/09 16:10 (print do Orçamento Médico): o lápis ficava cortado/escondido — a célula era
+   inline-flex e o nome longo (IBG SAÚDE em 3 linhas) empurrava o botão pra fora da coluna, e ele
+   só aparecia no hover. Agora o nome quebra dentro do seu espaço e o lápis NUNCA encolhe. */
+.mc-celula-medico > span:first-child { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.mc-celula-medico__lapis.p-button.p-button-text { flex: 0 0 auto; }
 .mc-celula-medico__lapis.p-button.p-button-text {
   width: 1.75rem; height: 1.75rem; padding: 0;
-  opacity: 0; transition: opacity .12s ease;
+  opacity: .55; transition: opacity .12s ease;
 }
 tr:hover .mc-celula-medico__lapis.p-button.p-button-text,
 .mc-celula-medico:hover .mc-celula-medico__lapis.p-button.p-button-text,

@@ -1913,8 +1913,9 @@ ${linhasAnexos}
     <div className="processos-page">
       <div className="page-header">
         <div>
-          <h1>Processos</h1>
-          <p>Gestão dos casos de urgência e emergência judicial</p>
+          {/* @R 20/09 15:21 (reunião, 00:17:39): "Base de processo, o lugar aonde estão todos os processos" — o nome diz o que a tela é. */}
+          <h1>Base de Processos G4MED</h1>
+          <p>Todos os processos, em todas as fases — status, valor de referência e responsável por etapa</p>
         </div>
 
         <div className="page-actions">

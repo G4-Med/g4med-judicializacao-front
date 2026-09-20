@@ -181,3 +181,7 @@ body.dark-theme .mc-side-children { border-left-color: #334155; }
 .mc-side-dono--g4med { background: rgba(124, 58, 237, 0.14); color: #7C3AED; }
 body.dark-theme .mc-side-dono--instituto { background: rgba(15, 118, 110, 0.28); color: #2dd4bf; }
 body.dark-theme .mc-side-dono--g4med { background: rgba(124, 58, 237, 0.28); color: #c4b5fd; }
+
+/* @R 20/09: item em reforma — visível, não clicável */
+.mc-side-item--reforma { opacity: .5; cursor: not-allowed; font-style: italic; }
+.mc-side-item--reforma:hover { background: transparent; }

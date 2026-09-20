@@ -21,8 +21,9 @@ const isGroup = (item: MenuConfigItem): item is MenuGroupConfig => 'children' in
 
 export const MENU_CONFIG: MenuConfigItem[] = [
   { label: 'Home', icon: 'pi pi-home', path: '/home', screen: 'home' },
+  // em reforma (@R 20/09) — o menu vivo é o menuConfigClean; aqui só espelha
   { label: 'Dashboard', icon: 'pi pi-chart-bar', path: '/dashboard', screen: 'dashboard' },
-  { label: 'Processos', icon: 'pi pi-briefcase', path: '/processos', screen: 'processos' },
+  { label: 'Base de Processos', icon: 'pi pi-briefcase', path: '/base-processos', screen: 'processos' },
   { label: 'Clientes', icon: 'pi pi-users', path: '/clientes', screen: 'clientes' },
   {
     label: 'Protocolos',

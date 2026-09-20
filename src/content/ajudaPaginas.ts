@@ -49,7 +49,7 @@ export const AJUDA_PAGINAS: Record<string, AjudaPagina> = {
     oQueE: 'Quanto tempo cada fase levou, contra o prazo combinado com o Estado — e quem está segurando o quê agora.',
     contem: ['Cumprimento por período (mensal/trimestral/semestral/anual/personalizado)', 'Tempo por médico', 'Lista de fora do prazo agora', 'Trajetória de 1 pedido (busca por número ou nome do paciente)'],
   },
-  '/processos': {
+  '/base-processos': {
     titulo: 'Processos',
     oQueE: 'A lista mestra de todos os pedidos, com filtro em cada coluna — o painel de controle geral.',
     contem: ['Cards de indicador (recolhem no painel "Indicadores")', 'Tabela completa com filtros', 'O pontinho colorido ao lado do status mostra quem é o dono daquela fase (verde=Instituto Mateus, roxo=G4MED, laranja=Judiciário)'],

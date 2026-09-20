@@ -130,9 +130,12 @@ export function Menu({ visible, onHide }: Props) {
                     <button
                       key={key}
                       type="button"
-                      className={'mc-side-item' + (isActive(item) ? ' mc-side-item--active' : '')}
+                      className={'mc-side-item' + (isActive(item) ? ' mc-side-item--active' : '') + (item.disabled ? ' mc-side-item--reforma' : '')}
                       data-tour={TOUR_ANCHOR_BY_LABEL[String(item.label ?? '')]}
-                      onClick={() => handleLeafClick(item)}
+                      disabled={!!item.disabled}
+                      aria-disabled={!!item.disabled}
+                      title={item.disabled ? 'Em reforma — volta em breve' : undefined}
+                      onClick={() => { if (!item.disabled) handleLeafClick(item) }}
                     >
                       {item.icon && <i className={String(item.icon)} />}
                       <span title={String(item.label ?? '')}>{item.label}</span>

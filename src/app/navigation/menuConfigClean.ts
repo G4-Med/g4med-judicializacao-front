@@ -22,6 +22,9 @@ interface MenuLeafConfig {
   icon?: string;
   path: string;
   screen: ScreenKey;
+  /** @R 20/09 15:47: item visível mas NÃO clicável, com o motivo no rótulo — a tela
+   *  existe e vai voltar, só não deve ser usada enquanto está sendo refeita. */
+  emReforma?: boolean;
 }
 
 interface MenuGroupConfig {
@@ -37,11 +40,11 @@ const isGroup = (item: MenuConfigItem): item is MenuGroupConfig => 'children' in
 export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
   { label: 'Processo Operacional', icon: 'pi pi-book', path: '/processo-operacional', screen: 'processoOperacional' },
   { label: 'Home', icon: 'pi pi-home', path: '/home', screen: 'home' },
-  { label: 'Dashboard', icon: 'pi pi-chart-bar', path: '/dashboard', screen: 'dashboard' },
+  { label: 'Dashboard', icon: 'pi pi-chart-bar', path: '/dashboard', screen: 'dashboard', emReforma: true },
   { label: 'Funil', icon: 'pi pi-filter', path: '/funil', screen: 'funil' },
   { label: 'SLA', icon: 'pi pi-clock', path: '/sla', screen: 'sla' },
   { label: 'Notificações', icon: 'pi pi-bell', path: '/notificacoes-historico', screen: 'notificacoesHistorico' },
-  { label: 'Base de Processos', icon: 'pi pi-briefcase', path: '/processos', screen: 'processos' },
+  { label: 'Base de Processos', icon: 'pi pi-briefcase', path: '/base-processos', screen: 'processos' },
   // Processamento: fila de leitura, ritmo e o que NUNCA foi lido. Fica ao lado de Base de
   // Processos porque responde sobre os MESMOS documentos, do outro ângulo: lá se vê o pedido,
   // aqui se vê se o que está dentro dele já foi lido.
@@ -140,6 +143,17 @@ export function buildMenuItems({
     }
 
     if (!canView(item.screen)) return [];
+
+    if (item.emReforma) {
+      return [
+        {
+          label: `${item.label} (em reforma)`,
+          icon: 'pi pi-wrench',
+          disabled: true,
+          className: 'menu-em-reforma',
+        } as MenuItem,
+      ];
+    }
 
     return [
       {

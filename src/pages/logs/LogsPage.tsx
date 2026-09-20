@@ -22,13 +22,16 @@ interface LinhaLog {
   createDate: string;
 }
 
-const CAMPOS = [
-  { label: 'Todos os campos', value: '' },
-  { label: 'Status do Processo', value: 'statusProcesso' },
-  { label: 'Status Jurídico', value: 'statusJuridico' },
-  { label: 'Status do Orçamento', value: 'statusOrcamento' },
-  { label: 'Status da Perda', value: 'statusPerda' },
-];
+// Rótulos dos campos conhecidos; qualquer campo novo que o log registrar aparece pelo nome
+// cru (a lista vem do servidor — `campos` — não é fixa aqui).
+const ROTULO_CAMPO: Record<string, string> = {
+  statusProcesso: 'Status do Processo',
+  statusJuridico: 'Status Jurídico',
+  statusOrcamento: 'Status do Orçamento',
+  statusPerda: 'Status da Perda',
+  cotacao: 'Resposta da cotação',
+  idMedico: 'Médico do pedido',
+};
 
 function formatarData(iso: string): string {
   try {
@@ -47,6 +50,13 @@ export function LogsPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [campo, setCampo] = useState('');
   const [orderId, setOrderId] = useState('');
+  // @R 20/09: auditoria por NOME do paciente — quem procura "o que aconteceu com fulano"
+  // não sabe o número do pedido. Também usuário e período, que o servidor já filtrava.
+  const [paciente, setPaciente] = useState('');
+  const [usuario, setUsuario] = useState('');
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim] = useState('');
+  const [camposServidor, setCamposServidor] = useState<string[]>([]);
   const [revertendoId, setRevertendoId] = useState<number | null>(null);
 
   const carregar = () => {
@@ -55,16 +65,26 @@ export function LogsPage() {
     const filtros: Record<string, string> = {};
     if (campo) filtros.campo = campo;
     if (orderId.trim()) filtros.orderId = orderId.trim();
+    if (paciente.trim()) filtros.paciente = paciente.trim();
+    if (usuario.trim()) filtros.usuario = usuario.trim();
+    if (dataInicio) filtros.dataInicio = dataInicio;
+    if (dataFim) filtros.dataFim = dataFim;
     getLogAuditoria(filtros)
       .then(({ data }) => {
         setItens(data.itens ?? []);
         setTotal(data.total ?? 0);
+        if (Array.isArray(data.campos)) setCamposServidor(data.campos);
       })
       .catch(() => setErro('Não foi possível carregar o log de auditoria.'))
       .finally(() => setLoading(false));
   };
 
   useEffect(() => { carregar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const CAMPOS = [
+    { label: 'Todos os campos', value: '' },
+    ...camposServidor.map((c) => ({ label: ROTULO_CAMPO[c] ?? c, value: c })),
+  ];
 
   const reverter = async (linha: LinhaLog) => {
     const confirmado = window.confirm(
@@ -90,7 +110,7 @@ export function LogsPage() {
       <div className="logs-head">
         <div>
           <h1>Log de Auditoria</h1>
-          <p>Todo campo de status já é rastreado automaticamente — quem mudou, quando, de onde veio.</p>
+          <p>Auditoria de cada edição: quem mudou, o quê, quando e de onde veio. Busque pelo nome do paciente para ver tudo que aconteceu com ele.</p>
         </div>
       </div>
 
@@ -103,11 +123,29 @@ export function LogsPage() {
           className="logs-filtro-campo"
         />
         <InputText
+          value={paciente}
+          onChange={(e) => setPaciente(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') carregar(); }}
+          placeholder="Nome do paciente"
+          className="logs-filtro-paciente"
+          autoFocus
+        />
+        <InputText
           value={orderId}
           onChange={(e) => setOrderId(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') carregar(); }}
           placeholder="Nº do pedido"
           className="logs-filtro-order"
         />
+        <InputText
+          value={usuario}
+          onChange={(e) => setUsuario(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') carregar(); }}
+          placeholder="Quem editou (usuário)"
+          className="logs-filtro-usuario"
+        />
+        <InputText type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} title="De" />
+        <InputText type="date" value={dataFim} onChange={(e) => setDataFim(e.target.value)} title="Até" />
         <Button label="Buscar" icon="pi pi-search" onClick={carregar} />
       </div>
 

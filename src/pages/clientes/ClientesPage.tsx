@@ -570,10 +570,18 @@ export function ClientesPage() {
       acceptClassName: inativo ? 'p-button-success' : 'p-button-danger',
       accept: async () => {
         try {
-          await updateMedico(r.id, { status: inativo });
+          // @R 20/09 15:24: ele inativou alguém e o filtro Inativos veio vazio — no servidor
+          // NENHUM PATCH chegou (nginx 18-20/09, 0 linhas). O clique morreu no caminho sem
+          // dizer nada. Agora o resultado é lido de volta do servidor e mostrado.
+          const resp = await updateMedico(r.id, { status: inativo });
+          const gravado = resp?.data?.status;
+          if (gravado !== inativo) throw new Error(`O servidor devolveu status=${String(gravado)}; nada mudou.`);
+          alert(inativo
+            ? `"${r.nomeSistema ?? r.nomeMedico ?? r.id}" reativado.`
+            : `"${r.nomeSistema ?? r.nomeMedico ?? r.id}" inativado — aparece só no filtro Inativos.`);
           await carregarClientes();
         } catch (e: any) {
-          alert(e?.response?.data?.error ?? e?.response?.data?.detail ?? 'Não foi possível alterar o status.');
+          alert(e?.response?.data?.error ?? e?.response?.data?.detail ?? e?.message ?? 'Não foi possível alterar o status.');
         }
       },
     });

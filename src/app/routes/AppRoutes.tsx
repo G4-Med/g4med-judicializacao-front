@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Route, Routes, Navigate } from 'react-router-dom';
 
 import { MainLayout } from '../layout/MainLayout';
 
@@ -58,7 +58,9 @@ export function AppRoutes() {
         <Route path="/home" element={<ProtectedScreen screen="home"><HomePage /></ProtectedScreen>} />
         <Route path="/dashboard" element={<ProtectedScreen screen="dashboard"><DashboardPage /></ProtectedScreen>} />
 
-        <Route path="/processos" element={<ProtectedScreen screen="processos"><ProcessosPage /></ProtectedScreen>} />
+        <Route path="/base-processos" element={<ProtectedScreen screen="processos"><ProcessosPage /></ProtectedScreen>} />
+        {/* @R 20/09 15:21: a rota ganhou nome; o endereço antigo continua abrindo (favoritos e links de mensagem). */}
+        <Route path="/processos" element={<Navigate to="/base-processos" replace />} />
         <Route path="/clientes" element={<ProtectedScreen screen="clientes"><ClientesPage /></ProtectedScreen>} />
         <Route path="/processamento" element={<ProtectedScreen screen="processos"><ProcessamentoPage /></ProtectedScreen>} />
 

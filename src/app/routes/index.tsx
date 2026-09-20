@@ -9,7 +9,7 @@ export function AppRoutes() {
       <Route path="/" element={<MainLayout />}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="processos" element={<ProcessosPage />} />
+        <Route path="base-processos" element={<ProcessosPage />} />
       </Route>
     </Routes>
   );
