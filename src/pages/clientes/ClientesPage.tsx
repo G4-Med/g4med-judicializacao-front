@@ -2062,9 +2062,9 @@ const handleSalvarEdicao = async () => {
             <div className="cliente-form-grid">
               <div className="field field-span-2">
                 <label>CNPJ</label>
-                <div className="p-inputgroup">
-                  <InputText value={novoCliente.cnpj} onChange={(e) => updateNovoCliente('cnpj', formatarCnpj(e.target.value))} placeholder="00.000.000/0000-00" />
-                  <Button type="button" icon="pi pi-search" label="Consultar" tooltip="Busca na Receita e preenche só o que estiver vazio"
+                <InputText value={novoCliente.cnpj} onChange={(e) => updateNovoCliente('cnpj', formatarCnpj(e.target.value))} placeholder="00.000.000/0000-00" style={{ width: '100%' }} />
+                <div className="mc-cnpj-acoes">
+                  <Button type="button" icon="pi pi-search" label="Consultar na Receita" size="small" tooltip="Busca na Receita e preenche só o que estiver vazio"
                     onClick={() => void consultarReceita(novoCliente, (patch) => setNovoCliente((c) => ({ ...c, ...patch })), 'vazios')} />
                 </div>
               </div>
@@ -2266,11 +2266,13 @@ const handleSalvarEdicao = async () => {
                 <div className="cliente-form-grid">
                   <div className="field field-span-2">
                     <label>CNPJ</label>
-                    <div className="p-inputgroup">
-                      <InputText value={clienteEditando.cnpj} onChange={(e) => updateClienteEditando('cnpj', formatarCnpj(e.target.value))} placeholder="00.000.000/0000-00" />
-                      <Button type="button" icon="pi pi-search" label="Consultar" tooltip="Busca na Receita e preenche só o que estiver vazio"
+                    {/* @R 20/09 16:27: os 2 botões dentro do inputgroup estouravam a coluna (texto em 3 linhas,
+                        um por cima do outro). Agora o CNPJ ocupa a linha e as ações ficam abaixo, lado a lado. */}
+                    <InputText value={clienteEditando.cnpj} onChange={(e) => updateClienteEditando('cnpj', formatarCnpj(e.target.value))} placeholder="00.000.000/0000-00" style={{ width: '100%' }} />
+                    <div className="mc-cnpj-acoes">
+                      <Button type="button" icon="pi pi-search" label="Consultar na Receita" size="small" tooltip="Busca na Receita e preenche só o que estiver vazio"
                         onClick={() => void consultarReceita(clienteEditando, (patch) => setClienteEditando((c) => (c ? { ...c, ...patch } : c)), 'vazios')} />
-                      <Button type="button" icon="pi pi-refresh" label="Atualizar da Receita" severity="warning" outlined tooltip="Sobrescreve os dados da empresa com a Receita — mostra antes/depois e pede confirmação"
+                      <Button type="button" icon="pi pi-refresh" label="Atualizar da Receita" size="small" severity="warning" outlined tooltip="Sobrescreve os dados da empresa com a Receita — mostra antes/depois e pede confirmação"
                         onClick={() => void consultarReceita(clienteEditando, (patch) => setClienteEditando((c) => (c ? { ...c, ...patch } : c)), 'sobrescrever')} />
                     </div>
                     {clienteEditando.receitaConsultadaEm && (

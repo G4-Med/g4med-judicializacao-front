@@ -54,6 +54,8 @@ void uploadAnexoOrder;
 void getBaseOrcamento;
 
 interface ProcessoOrcamento {
+  /** #507/#517: resposta do médico à cotação — a Cobrança só lista quem ACEITOU. */
+  respostaCotacao?: 'ACEITOU' | 'RECUSOU' | 'CONDICIONADO' | null;
   id: number;
   paciente: string;
   dataNascimento: string | null;
@@ -257,6 +259,12 @@ export function OrcamentoMedicoPage() {
     dataComMedico.forEach((item) => {
       const medicoNome = (item.medico ?? '').trim();
       if (!medicoNome || medicoNome.toUpperCase() === 'SEM PROFISSIONAL') {
+        return;
+      }
+      // @R 20/09 16:20: "em cobrança só pode existir o que foi aceito pelo médico — se não foi
+      // aceito, não marcamos". Quem ainda não respondeu vai pelo "Por médico" (listagem em 48 h);
+      // aqui só entra quem disse SIM e ainda não mandou o orçamento.
+      if (item.respostaCotacao !== 'ACEITOU') {
         return;
       }
 
@@ -1381,7 +1389,7 @@ ${blocos}
         <div className="orcamento-cobranca-list">
           {cobrancasPorMedico.length === 0 && (
             <div className="orcamento-cobranca-empty">
-              Nenhum médico com orçamento pendente para cobrança.
+              Nenhum médico ACEITOU cotar e ainda está devendo o orçamento. (Quem ainda não respondeu está em "Por médico".)
             </div>
           )}
 

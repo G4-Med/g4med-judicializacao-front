@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
+import { InputText } from 'primereact/inputtext';
 import { Tag } from 'primereact/tag';
 import { getOrcamentoMedicoPorMedico, registrarRespostaCotacao } from '../../services/api/orders';
 import type { MedicoComCasos, CasoPorMedico, RespostaCotacao } from '../../services/api/orders';
@@ -24,6 +25,25 @@ export default function ListagemPorMedico({ visible, onHide, onMudou }: Props) {
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando] = useState<number | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  // @R 20/09 16:20: "cada médico vir fechado para dar para todos e abrir outra coisa, pesquisar por
+  // texto também" — com 10 médicos e 38 casos a lista não cabia na tela; agora cada médico é um
+  // acordeão fechado e a busca abre só quem tem o que foi digitado.
+  const [abertos, setAbertos] = useState<Record<number, boolean>>({})
+  const [busca, setBusca] = useState('')
+  const alternar = (id: number) => setAbertos((a) => ({ ...a, [id]: !a[id] }))
+  const normalizar = (t: string) => (t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const filtrados = useMemo(() => {
+    const q = normalizar(busca.trim())
+    if (!q) return dados
+    return dados
+      .map((m) => {
+        const medicoBate = normalizar(m.medico.nome).includes(q)
+        const casos = medicoBate ? m.casos : m.casos.filter((c) =>
+          normalizar(`${c.id} ${c.paciente} ${c.procedimento || ''} ${c.area || ''}`).includes(q))
+        return casos.length ? { ...m, casos } : null
+      })
+      .filter((m): m is MedicoComCasos => !!m)
+  }, [dados, busca])
 
   const carregar = async () => {
     setCarregando(true); setErro(null)
@@ -83,20 +103,35 @@ export default function ListagemPorMedico({ visible, onHide, onMudou }: Props) {
           {meta.foraPorSegredo > 0 && <> · <b>{meta.foraPorSegredo}</b> fora por segredo de justiça (não vão a prestador)</>}
         </p>
       )}
+      <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', marginBottom: '.75rem', flexWrap: 'wrap' }}>
+        <span className="p-input-icon-left" style={{ flex: '1 1 18rem' }}>
+          <i className="pi pi-search" />
+          <InputText value={busca} onChange={(e) => setBusca(e.target.value)} style={{ width: '100%' }}
+            placeholder="Buscar médico, paciente, procedimento ou nº do pedido" />
+        </span>
+        <Button label="Abrir todos" size="small" text onClick={() => setAbertos(Object.fromEntries(dados.map((m) => [m.medico.id, true])))} />
+        <Button label="Fechar todos" size="small" text onClick={() => setAbertos({})} />
+      </div>
       {carregando && <p>Carregando…</p>}
       {!carregando && dados.length === 0 && !erro && <p>Nenhum pedido com médico designado nesta fase.</p>}
-      {dados.map(m => (
-        <div key={m.medico.id} style={{ border: '1px solid var(--surface-border)', borderRadius: 8, padding: '.75rem 1rem', marginBottom: '.75rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: '.5rem' }}>
+      {!carregando && dados.length > 0 && filtrados.length === 0 && <p>Nada bate com "{busca}".</p>}
+      {filtrados.map(m => {
+        const aberto = !!abertos[m.medico.id] || !!busca.trim()
+        return (
+        <div key={m.medico.id} style={{ border: '1px solid var(--surface-border)', borderRadius: 8, padding: '.5rem 1rem', marginBottom: '.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '.75rem', flexWrap: 'wrap', marginBottom: aberto ? '.5rem' : 0, cursor: 'pointer' }}
+            role="button" tabIndex={0} aria-expanded={aberto} onClick={() => alternar(m.medico.id)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); alternar(m.medico.id) } }}>
+            <i className={aberto ? 'pi pi-chevron-down' : 'pi pi-chevron-right'} style={{ color: 'var(--text-color-secondary)' }} />
             <strong style={{ fontSize: '1.05rem' }}>{m.medico.nome}</strong>
             <span style={{ color: 'var(--text-color-secondary)' }}>
               {m.total} caso(s) · {m.semResposta} sem resposta · {m.aceitou} quer · {m.condicionado || 0} aguardando exame
             </span>
             <Button label="Copiar listagem" icon="pi pi-whatsapp" size="small" outlined
               title="Copia a lista dos casos sem resposta, com o dia de envio e o pedido de confirmação em 48 h"
-              onClick={() => copiarListagem(m)} style={{ marginLeft: 'auto' }} />
+              onClick={(e) => { e.stopPropagation(); copiarListagem(m) }} style={{ marginLeft: 'auto' }} />
           </div>
-          <table className="p-datatable-table" style={{ width: '100%', fontSize: '.9rem' }}>
+          {aberto && <table className="p-datatable-table" style={{ width: '100%', fontSize: '.9rem' }}>
             <thead><tr style={{ textAlign: 'left', color: 'var(--text-color-secondary)' }}>
               <th>Pedido</th><th>Paciente</th><th>Procedimento</th><th>Enviado em</th><th>Resposta</th><th></th>
             </tr></thead>
@@ -121,9 +156,9 @@ export default function ListagemPorMedico({ visible, onHide, onMudou }: Props) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table>}
         </div>
-      ))}
+      )})}
     </Dialog>
   )
 }

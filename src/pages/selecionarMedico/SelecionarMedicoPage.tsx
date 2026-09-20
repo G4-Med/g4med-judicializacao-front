@@ -257,15 +257,20 @@ export function SelecionarMedicoPage() {
     void carregarDados();
   }, [versaoDados]);
 
+  // @R 20/09 16:20: "o pedido com recusa temos que ter como filtrar — sem médico e quem recusou,
+  // para voltarmos a procurar". #510 já põe os recusados no topo com o aviso; este filtro isola.
+  const [soRecusados, setSoRecusados] = useState(false);
+  const totalRecusados = useMemo(() => processos.filter((p: any) => p.cotacaoRecusadaPor).length, [processos]);
   const dataComCamposCalculados = useMemo<ProcessoResumoTableRow[]>(() => {
-    return processos.map((item, index) => {
+    const base = soRecusados ? processos.filter((p: any) => p.cotacaoRecusadaPor) : processos;
+    return base.map((item, index) => {
       return {
         ...item,
         sequencial: index + 1,
         dias: Number(item.diasSolicitados ?? 0),
       };
     });
-  }, [processos]);
+  }, [processos, soRecusados]);
 
   useEffect(() => { setVisibleProcessos(dataComCamposCalculados); }, [dataComCamposCalculados]);
 
@@ -465,6 +470,13 @@ export function SelecionarMedicoPage() {
       <div className="page-header">
         <CabecalhoFase nome="Selecionar Médico" screen="selecionarMedico"
           subtitulo="Defina o médico responsável para os processos pendentes." />
+        {totalRecusados > 0 && (
+          <Button
+            label={soRecusados ? `Só recusados (${totalRecusados}) — ver todos` : `Recusados por médico (${totalRecusados})`}
+            icon="pi pi-user-minus" size="small" outlined={!soRecusados} severity="danger"
+            tooltip="Pedidos que um médico recusou cotar e voltaram para a busca — mostra quem recusou"
+            onClick={() => setSoRecusados((v) => !v)} />
+        )}
         {!readOnly && (
           <div className="page-actions">
             <Button
