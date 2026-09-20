@@ -6,7 +6,7 @@ import type {
   DataTableSortEvent
 } from 'primereact/datatable';
 import {
-  getMedicosCompleto, createMedico, updateMedico,
+  getMedicosCompleto, createMedico, updateMedico, consultarCnpj,
   createDadosMedico, updateDadosMedico,
   createEmpresaMedico, updateEmpresaMedico,
   createDadosPessoais, updateDadosPessoais,
@@ -63,6 +63,11 @@ interface Cliente {
   telefone: string;
   email: string;
   cnpj: string;
+  cnae: string;
+  situacaoCadastral: string;
+  dataAbertura: string;
+  receitaConsultadaEm: string;
+  receitaFonte: string;
   grupoWhatsapp: string;
   takeRate: number | null;
   modoValidacao: string;
@@ -173,6 +178,11 @@ const clienteInicial: ClienteTableRow = {
   telefone: '',
   email: '',
   cnpj: '',
+  cnae: '',
+  situacaoCadastral: '',
+  dataAbertura: '',
+  receitaConsultadaEm: '',
+  receitaFonte: '',
   grupoWhatsapp: '',
   takeRate: null,
   modoValidacao: '',
@@ -432,6 +442,11 @@ export function ClientesPage() {
       crm: m.crm ?? '',
       razaoSocial: m.razaoSocial ?? '',
       cnpj: m.cnpj ?? '',
+      cnae: m.cnae ?? '',
+      situacaoCadastral: m.situacaoCadastral ?? '',
+      dataAbertura: m.dataAbertura ?? '',
+      receitaConsultadaEm: m.receitaConsultadaEm ?? '',
+      receitaFonte: m.receitaFonte ?? '',
       contrato: m.contrato ?? false,
       procuracao: m.procuracao ?? false,
       arquivoAdicional: m.arquivoAdicional ?? false,
@@ -485,6 +500,51 @@ export function ClientesPage() {
     }
   };
   useEffect(() => { void carregarGrupos(); }, []);
+
+  /** #485 C+E (@R 19/09) — consulta a Receita e preenche a aba Dados Empresa.
+   *  modo 'vazios': só completa o que está em branco (nunca apaga o que alguém digitou).
+   *  modo 'sobrescrever' ("Atualizar da Receita"): mostra ANTES → DEPOIS e só troca com confirmação. */
+  const RECEITA_CAMPOS: Array<[keyof Cliente, string, string]> = [
+    ['razaoSocial', 'razaoSocial', 'Razão Social'], ['fantasia', 'fantasia', 'Fantasia'],
+    ['pjRua', 'rua', 'Rua'], ['pjNumero', 'numero', 'Número'], ['pjComplemento', 'complemento', 'Complemento'],
+    ['pjBairro', 'bairro', 'Bairro'], ['pjCidade', 'cidade', 'Cidade'], ['pjEstado', 'estado', 'Estado'],
+    ['pjCep', 'cep', 'CEP'], ['cnae', 'cnae', 'CNAE'], ['situacaoCadastral', 'situacaoCadastral', 'Situação cadastral'],
+    ['dataAbertura', 'dataAbertura', 'Data de abertura'],
+  ];
+  const consultarReceita = async (
+    atual: Cliente, aplicar: (patch: Partial<Cliente>) => void, modo: 'vazios' | 'sobrescrever',
+  ) => {
+    const digitos = (atual.cnpj || '').replace(/\D/g, '');
+    if (digitos.length !== 14) { alert('Digite o CNPJ completo (14 dígitos) antes de consultar.'); return; }
+    let resp: any;
+    try {
+      resp = (await consultarCnpj(digitos)).data;
+    } catch (e: any) {
+      alert(e?.response?.data?.error ?? 'A Receita não respondeu agora. Tente de novo em 1 minuto.');
+      return;
+    }
+    const d = resp?.dados ?? {};
+    const patch: Partial<Cliente> = { receitaConsultadaEm: resp?.consultadoEm ?? '', receitaFonte: resp?.fonte ?? '' };
+    const mudancas: string[] = [];
+    for (const [campo, chave, rotulo] of RECEITA_CAMPOS) {
+      const novo = (d[chave] ?? '') as string;
+      const velho = (atual[campo] ?? '') as string;
+      if (!novo || novo === velho) continue;
+      if (modo === 'vazios' && velho) continue;
+      (patch as any)[campo] = chave === 'cep' ? formatarCep(novo) : novo;
+      mudancas.push(velho ? `${rotulo}: "${velho}" → "${novo}"` : `${rotulo}: "${novo}"`);
+    }
+    if (!mudancas.length) { alert(`Nada a mudar: a ficha já bate com a Receita (${resp?.fonte}).`); return; }
+    if (modo === 'vazios') { aplicar(patch); return; }
+    confirmDialog({
+      header: 'Atualizar da Receita',
+      message: `A Receita (${resp?.fonte}) traz ${mudancas.length} diferença(s). Os campos abaixo serão SOBRESCRITOS:\n\n` + mudancas.join('\n') + '\n\nNada é salvo até você clicar em Salvar na ficha.',
+      icon: 'pi pi-refresh',
+      acceptLabel: 'Sobrescrever',
+      rejectLabel: 'Cancelar',
+      accept: () => aplicar(patch),
+    });
+  };
 
   /** #495 — inativo sai de todas as listagens (a API já esconde por padrão), mas o
    *  cadastro e os pedidos dele ficam intactos; reativar é o mesmo botão ao contrário. */
@@ -685,6 +745,11 @@ const editarBodyTemplate = (rowData: ClienteTableRow) => {
             email: dm.email ?? '',
             emailAcesso: dm.emailAcesso ?? '',
             cnpj: em.CNPJ ?? '',
+            cnae: em.cnae ?? '',
+            situacaoCadastral: em.situacaoCadastral ?? '',
+            dataAbertura: em.dataAbertura ?? '',
+            receitaConsultadaEm: em.receitaConsultadaEm ?? '',
+            receitaFonte: em.receitaFonte ?? '',
             razaoSocial: em.razaoSocial ?? '',
             fantasia: em.fantasia ?? '',
             pjRua: em.rua ?? '',
@@ -1027,6 +1092,11 @@ const handleSalvarCadastro = async () => {
     await createEmpresaMedico({
       idMedico,
       CNPJ: novoCliente.cnpj,
+      cnae: novoCliente.cnae || null,
+      situacaoCadastral: novoCliente.situacaoCadastral || null,
+      dataAbertura: novoCliente.dataAbertura || null,
+      receitaConsultadaEm: novoCliente.receitaConsultadaEm || null,
+      receitaFonte: novoCliente.receitaFonte || null,
       razaoSocial: novoCliente.razaoSocial,
       fantasia: novoCliente.fantasia,
       rua: novoCliente.pjRua,
@@ -1132,6 +1202,11 @@ const handleSalvarEdicao = async () => {
     if (empresa.data[0]) {
       await updateEmpresaMedico(empresa.data[0].id, {
         CNPJ: clienteEditando.cnpj,
+        cnae: clienteEditando.cnae || null,
+        situacaoCadastral: clienteEditando.situacaoCadastral || null,
+        dataAbertura: clienteEditando.dataAbertura || null,
+        receitaConsultadaEm: clienteEditando.receitaConsultadaEm || null,
+        receitaFonte: clienteEditando.receitaFonte || null,
         razaoSocial: clienteEditando.razaoSocial,
         fantasia: clienteEditando.fantasia,
         rua: clienteEditando.pjRua,
@@ -1952,7 +2027,14 @@ const handleSalvarEdicao = async () => {
 
           <TabPanel header="Dados Empresa">
             <div className="cliente-form-grid">
-              <div className="field"><label>CNPJ</label><InputText value={novoCliente.cnpj} onChange={(e) => updateNovoCliente('cnpj', formatarCnpj(e.target.value))} /></div>
+              <div className="field field-span-2">
+                <label>CNPJ</label>
+                <div className="p-inputgroup">
+                  <InputText value={novoCliente.cnpj} onChange={(e) => updateNovoCliente('cnpj', formatarCnpj(e.target.value))} placeholder="00.000.000/0000-00" />
+                  <Button type="button" icon="pi pi-search" label="Consultar" tooltip="Busca na Receita e preenche só o que estiver vazio"
+                    onClick={() => void consultarReceita(novoCliente, (patch) => setNovoCliente((c) => ({ ...c, ...patch })), 'vazios')} />
+                </div>
+              </div>
               <div className="field field-span-2"><label>Razão Social</label><InputText value={novoCliente.razaoSocial} onChange={(e) => updateNovoCliente('razaoSocial', e.target.value)} /></div>
               <div className="field field-span-2"><label>Fantasia</label><InputText value={novoCliente.fantasia} onChange={(e) => updateNovoCliente('fantasia', e.target.value)} /></div>
               <div className="field field-span-2"><label>Rua</label><InputText value={novoCliente.pjRua} onChange={(e) => updateNovoCliente('pjRua', e.target.value)} /></div>
@@ -1978,7 +2060,7 @@ const handleSalvarEdicao = async () => {
             </div>
           </TabPanel>
 
-          <TabPanel header="Dados Pessoais">
+          <TabPanel header="Dados do responsável">
             <div className="cliente-form-grid">
               <div className="field field-span-2"><label>Nome Completo</label><InputText value={novoCliente.nomeCompleto} onChange={(e) => updateNovoCliente('nomeCompleto', e.target.value)} /></div>
               <div className="field"><label>CPF</label><InputText value={novoCliente.cpf} onChange={(e) => updateNovoCliente('cpf', formatarCpf(e.target.value))} /></div>
@@ -2125,8 +2207,23 @@ const handleSalvarEdicao = async () => {
 
               <TabPanel header="Dados Empresa">
                 <div className="cliente-form-grid">
-                  <div className="field"><label>CNPJ</label><InputText value={clienteEditando.cnpj} onChange={(e) => updateClienteEditando('cnpj', formatarCnpj(e.target.value))} /></div>
+                  <div className="field field-span-2">
+                    <label>CNPJ</label>
+                    <div className="p-inputgroup">
+                      <InputText value={clienteEditando.cnpj} onChange={(e) => updateClienteEditando('cnpj', formatarCnpj(e.target.value))} placeholder="00.000.000/0000-00" />
+                      <Button type="button" icon="pi pi-search" label="Consultar" tooltip="Busca na Receita e preenche só o que estiver vazio"
+                        onClick={() => void consultarReceita(clienteEditando, (patch) => setClienteEditando((c) => (c ? { ...c, ...patch } : c)), 'vazios')} />
+                      <Button type="button" icon="pi pi-refresh" label="Atualizar da Receita" severity="warning" outlined tooltip="Sobrescreve os dados da empresa com a Receita — mostra antes/depois e pede confirmação"
+                        onClick={() => void consultarReceita(clienteEditando, (patch) => setClienteEditando((c) => (c ? { ...c, ...patch } : c)), 'sobrescrever')} />
+                    </div>
+                    {clienteEditando.receitaConsultadaEm && (
+                      <small style={{ color: '#6b7280' }}>Receita consultada em {formatarData(clienteEditando.receitaConsultadaEm)} ({clienteEditando.receitaFonte})</small>
+                    )}
+                  </div>
                   <div className="field field-span-2"><label>Razão Social</label><InputText value={clienteEditando.razaoSocial} onChange={(e) => updateClienteEditando('razaoSocial', e.target.value)} /></div>
+                  <div className="field field-span-2"><label>CNAE principal</label><InputText value={clienteEditando.cnae} onChange={(e) => updateClienteEditando('cnae', e.target.value)} /></div>
+                  <div className="field"><label>Situação cadastral</label><InputText value={clienteEditando.situacaoCadastral} onChange={(e) => updateClienteEditando('situacaoCadastral', e.target.value)} /></div>
+                  <div className="field"><label>Data de abertura</label><InputText value={clienteEditando.dataAbertura} onChange={(e) => updateClienteEditando('dataAbertura', e.target.value)} placeholder="AAAA-MM-DD" /></div>
                   <div className="field field-span-2"><label>Fantasia</label><InputText value={clienteEditando.fantasia} onChange={(e) => updateClienteEditando('fantasia', e.target.value)} /></div>
                   <div className="field field-span-2"><label>Rua</label><InputText value={clienteEditando.pjRua} onChange={(e) => updateClienteEditando('pjRua', e.target.value)} /></div>
                   <div className="field"><label>Número</label><InputText value={clienteEditando.pjNumero} onChange={(e) => updateClienteEditando('pjNumero', e.target.value)} /></div>
@@ -2151,7 +2248,7 @@ const handleSalvarEdicao = async () => {
                 </div>
               </TabPanel>
 
-              <TabPanel header="Dados Pessoais">
+              <TabPanel header="Dados do responsável">
                 <div className="cliente-form-grid">
                   <div className="field field-span-2"><label>Nome Completo</label><InputText value={clienteEditando.nomeCompleto} onChange={(e) => updateClienteEditando('nomeCompleto', e.target.value)} /></div>
                   <div className="field"><label>CPF</label><InputText value={clienteEditando.cpf} onChange={(e) => updateClienteEditando('cpf', formatarCpf(e.target.value))} /></div>

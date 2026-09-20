@@ -34,6 +34,8 @@ export const updateDadosMedico = (id: number, data: any) => api.patch(`/client/d
 export const getEmpresaMedico = (idMedico: number) => api.get(`/client/empresa-medico/?idMedico=${idMedico}`);
 export const createEmpresaMedico = (data: any) => api.post('/client/empresa-medico/', data);
 export const updateEmpresaMedico = (id: number, data: any) => api.patch(`/client/empresa-medico/${id}/`, data);
+// #485 C+E (@R 19/09): consulta pública do CNPJ (BrasilAPI, ReceitaWS de reserva) — não grava nada
+export const consultarCnpj = (cnpj: string) => api.get(`/client/cnpj/${cnpj.replace(/\D/g, '')}/`);
 
 // ── DadosPessoais ───────────────────────────────────────
 export const getDadosPessoais = (idMedico: number) => api.get(`/client/dados-pessoais-medico/?idMedico=${idMedico}`);
