@@ -54,6 +54,9 @@ interface Cliente {
    *  escolher a especialidade"). Guarda IDs; `especialidade` (texto) continua para o
    *  cliente pessoa-física de uma especialidade só. */
   especialidades?: number[];
+  atendeEm?: number[];
+  atendeEmNomes?: string[];
+  medicosVinculados?: { id: number; nome: string }[];
   especialidadesNomes?: string[];
   keywords: string;
   /** Escolha do profissional (@R 17/09). DECLARADO pelo cliente — ter atendido uma
@@ -173,6 +176,9 @@ const clienteInicial: ClienteTableRow = {
   especialidade: '',
   subespecialidade: '',
   especialidades: [],
+  atendeEm: [],
+  atendeEmNomes: [],
+  medicosVinculados: [],
   keywords: '',
   atendePediatrico: 'NAO_INFORMADO',
   telefone: '',
@@ -436,6 +442,9 @@ export function ClientesPage() {
       takeRate: m.takeRate !== null && m.takeRate !== undefined ? Number(m.takeRate) : null,
       origemCliente: m.origemCliente ?? '',
       categoria: m.categoria ?? '',
+      atendeEm: m.atendeEm ?? [],
+      atendeEmNomes: m.atendeEmNomes ?? [],
+      medicosVinculados: m.medicosVinculados ?? [],
       status: m.status,
       createDate: m.createDate?.split('T')[0] ?? '',
       updateDate: m.updateDate?.split('T')[0] ?? '',
@@ -1179,6 +1188,8 @@ const handleSalvarEdicao = async () => {
       status: clienteEditando.status,
       origemCliente: clienteEditando.origemCliente || null,
       categoria: clienteEditando.categoria || null,
+      // #485 B: médico → hospitais/clínicas em que atende (hospital não aponta para ninguém)
+      atendeEm: ['HOSPITAL', 'CLINICA'].includes(clienteEditando.categoria) ? [] : (clienteEditando.atendeEm ?? []),
     });
 
     const [dadosMed, empresa, pessoais, bancarios] = await Promise.all([
@@ -2194,9 +2205,32 @@ const handleSalvarEdicao = async () => {
                 <div className="cliente-form-grid">
                   <div className="field field-span-2"><label>Nome Médico</label><InputText value={clienteEditando.nomeMedico} onChange={(e) => updateClienteEditando('nomeMedico', e.target.value)} /></div>
                   <div className="field field-span-2"><label>Nome Sistema</label><InputText value={clienteEditando.nomeSistema} onChange={(e) => updateClienteEditando('nomeSistema', e.target.value)} /></div>
-                  <div className="field"><label>CRM</label><InputText value={clienteEditando.crm} onChange={(e) => updateClienteEditando('crm', e.target.value)} /></div>
-                  <div className="field"><label>RQE</label><InputText value={clienteEditando.rqe} onChange={(e) => updateClienteEditando('rqe', e.target.value)} /></div>
-                  <div className="field"><label>Hospital</label><Dropdown value={clienteEditando.hospital} options={hospitalOptions} onChange={(e) => updateClienteEditando('hospital', e.value)} placeholder="Selecione" /></div>
+                  {/* #485 B (@R 19/09): hospital/clínica só tem "especialidades atendidas" (aba
+                      Dados Empresa) e a lista de médicos vinculados; o médico tem CRM/RQE e diz em
+                      quais hospitais/clínicas atende — o vínculo é este, não o texto antigo. */}
+                  {!['HOSPITAL', 'CLINICA'].includes(clienteEditando.categoria) ? (
+                    <>
+                      <div className="field"><label>CRM</label><InputText value={clienteEditando.crm} onChange={(e) => updateClienteEditando('crm', e.target.value)} /></div>
+                      <div className="field"><label>RQE</label><InputText value={clienteEditando.rqe} onChange={(e) => updateClienteEditando('rqe', e.target.value)} /></div>
+                      <div className="field"><label>Hospital</label><Dropdown value={clienteEditando.hospital} options={hospitalOptions} onChange={(e) => updateClienteEditando('hospital', e.value)} placeholder="Selecione" /></div>
+                      <div className="field field-span-2">
+                        <label>Atende em (hospitais / clínicas cadastrados como cliente)</label>
+                        <MultiSelect value={clienteEditando.atendeEm ?? []} display="chip" placeholder="Nenhum vínculo"
+                          options={clientes.filter((c) => ['HOSPITAL', 'CLINICA'].includes(c.categoria) && c.id !== clienteEditando.id)
+                            .map((c) => ({ label: c.nomeSistema || c.nomeMedico || `#${c.id}`, value: c.id }))}
+                          onChange={(e) => updateClienteEditando('atendeEm', e.value)} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="field field-span-2">
+                      <label>Médicos que atendem por este {clienteEditando.categoria === 'CLINICA' ? 'clínica' : 'hospital'}</label>
+                      {(clienteEditando.medicosVinculados ?? []).length === 0
+                        ? <small style={{ color: '#6b7280' }}>Nenhum médico vinculado ainda — o vínculo é feito na ficha do médico, campo "Atende em".</small>
+                        : <div style={{ display: 'flex', gap: '.35rem', flexWrap: 'wrap' }}>
+                            {(clienteEditando.medicosVinculados ?? []).map((m) => <Tag key={m.id} value={m.nome} severity="info" />)}
+                          </div>}
+                    </div>
+                  )}
                   <div className="field"><label>Telefone</label><InputText value={clienteEditando.telefone} onChange={(e) => updateClienteEditando('telefone', formatarTelefone(e.target.value))} /></div>
                   <div className="field field-span-2"><label>Email</label><InputText value={clienteEditando.email} onChange={(e) => updateClienteEditando('email', e.target.value)} /></div>
                   <div className="field field-span-2"><label>Email de Acesso</label><InputText value={clienteEditando.emailAcesso} onChange={(e) => updateClienteEditando('emailAcesso', e.target.value)} /></div>

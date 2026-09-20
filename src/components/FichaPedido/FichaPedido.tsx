@@ -6,7 +6,7 @@ import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
 import './FichaPedido.css';
 
-import { baixarAnexo, salvarBlob, uploadAnexoOrder, getOrcamentoVersoes, criarOrcamentoVersao, reenviarOrcamentoVersao } from '../../services/api/orders';
+import { baixarAnexo, salvarBlob, uploadAnexoOrder, getOrcamentoVersoes, criarOrcamentoVersao, reenviarOrcamentoVersao, getWhatsappGrupoPedido, enviarWhatsappGrupoPedido } from '../../services/api/orders';
 
 /**
  * FICHA DO PEDIDO — a rastreabilidade numa tela só.
@@ -149,6 +149,31 @@ export function FichaPedido({
     criadoEm: string | null; reenviadoEm: string | null; reenviadoPor: string | null;
   };
   const [versoes, setVersoes] = useState<Versao[]>([]);
+  /* ── GRUPO WHATSAPP DO CLIENTE (#485 F · @R 19/09) ─────────────────────────────────
+     Só aparece se o cliente do pedido tem grupo com envio LIGADO. Texto da cotação + link
+     autenticado; nenhum PDF no grupo. Entra numa fila; o relay envia e registra quem/quando. */
+  type WaGrupo = { id: number; grupoJid: string; grupoNome: string; funcao: string };
+  type WaEnvio = { id: number; grupoNome: string | null; status: string; criadoPor: string | null; criadoEm: string | null; enviadoEm: string | null; erro: string | null };
+  const [waGrupos, setWaGrupos] = useState<WaGrupo[]>([]);
+  const [waEnvios, setWaEnvios] = useState<WaEnvio[]>([]);
+  const [waMotivo, setWaMotivo] = useState<string | null>(null);
+  const [waEnviando, setWaEnviando] = useState(false);
+  const carregarWa = useCallback(async () => {
+    if (!orderId) return;
+    try {
+      const r = (await getWhatsappGrupoPedido(orderId)).data;
+      setWaGrupos(r?.grupos ?? []); setWaEnvios(r?.envios ?? []); setWaMotivo(r?.motivoSemGrupo ?? null);
+    } catch { setWaGrupos([]); setWaEnvios([]); setWaMotivo(null); }
+  }, [orderId]);
+  useEffect(() => { if (aberto && orderId) void carregarWa(); }, [aberto, orderId, carregarWa]);
+  const enviarWa = async (g: WaGrupo) => {
+    if (!orderId) return;
+    if (!window.confirm(`Enviar a cotação deste pedido no grupo "${g.grupoNome}"?\n\nVai o texto da cotação e o link da plataforma (exige login). Nenhum PDF vai no grupo. Fica registrado quem enviou e quando.`)) return;
+    setWaEnviando(true);
+    try { await enviarWhatsappGrupoPedido(orderId, g.id); await carregarWa(); }
+    catch (e: any) { alert(e?.response?.data?.error ?? 'Não foi possível colocar o envio na fila.'); }
+    finally { setWaEnviando(false); }
+  };
   const [valorPedido, setValorPedido] = useState<number | null>(null);
   const [novaVersaoAberta, setNovaVersaoAberta] = useState(false);
   const [salvandoVersao, setSalvandoVersao] = useState(false);
@@ -578,6 +603,38 @@ export function FichaPedido({
               CADA LINHA CARREGA DE ONDE VEIO (documento + página). Valor sem origem é
               boato: quem for usá-lo para julgar uma cotação precisa poder abrir a página
               e ver com os próprios olhos. */}
+          {(waGrupos.length > 0 || waEnvios.length > 0) && (
+            <section className="fic__bloco fic__wa">
+              <header className="fic__fase">
+                <strong>Grupo WhatsApp do cliente</strong>
+                <small>Manda a cotação no grupo (texto + link com login). Só grupos com envio ligado na ficha do cliente.</small>
+              </header>
+              <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', marginBottom: '.4rem' }}>
+                {waGrupos.map((g) => (
+                  <button key={g.id} type="button" className="fic__btn fic__btn--primario" disabled={waEnviando} onClick={() => void enviarWa(g)}>
+                    Enviar no grupo "{g.grupoNome}"{g.funcao === 'SOLICITACAO' ? '' : ` (${g.funcao.toLowerCase()})`}
+                  </button>
+                ))}
+                {waGrupos.length === 0 && waMotivo && <span className="fic__nota">{waMotivo}</span>}
+              </div>
+              {waEnvios.length > 0 && (
+                <ul className="fic__orcpeca-lista">
+                  {waEnvios.map((e) => (
+                    <li key={e.id} className="fic__orcpeca-item">
+                      <span className="fic__orcpeca-valor">{e.grupoNome}</span>
+                      <span className="fic__orcpeca-quem">
+                        {e.status === 'ENVIADO' ? <b style={{ color: '#0F766E' }}>enviado {dataHora(e.enviadoEm)}</b>
+                          : e.status === 'ERRO' ? <b style={{ color: '#B91C1C' }}>erro: {e.erro}</b>
+                          : <em style={{ color: '#B45309' }}>na fila (o relay envia em até 5 min)</em>}
+                        {e.criadoPor ? ` · pedido por ${e.criadoPor} ${dataHora(e.criadoEm)}` : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
           {(versoes.length > 0 || valorPedido != null) && (
             <section className="fic__bloco fic__versoes">
               <header className="fic__fase">

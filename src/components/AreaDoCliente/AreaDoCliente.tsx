@@ -44,6 +44,8 @@ type Metricas = {
   experiencia: { subarea: string; pedidos: number }[];
   pediatricos: { declarado: string; jaAtendidos: number; contradiz: boolean };
   cidade: string | null; uf: string | null;
+  porFase?: { fase: string; pedidos: number }[];
+  listaAbertaPor?: string | null;
   pacientes?: { id: number; paciente: string; procedimento: string; subarea: string; dataPedido: string; fase: string; statusPerda: string | null; valorOrcamento: string | null; valorGanho: string | null }[];
 };
 
@@ -77,15 +79,19 @@ export function AreaDoCliente({ medicoId, nome, aberto, aoFechar }: {
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
 
+  // #485 D (@R 19/09): contagens por fase SEMPRE; a lista nominal (PII) só ao clicar
+  // "Ver pedidos" — e o backend registra quem abriu.
+  const [comPacientes, setComPacientes] = useState(false);
+  useEffect(() => { if (!aberto) setComPacientes(false); }, [aberto]);
   useEffect(() => {
     if (!aberto || !medicoId) return;
-    setCarregando(true); setErro(''); setM(null);
-    getMetricasMedico(medicoId, true)
+    setCarregando(true); setErro('');
+    getMetricasMedico(medicoId, comPacientes)
       .then((r) => setM(r.data))
       .catch((e: { response?: { data?: { detail?: string } } }) =>
         setErro(e?.response?.data?.detail ?? 'Não foi possível carregar os dados deste cliente.'))
       .finally(() => setCarregando(false));
-  }, [aberto, medicoId]);
+  }, [aberto, medicoId, comPacientes]);
 
   return (
     <Dialog header={`Área do cliente — ${m?.nome ?? nome ?? ''}`} visible={aberto}
@@ -180,9 +186,23 @@ export function AreaDoCliente({ medicoId, nome, aberto, aoFechar }: {
                 </details>
               )}
 
+              {m.porFase && m.porFase.length > 0 && (
+                <div className="adc__bloco">
+                  <strong>Pedidos deste cliente por fase</strong>
+                  <ul style={{ margin: '.3rem 0 .5rem', paddingLeft: '1.1rem' }}>
+                    {m.porFase.map((f) => <li key={f.fase}>{f.fase}: <b>{f.pedidos}</b></li>)}
+                  </ul>
+                  {!comPacientes && (
+                    <button type="button" className="p-button p-button-sm p-button-outlined" onClick={() => setComPacientes(true)}>
+                      Ver pedidos (lista com nomes — fica registrado quem abriu)
+                    </button>
+                  )}
+                </div>
+              )}
+
               {m.pacientes && m.pacientes.length > 0 && (
-                <details className="adc__bloco">
-                  <summary>Pacientes atribuídos a este cliente ({m.pacientes.length})</summary>
+                <details className="adc__bloco" open>
+                  <summary>Pacientes atribuídos a este cliente ({m.pacientes.length}){m.listaAbertaPor ? ` · aberta por ${m.listaAbertaPor}` : ''}</summary>
                   <table className="adc__tabela">
                     <thead><tr><th>#</th><th>Paciente</th><th>Procedimento</th><th>Fase</th><th>Orçamento</th><th>Ganho</th></tr></thead>
                     <tbody>

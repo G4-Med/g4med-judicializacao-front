@@ -141,6 +141,11 @@ export const atualizarConfiguracaoEmail = (
 export function enviarOrcamentoArquivo(orderId: number, valorTotal: number) {
   return api.post('/api/orcamento/arquivo/', { orderId, valorTotal })
 }
+// #485 F (@R 19/09) — cotação no GRUPO WhatsApp do cliente (fila; o relay da máquina DEV envia)
+export const getWhatsappGrupoPedido = (orderId: number) => api.get(`/orders/${orderId}/whatsapp-grupo/`);
+export const enviarWhatsappGrupoPedido = (orderId: number, grupoId: number) =>
+  api.post(`/orders/${orderId}/whatsapp-grupo/`, { grupoId });
+
 // #485 A (@R 19/09) — VERSÕES do orçamento: a equipe refaz, a nova vira vigente; reenvio só com clique
 export const getOrcamentoVersoes = (orderId: number) => api.get(`/orders/${orderId}/orcamento-versoes/`);
 export const criarOrcamentoVersao = (orderId: number, data: {
