@@ -123,6 +123,7 @@ export function JuridicoPage() {
   const { paradas: pendenciasParadas } = usePendenciasParaAgir();   // o menu abre fechado: o número tem de estar na tela de trabalho
   const { isReadOnly, profile } = useAccess();
   const readOnly = isReadOnly('juridico');
+  const VERSAO_TELA = import.meta.env.VITE_APP_VERSION ?? 'dev';
   // Gerente só consulta esta tela, mas também recebe pedidos fora do e-mail: pode cadastrar à mão.
   const podeCadastrarPedido = !readOnly || profile.group === 'GERENTE';
   const [loading, setLoading] = useState(false);
@@ -635,14 +636,59 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
       </div>
 
       <Dialog
-        header="Análise Jurídica"
+        header={(
+          /* @R 21/09 19:46: "um número de versão para sabermos que estamos vendo a versão correta" — o
+             mesmo selo da barra do topo, aqui dentro, porque é no modal que a dúvida acontece. */
+          <div className="juridico-dlg-cab">
+            <span>Análise Jurídica</span>
+            <span className="juridico-dlg-versao" title="Versão do sistema que está rodando neste navegador. Se for diferente da barra de outra pessoa, recarregue (Ctrl+Shift+R / Cmd+Shift+R).">
+              versão {VERSAO_TELA}
+            </span>
+          </div>
+        )}
         visible={editDialogVisible}
         style={{ width: '60rem', maxWidth: '96vw' }}
         modal
         onHide={() => setEditDialogVisible(false)}
         className="juridico-edit-dialog"
       >
-        {processoEditando && (
+        {processoEditando && (() => {
+          /* CRITÉRIO PARA PASSAR DE FASE, no topo (@R 21/09 19:46): as MESMAS regras do Salvar
+             (motivoBloqueioConferencia + Conferência) mostradas antes, item a item, para ninguém descobrir
+             no clique. Obrigatório bloqueia; recomendado só avisa (o Salvar pergunta e deixa seguir). */
+          const cnjAtual = nprocesso.trim();
+          const cnjOk = cnjAtual !== '' && (cnjAtual === (processoEditando.nprocesso ?? '') || cnjDigitoValido(cnjAtual));
+          const pecaOk = inteiroTeorJaAnexado || !!inteiroTeorFile;
+          const decidiu = ['Cotar', 'Não Cotar', 'Pendência jurídica'].includes(statusJuridico);
+          const itens: { rotulo: string; ok: boolean; obrig: boolean; dica?: string }[] = [
+            { rotulo: readOnly ? 'Seu acesso a esta fase é só de leitura' : 'Você pode salvar nesta fase', ok: !readOnly, obrig: true,
+              dica: readOnly ? 'Peça ao administrador o grupo Jurídico.' : undefined },
+            { rotulo: 'Decisão escolhida (Cotar, Não Cotar ou Pendência jurídica)', ok: decidiu, obrig: true },
+          ];
+          if (statusJuridico === 'Cotar') itens.push({ rotulo: 'Orçamentos citados nos autos (ou "não há")', ok: orcamentos.trim().length >= 3, obrig: true });
+          if (statusJuridico === 'Não Cotar') itens.push({ rotulo: 'Motivo do Não Cotar (mín. 20 letras)', ok: obs.trim().length >= 20, obrig: true });
+          if (statusJuridico === 'Pendência jurídica') itens.push({ rotulo: 'O que falta (mín. 10 letras)', ok: obs.trim().length >= 10, obrig: true });
+          if (statusJuridico !== 'Pendência jurídica') {
+            itens.push({ rotulo: 'Peça de inteiro teor anexada', ok: pecaOk, obrig: false,
+              dica: pecaOk ? undefined : 'Sem ela não dá para extrair os exames; o Salvar pergunta antes de seguir.' });
+            itens.push({ rotulo: 'Nº do processo (CNJ) válido', ok: cnjOk, obrig: false });
+          }
+          const faltaObrig = itens.filter((i) => i.obrig && !i.ok).length;
+          return (<>
+          <div className={`juridico-criterio ${faltaObrig ? 'falta' : 'pronto'}`} role="status">
+            <div className="juridico-criterio-titulo">
+              <i className={`pi ${faltaObrig ? 'pi-exclamation-circle' : 'pi-check-circle'}`} />
+              {faltaObrig ? `Para passar de fase, falta ${faltaObrig} item(ns) obrigatório(s)` : 'Pronto para salvar e passar de fase'}
+            </div>
+            <ul>
+              {itens.map((i) => (
+                <li key={i.rotulo} className={i.ok ? 'ok' : (i.obrig ? 'falta' : 'aviso')}>
+                  <i className={`pi ${i.ok ? 'pi-check' : (i.obrig ? 'pi-times' : 'pi-info-circle')}`} />
+                  <span>{i.rotulo}{!i.obrig && <em> · recomendado</em>}{i.dica && <small> — {i.dica}</small>}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
           <div className="juridico-form-grid">
 
             {/* Campos somente leitura (readOnly permite selecionar/copiar) */}
@@ -1019,7 +1065,8 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
               )}
             </div>
           </div>
-        )}
+          </>);
+        })()}
 
         <div className="dialog-footer-actions">
           <Button label="Cancelar" outlined onClick={() => setEditDialogVisible(false)} />

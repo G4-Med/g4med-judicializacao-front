@@ -449,3 +449,23 @@ body.dark-theme .candidato-cnj { background: rgba(148,98,13,0.15); border-color:
 /* Peça de inteiro teor: estado + ação na mesma linha (Carol 21/09) */
 .juridico-peca-linha { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .juridico-peca-aviso { display: block; margin-top: .35rem; color: #1e3a8a; }
+
+/* @R 21/09 19:46 — versão no título do modal + critério para passar de fase */
+.juridico-dlg-cab { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.juridico-dlg-versao { font-size: 12px; font-weight: 600; color: #0a3d62; background: #e8f0f5; border: 1px solid #cfe0eb;
+  border-radius: 999px; padding: 2px 10px; font-family: "IBM Plex Mono", ui-monospace, monospace; }
+.juridico-criterio { border: 1px solid #e3eaef; border-left: 4px solid #d08a1c; background: #fdf8ee; border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 14px; }
+.juridico-criterio.pronto { border-left-color: #00a651; background: #f1faf5; }
+.juridico-criterio-titulo { display: flex; align-items: center; gap: 8px; font-weight: 600; color: #0f2236; margin-bottom: 6px; }
+.juridico-criterio.falta .juridico-criterio-titulo i { color: #d08a1c; }
+.juridico-criterio.pronto .juridico-criterio-titulo i { color: #00a651; }
+.juridico-criterio ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.juridico-criterio li { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: #2b4158; }
+.juridico-criterio li i { margin-top: 3px; font-size: 12px; }
+.juridico-criterio li.ok i { color: #00a651; }
+.juridico-criterio li.falta i { color: #c8394d; }
+.juridico-criterio li.falta { color: #8f2335; font-weight: 500; }
+.juridico-criterio li.aviso i { color: #d08a1c; }
+.juridico-criterio li em { color: #8a96a3; font-style: normal; font-size: 12px; }
+.juridico-criterio li small { color: #5b6b7a; }
