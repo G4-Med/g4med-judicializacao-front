@@ -22,7 +22,9 @@ export function markdownParaHtml(md: string): string {
   let tabela: string[][] | null = null;
 
   const fecharParagrafo = () => {
-    if (paragrafo.length) saida.push(`<p>${paragrafo.map(emLinha).join('<br />')}</p>`);
+    // quebra simples dentro do parágrafo = espaço (Markdown); juntar ANTES de formatar, porque o
+    // negrito dos manuais começa numa linha e termina na seguinte (medido: 3 casos no do hospital)
+    if (paragrafo.length) saida.push(`<p>${emLinha(paragrafo.join(' '))}</p>`);
     paragrafo = [];
   };
   const fecharLista = () => {
