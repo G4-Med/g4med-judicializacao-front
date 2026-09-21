@@ -1,0 +1,48 @@
+/* Manuais públicos — celular primeiro, cores da marca G4MED (as mesmas do Funil Comercial) */
+.manual-pagina {
+  --m-fundo: #f4f5f2; --m-papel: #ffffff; --m-texto: #16181d; --m-suave: #5b616e;
+  --m-linha: #e3e5df; --m-marca: #0d0d0f; --m-amarelo: #fedd00; --m-verde: #009739;
+  min-height: 100vh; background: var(--m-fundo); color: var(--m-texto);
+  font-family: 'Archivo', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.manual-topo {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2;
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  background: var(--m-marca); color: #fff; padding: 12px 16px;
+}
+.manual-marca { font-weight: 800; letter-spacing: .08em; color: var(--m-amarelo); }
+.manual-pdf {
+  background: transparent; color: #fff; border: 1px solid #ffffff66; border-radius: 8px;
+  padding: 8px 12px; font-size: 14px; cursor: pointer;
+}
+.manual-pdf:focus-visible { outline: 2px solid var(--m-amarelo); outline-offset: 2px; }
+.manual-corpo {
+  max-width: 760px; margin: 0 auto; padding: 20px 16px 48px; background: var(--m-papel);
+  font-size: 16px; line-height: 1.6;
+}
+.manual-corpo h1 { font-size: 24px; line-height: 1.25; margin: 4px 0 12px; text-wrap: balance; }
+.manual-corpo h2 {
+  font-size: 18px; margin: 28px 0 8px; padding-top: 12px; border-top: 1px solid var(--m-linha);
+  text-wrap: balance;
+}
+.manual-corpo p { margin: 8px 0; }
+.manual-corpo ul, .manual-corpo ol { margin: 8px 0; padding-left: 22px; }
+.manual-corpo li { margin: 4px 0; }
+.manual-corpo strong { font-weight: 700; }
+.manual-corpo hr { border: none; border-top: 1px solid var(--m-linha); margin: 24px 0 12px; }
+.manual-corpo hr + p { color: var(--m-suave); font-size: 13px; }
+.manual-tabela { overflow-x: auto; margin: 10px 0; }
+.manual-tabela table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.manual-tabela th, .manual-tabela td {
+  text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--m-linha);
+}
+.manual-tabela th { background: #f7f7f4; font-weight: 700; }
+
+@media print {
+  .manual-topo { display: none; }
+  .manual-pagina, .manual-corpo { background: #fff; }
+  .manual-corpo { max-width: none; padding: 0; font-size: 12pt; }
+  .manual-corpo h2 { break-after: avoid; }
+  .manual-tabela { overflow: visible; }
+  .manual-tabela tr { break-inside: avoid; }
+}

@@ -1,3 +1,5 @@
+import { ManualPublicoPage } from '../../pages/manuais/ManualPublicoPage';
+import { ManuaisPage } from '../../pages/manuais/ManuaisPage';
 import { LinkDocumentosPage } from '../../pages/linkDocumentos/LinkDocumentosPage';
 import { Route, Routes, Navigate } from 'react-router-dom';
 
@@ -48,6 +50,8 @@ export function AppRoutes() {
       <Route path="/recuperar-senha" element={<RecuperarSenhaPage />} />
       {/* link seguro dos documentos (@R 21/09): público, sem login e sem o menu interno */}
       <Route path="/d/:token" element={<LinkDocumentosPage />} />
+      {/* manuais para médico e hospital (aliança produto-manuais, GO @R 19:15): públicos, sem login */}
+      <Route path="/manuais/:qual" element={<ManualPublicoPage />} />
 
       <Route
         element={(
@@ -75,6 +79,7 @@ export function AppRoutes() {
         <Route path="/funil" element={<ProtectedScreen screen="funil"><FunilPage /></ProtectedScreen>} />
         <Route path="/sla" element={<ProtectedScreen screen="sla"><SlaPage /></ProtectedScreen>} />
         <Route path="/notificacoes-historico" element={<ProtectedScreen screen="notificacoesHistorico"><NotificacoesHistoricoPage /></ProtectedScreen>} />
+        <Route path="/manuais" element={<ProtectedScreen screen="processoOperacional"><ManuaisPage /></ProtectedScreen>} />
         <Route path="/processo-operacional" element={<ProtectedScreen screen="processoOperacional"><ProcessoOperacionalPage /></ProtectedScreen>} />
         <Route path="/juridico" element={<ProtectedScreen screen="juridico"><JuridicoPage /></ProtectedScreen>} />
         <Route path="/emails-juridico" element={<ProtectedScreen screen="juridico"><EmailsJuridicoPage /></ProtectedScreen>} />
