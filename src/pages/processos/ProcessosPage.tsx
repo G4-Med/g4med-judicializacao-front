@@ -35,6 +35,7 @@ import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, 
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { CelulaMedico } from '../../components/TrocarMedico/CelulaMedico';
+import { PainelPrecos } from '../../components/PainelPrecos/PainelPrecos';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
 import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
@@ -301,6 +302,7 @@ export function ProcessosPage() {
   const [buscandoPedidos, setBuscandoPedidos] = useState(false);
   const [executandoAcaoMassa, setExecutandoAcaoMassa] = useState(false);
   const [enviarOrcamentoVisible, setEnviarOrcamentoVisible] = useState(false);
+  const [refPrecoProcesso, setRefPrecoProcesso] = useState<ProcessoTableRow | null>(null);   // menu → Buscar Ref. Preço
   const [manualProcessForm, setManualProcessForm] = useState<ManualProcessForm>(createManualProcessForm);
   const [manualAttachments, setManualAttachments] = useState<ProcessAttachmentInput[]>([createAttachmentInput()]);
   const [novoProcessoForm, setNovoProcessoForm] = useState<ManualProcessForm>(createManualProcessForm);
@@ -466,6 +468,13 @@ export function ProcessosPage() {
         setProcessoMenuSelecionado(null);
         await carregarDados();
         alert('Perda por falta de profissional registrada com sucesso.');
+        return;
+      }
+
+      if (action === 'buscar_ref_preco') {
+        // 21/09 (@R: "ligar os botões mortos ao fluxo real"): o fluxo real de referência de preço é o
+        // PainelPrecos, o mesmo da Análise Jurídica — acervo de orçamentos de terceiros + os nossos envios.
+        setRefPrecoProcesso(rowData);
         return;
       }
 
@@ -2122,6 +2131,15 @@ ${linhasAnexos}
         id="row_action_menu"
       />
 
+
+      <Dialog header={refPrecoProcesso ? `Referência de preço — ${refPrecoProcesso.procedimento ?? ''}` : 'Referência de preço'}
+        visible={!!refPrecoProcesso} modal dismissableMask style={{ width: '64rem', maxWidth: '96vw' }}
+        onHide={() => setRefPrecoProcesso(null)}>
+        {refPrecoProcesso && (
+          <PainelPrecos orderId={Number(refPrecoProcesso.id)} procedimento={refPrecoProcesso.procedimento ?? ''}
+            nossoPreco={(refPrecoProcesso as any).refPreco ?? null} />
+        )}
+      </Dialog>
 
       <EnviarOrcamentoDialog
         visible={enviarOrcamentoVisible && !readOnly}
