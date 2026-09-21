@@ -401,13 +401,16 @@ export const getKpiCompletude = () => api.get('/kpis/completude/');
 // texto (não envia): o disparo sai por fora, e o texto tem uma fonte só.
 export const getPacoteExames = (orderId: number) =>
   api.get(`/orders/${orderId}/pacote-exames/`);
-export const montarCotacaoMedico = (orderId: number, medico?: string) =>
-  api.post(`/orders/${orderId}/solicitar-cotacao-medico/`, { medico });
+/** `comLink`: a mensagem sai com 1 LINK SEGURO da G4MED (registra abertura, só leitura) — só peça
+ *  quando o texto VAI ser enviado; sem ele volta só o nome dos documentos (ex.: o Copiar busca aqui
+ *  apenas o aviso de especialidade e não pode criar link que ninguém mandou). */
+export const montarCotacaoMedico = (orderId: number, medico?: string, comLink = false) =>
+  api.post(`/orders/${orderId}/solicitar-cotacao-medico/`, { medico, comLink });
 /** Uma mensagem para CADA candidato convidado (backend 8a0e542, @R 19/09): nunca uma só com
  *  todos juntos — os concorrentes não podem se ver. Pula quem recusou e "SEM PROFISSIONAL".
  *  Resposta: { mensagens: [{ idMedico, medico, assunto, mensagem, situacao }], ...campos do caminho antigo }. */
 export const montarCotacaoTodosCandidatos = (orderId: number) =>
-  api.post(`/orders/${orderId}/solicitar-cotacao-medico/`, { todosCandidatos: true });
+  api.post(`/orders/${orderId}/solicitar-cotacao-medico/`, { todosCandidatos: true, comLink: true });
 
 // A morada do orçamento de terceiro: por pedido (histórico daquele processo) ou por
 // procedimento (o que outros lugares cobraram pela MESMA cirurgia — a régua de preço).

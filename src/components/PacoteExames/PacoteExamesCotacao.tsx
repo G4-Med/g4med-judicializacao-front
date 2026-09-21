@@ -36,7 +36,7 @@ export function PacoteExamesCotacao({ orderId }: { orderId: number }) {
 
   const montar = () => {
     setMontando(true); setCopiado(false);
-    montarCotacaoMedico(orderId, medico.trim() || undefined)
+    montarCotacaoMedico(orderId, medico.trim() || undefined, true)
       .then(({ data }) => setCotacao(data))
       .catch(() => setCotacao({ mensagem: 'Não foi possível montar a mensagem.', assunto: '' }))
       .finally(() => setMontando(false));
