@@ -522,7 +522,7 @@ export interface PendenciaJuridica {
 }
 export interface ParaAgirPendencias { meusRetornos: number; paradas: number; semLerAntigas: number }
 export interface ListaPendenciasJuridicas { total: { ABERTA: number; RESPONDIDA: number; LIDA: number }; paraAgir?: ParaAgirPendencias; diasParada?: number; itens: PendenciaJuridica[] }
-export const getPendenciasJuridicas = (params: { status?: string; orderId?: number } = {}) =>
+export const getPendenciasJuridicas = (params: { status?: string; orderId?: number; paraLer?: 1 } = {}) =>
   api.get<ListaPendenciasJuridicas>('/orders/pendencias-juridicas/', { params });
 export const abrirPendenciaJuridica = (orderId: number, tipo: TipoPendenciaJuridica, texto: string) =>
   api.post<PendenciaJuridica>(`/orders/${orderId}/pendencia-juridica/`, { tipo, texto });

@@ -24,7 +24,7 @@ import { atualizarOrder, getOrcamentoMedico, salvarOrcamentoMedico, getAnexosOrd
 import { getBaseOrcamento, getStatusOrcamentoPersonalizado, criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { getStatusTagStyle } from '../../utils/statusTag';
 import { EnviarOrcamentoDialog } from './EnviarOrcamentoDialog';
-import { DialogAbrirPendencia } from '../../components/PendenciaJuridica/PendenciaJuridica';
+import { DialogAbrirPendencia, DialogRetornosDoJuridico, usePendenciasParaAgir } from '../../components/PendenciaJuridica/PendenciaJuridica';
 import { useAccess } from '../../access/AccessContext';
 import './OrcamentoMedicoPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
@@ -111,7 +111,7 @@ export function OrcamentoMedicoPage() {
   // A tabela recarrega quando a FICHA muda a situação de um pedido (@R 17/09:
   // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
   // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
-  const { versaoDados } = useFichaPedido();
+  const { versaoDados, abrir: abrirFichaPedido } = useFichaPedido();
   // @R 28/08 03:37: painel do pedido abre ABAIXO da linha, em toda fase.
   const [expandidas, setExpandidas] = useState<any>(undefined);
   const { isReadOnly } = useAccess();
@@ -139,6 +139,9 @@ export function OrcamentoMedicoPage() {
   const [salvandoNaoFaco, setSalvandoNaoFaco] = useState(false);
   const [processoSelecionado, setProcessoSelecionado] = useState<ProcessoOrcamentoRow | null>(null);
   const [pendenciaVisible, setPendenciaVisible] = useState(false);   // bilhete 1.1 (Fabrício, 20/09)
+  const [retornosVisible, setRetornosVisible] = useState(false);
+  const agirPendencias = usePendenciasParaAgir();
+  const nRetornos = agirPendencias.meusRetornos + agirPendencias.semLerAntigas;
   const [exames, setExames] = useState('');
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -723,6 +726,9 @@ ${blocos}
         <CabecalhoFase nome="Orçamento Médico" screen="orcamentoMedico" slaDias={SLA_META_DIAS_ORCAMENTO}
           subtitulo="Processos aguardando orçamento do médico" />
         <div className="page-actions">
+          <Button label={`Retornos do jurídico${nRetornos ? ` (${nRetornos})` : ''}`} icon="pi pi-reply" outlined
+            severity={nRetornos ? 'success' : 'secondary'} title="Respostas do jurídico aos pedidos que você devolveu (1.1), esperando o seu Li"
+            onClick={() => setRetornosVisible(true)} />
           <Button
             label="Por médico"
             icon="pi pi-users"
@@ -1258,6 +1264,7 @@ ${blocos}
         </div>
       </Dialog>
 
+      <DialogRetornosDoJuridico visible={retornosVisible} onHide={() => { setRetornosVisible(false); carregarDados(); }} onAbrirFicha={abrirFichaPedido} />
       <DialogAbrirPendencia orderId={processoSelecionado?.id ?? null} visible={pendenciaVisible}
         onHide={() => setPendenciaVisible(false)} onFeito={() => { setDetalheVisible(false); carregarDados(); }} />
 

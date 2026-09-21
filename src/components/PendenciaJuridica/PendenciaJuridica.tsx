@@ -40,8 +40,8 @@ async function carregar(): Promise<void> {
     carregando = getPendenciasJuridicas({ status: 'ABERTA,RESPONDIDA' })
       .then((r) => {
         const novo: Record<string, PendenciaJuridica> = {};
-        // a lista vem da mais nova para a mais velha: a 1ª de cada pedido é a que vale
-        for (const p of r.data?.itens ?? []) if (!novo[String(p.orderId)]) novo[String(p.orderId)] = p;
+        // por pedido vale a pendência MAIS NOVA (maior id) — não depende da ordem em que o servidor lista
+        for (const p of r.data?.itens ?? []) { const k = String(p.orderId); if (!novo[k] || p.id > novo[k].id) novo[k] = p; }
         cache = novo; carregadoEm = Date.now(); totais = r.data?.total ?? totais; paraAgir = r.data?.paraAgir ?? paraAgir;
       })
       // erro NÃO vira "sem pendências": o cache fica nulo e a próxima tela tenta de novo (antes {} congelava em 0)
@@ -324,5 +324,40 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
         </article>
       ))}
     </div>
+  );
+}
+
+/** A LISTA por trás do número do menu: respostas do jurídico esperando o "Li" de quem pediu
+ *  (Admin/Gerente veem também as de outros sem leitura há dias). Furo do juiz virgem: número sem lista. */
+export function DialogRetornosDoJuridico({ visible, onHide, onAbrirFicha }:
+  { visible: boolean; onHide: () => void; onAbrirFicha?: (orderId: number) => void }) {
+  const [itens, setItens] = useState<PendenciaJuridica[]>([]);
+  const [falhou, setFalhou] = useState(false);
+  const recarregar = useCallback(() => {
+    getPendenciasJuridicas({ paraLer: 1 }).then((r) => { setItens(r.data?.itens ?? []); setFalhou(false); }).catch(() => setFalhou(true));
+  }, []);
+  useEffect(() => { if (visible) recarregar(); }, [visible, recarregar]);
+  const li = async (p: PendenciaJuridica) => {
+    try { await marcarPendenciaLida(p.orderId, p.id); invalidarPendencias(); recarregar(); }
+    catch (e) { alert(erroDe(e, 'Não foi possível marcar como lida.')); }
+  };
+  return (
+    <Dialog header="Retornos do jurídico para ler" visible={visible} modal dismissableMask style={{ width: '46rem', maxWidth: '96vw' }} onHide={onHide}>
+      {falhou && <p role="alert">Não consegui carregar os retornos. <button type="button" onClick={recarregar}>Tentar de novo</button></p>}
+      {!falhou && !itens.length && <p>Nenhum retorno esperando leitura.</p>}
+      <ul className="mc-pend-lista">
+        {itens.map((p) => (
+          <li key={p.id} className="respondida">
+            <small>pedido #{p.orderId} · <span className="col-paciente-upper">{p.paciente}</span>{p.semLerHaDias ? ` · sem leitura há ${p.semLerHaDias} dia(s)` : ''}</small>
+            <ItemPendencia p={p} />
+            <div style={{ display: 'flex', gap: '.5rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '.4rem' }}>
+              <Button label="Li" icon="pi pi-check" size="small" onClick={() => li(p)} />
+              {onAbrirFicha && <Button label="Ficha" icon="pi pi-folder-open" size="small" outlined severity="secondary" onClick={() => onAbrirFicha(p.orderId)} />}
+              <span>Copiar para o médico <BotaoCopiar valor={p.resposta} rotulo="resposta do jurídico" /></span>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Dialog>
   );
 }
