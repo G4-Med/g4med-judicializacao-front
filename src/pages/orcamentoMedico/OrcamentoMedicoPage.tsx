@@ -231,6 +231,7 @@ export function OrcamentoMedicoPage() {
   const dataComMedico = useMemo(() => {
     return dataComSequencial.map((item) => {
       const medicoId = item.idMedico ?? item.medicoId ?? item.medico_id ?? null;
+
       const medicoSelecionado = medicos.find((medico: any) => medico.id === medicoId);
       const medicoNome = medicoSelecionado?.nomeSistema ?? '';
       return {
@@ -244,6 +245,8 @@ export function OrcamentoMedicoPage() {
       };
     });
   }, [dataComSequencial, medicos]);
+  // Há pelo menos 1 envio confirmado na fila = a confirmação pela Eliza está viva (ver coluna Pedido ao médico).
+  const confirmacaoEnvioAtiva = dataComMedico.some((r: any) => !!r?.ultimaCotacaoEnviadaEm);
 
   useEffect(() => { setVisibleProcessos(dataComMedico); }, [dataComMedico]);
 
@@ -848,7 +851,7 @@ ${blocos}
               ESTADO que não diz se foi ontem ou há 40 dias. */}
           <Column key="col-pedido-medico" field="cotacoesPedidas" sortable
             header={cabecalhoComHint('Pedido ao médico',
-              'Marcado quando alguém copia a mensagem para o WhatsApp do médico. ATENÇÃO: copiar não é enviar — se copiou e não mandou, use o ✕ para desfazer. Mostra desde quando e quantas vezes pedimos.')}
+              'Copiado = alguém copiou a mensagem para o WhatsApp. Enviado (verde) = a mensagem foi vista no grupo do médico (confirmado pela Eliza, pelo rodapé Pedido #N). Copiou e não mandou? Use o ✕ para desfazer.')}
             filter filterMatchMode="custom" filterFunction={casaOpcaoDosDados} showFilterMenu={false}
             filterElement={filtroOpcoesDosDados(
               dataComMedico,
@@ -884,11 +887,28 @@ ${blocos}
                   </span>
                 );
               }
+              /* COPIADO × ENVIADO (@R 21/09, urgência + comercial): o clique de copiar é só
+                 proxy. ENVIADO vem de prova de fora — a Eliza vê "_Pedido #N · G4MED_" saindo
+                 no grupo e registra (cotacao-enviada). O alerta "copiou e não enviou" só liga
+                 quando a confirmação JÁ está funcionando (há pelo menos 1 pedido confirmado na
+                 fila); antes disso ele acusaria todos os pedidos, e alarme em massa é ignorado. */
+              const copiadoEm = new Date(r.ultimaCotacaoPedidaEm).getTime();
+              const enviadoEm = r.ultimaCotacaoEnviadaEm ? new Date(r.ultimaCotacaoEnviadaEm).getTime() : 0;
+              const enviadoDepois = enviadoEm && enviadoEm >= copiadoEm - 10 * 60 * 1000;
+              const semConfirmacao4h = confirmacaoEnvioAtiva && !enviadoDepois && Date.now() - copiadoEm > 4 * 3600 * 1000;
               return (
                 <span className="om-pedido">
-                  <Tag value={formatarData((r.ultimaCotacaoPedidaEm || '').slice(0, 10))}
-                    severity="info" icon="pi pi-send"
-                    title={`Pedido ao médico ${r.cotacoesPedidas}× — último em ${formatarDataHora(r.ultimaCotacaoPedidaEm)}`} />
+                  {enviadoDepois ? (
+                    <Tag value={`Enviado ${formatarData((r.ultimaCotacaoEnviadaEm || '').slice(0, 10))}`}
+                      severity="success" icon="pi pi-check-circle"
+                      title={`Mensagem vista no grupo ${r.ultimaCotacaoEnviadaGrupo || ''} em ${formatarDataHora(r.ultimaCotacaoEnviadaEm)} (confirmado pela Eliza). Copiado ${r.cotacoesPedidas}×, último em ${formatarDataHora(r.ultimaCotacaoPedidaEm)}.`} />
+                  ) : (
+                    <Tag value={`Copiado ${formatarData((r.ultimaCotacaoPedidaEm || '').slice(0, 10))}`}
+                      severity={semConfirmacao4h ? 'danger' : 'info'} icon={semConfirmacao4h ? 'pi pi-exclamation-triangle' : 'pi pi-copy'}
+                      title={semConfirmacao4h
+                        ? `Copiado em ${formatarDataHora(r.ultimaCotacaoPedidaEm)} e, há mais de 4 h, a mensagem não apareceu em nenhum grupo. Confira se foi enviada.`
+                        : `Mensagem copiada ${r.cotacoesPedidas}× — último em ${formatarDataHora(r.ultimaCotacaoPedidaEm)}. Copiar não é enviar: o "Enviado" aparece quando a mensagem é vista no grupo.`} />
+                  )}
                   {r.cotacoesPedidas > 1 && (
                     <span className="om-pedido__n" title={`Pedimos ${r.cotacoesPedidas} vezes`}>
                       {r.cotacoesPedidas}×
