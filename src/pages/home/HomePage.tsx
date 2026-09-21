@@ -494,8 +494,15 @@ export function HomePage() {
        SEMPRE, inclusive com 0 — zero visível é informação; fase ausente é dúvida. */
     const emOrcamento = pedidosEmAberto.filter((item) => item.statusProcesso === 'Aguardando Orçamento');
     const semMedico = (item: any) => !item.idMedico || Number(item.idMedico) === 1;
+    const noJuridico = pedidosEmAberto.filter((item) => item.statusProcesso === 'Aguardando Juridico');
+    const emPendencia = (item: any) => item.statusJuridico === 'Pendência jurídica';
     const porFase = [
-      { fase: '1', nome: 'Jurídico', qtd: contarFase('Aguardando Juridico') },
+      /* @R 21/09 01:53: "no home terá que colocar no painel principal mais uma fase ali para saber".
+         1.1 = pedido que está no jurídico COM pendência (mesmo statusProcesso da fase 1; o que separa
+         é statusJuridico). Aparece sempre, inclusive com 0. A fase 1 desconta a 1.1 para a soma das
+         linhas continuar igual ao total de pedidos aguardando ação. */
+      { fase: '1', nome: 'Jurídico', qtd: noJuridico.filter((item) => !emPendencia(item)).length },
+      { fase: '1.1', nome: 'Pendências jurídicas', qtd: noJuridico.filter(emPendencia).length },
       { fase: '2', nome: 'Selecionar médico', qtd: emOrcamento.filter(semMedico).length },
       { fase: '3', nome: 'Orçamento', qtd: emOrcamento.filter((item) => !semMedico(item)).length },
       { fase: '4', nome: 'Protocolar', qtd: contarFase('Aguardando Protocolar') },
