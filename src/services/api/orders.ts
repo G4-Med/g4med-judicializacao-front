@@ -507,3 +507,23 @@ export const criarAnotacao = (orderId: number, texto: string) => api.post<{ orde
 export const apagarAnotacao = (orderId: number, anotacaoId: number) => api.delete(`/orders/${orderId}/anotacoes/${anotacaoId}/`);
 /** ids dos pedidos com anotação → o "!" nas filas (1 chamada por tela) */
 export const getAnotacoesIds = () => api.get<{ ids: Record<string, number> }>('/orders/anotacoes/ids/');
+
+/** Bilhete de ida e volta fase 3 → jurídico (1.1) → fase 3 (pedido do Fabrício, reunião 20/09). */
+export type TipoPendenciaJuridica = 'INTEIRO_TEOR' | 'ACHAR_MEDICO' | 'CONTATO_PACIENTE_ADVOGADO' | 'VERIFICACAO' | 'RECADO';
+export interface PendenciaJuridica {
+  id: number; orderId: number; tipo: TipoPendenciaJuridica; tipoRotulo: string; texto: string;
+  status: 'ABERTA' | 'RESPONDIDA' | 'LIDA';
+  abertaPor: string | null; abertaEm: string; faseOrigem: string; statusOrcamentoOrigem: string | null;
+  resposta: string | null; medicoIndicado: number | null; medicoIndicadoNome: string | null;
+  respondidaPor: string | null; respondidaEm: string | null; lidaPor: string | null; lidaEm: string | null;
+  paciente?: string; procedimento?: string; faseAtual?: string; nprocesso?: string | null; dias?: number;
+}
+export interface ListaPendenciasJuridicas { total: { ABERTA: number; RESPONDIDA: number; LIDA: number }; itens: PendenciaJuridica[] }
+export const getPendenciasJuridicas = (params: { status?: string; orderId?: number } = {}) =>
+  api.get<ListaPendenciasJuridicas>('/orders/pendencias-juridicas/', { params });
+export const abrirPendenciaJuridica = (orderId: number, tipo: TipoPendenciaJuridica, texto: string) =>
+  api.post<PendenciaJuridica>(`/orders/${orderId}/pendencia-juridica/`, { tipo, texto });
+export const responderPendenciaJuridica = (orderId: number, pendenciaId: number, resposta: string, medicoId?: number | null) =>
+  api.post<PendenciaJuridica>(`/orders/${orderId}/pendencia-juridica/${pendenciaId}/responder/`, { resposta, medicoId: medicoId ?? null });
+export const marcarPendenciaLida = (orderId: number, pendenciaId: number) =>
+  api.post<PendenciaJuridica>(`/orders/${orderId}/pendencia-juridica/${pendenciaId}/lida/`, {});

@@ -60,6 +60,7 @@ export const ETAPAS: Etapa[] = [
       'Se marcar NÃO COTAR, escreva o motivo. Sem motivo, não salva.',
       'Para COTAR, registre os orçamentos citados nos autos (ou "nenhum") e a observação — a fase de orçamento lê os dois.',
       'Falta algo para decidir? Marque PENDÊNCIA JURÍDICA (1.1) dizendo o que falta: o pedido fica aqui, com a pendência visível, até o escritório resolver.',
+      'A aba "1.1 Pendências" traz o que a fase de orçamento devolveu para você: falta de peça de inteiro teor, achar médico, contato com paciente ou advogado, verificação ou recado. Resolva, escreva a resposta e clique em "Responder e devolver" — o pedido volta sozinho para onde estava.',
       'Sem a peça de inteiro teor ou sem o CNJ, o sistema avisa o que se perde e deixa você decidir: sem peça não dá para extrair exames e orçamentos que vêm dentro dela; sem CNJ não é possível protocolar.',
     ],
     exemplos: [
@@ -130,6 +131,7 @@ export const ETAPAS: Etapa[] = [
       'cumprindo o prazo com o Estado.',
     comoFazer: [
       'Se o médico avisar que não consegue em 4 dias, pergunte a ele até que dia consegue.',
+      'Precisa de algo do jurídico para cotar (peça de inteiro teor, um médico, um contato, uma verificação)? Use "Devolver ao jurídico (1.1)" no pedido ou na Ficha: escolha o tipo, escreva o que precisa. O pedido sai desta fila, vai para a Valéria e volta sozinho com a resposta; o selo verde ↩ fica no nome do paciente até você clicar em "Li".',
       'Sinalize esse prazo à G4MED — o @R avisa a Secretaria por e-mail e pergunta se pode aguardar.',
     ],
     falaDoRapha:

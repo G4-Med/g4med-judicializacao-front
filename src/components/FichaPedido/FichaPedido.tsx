@@ -6,6 +6,7 @@ import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
 import './FichaPedido.css';
 import { BlocoAnotacoes } from '../Anotacoes/BlocoAnotacoes';
+import { BlocoPendenciaJuridica } from '../PendenciaJuridica/PendenciaJuridica';
 
 import { baixarAnexo, salvarBlob, uploadAnexoOrder, getOrcamentoVersoes, criarOrcamentoVersao, reenviarOrcamentoVersao, promoverOrcamentoVersao, getWhatsappGrupoPedido, enviarWhatsappGrupoPedido } from '../../services/api/orders';
 
@@ -487,6 +488,10 @@ export function FichaPedido({
           {/* Reunião 20/09 (Fase 5): anotações INTERNAS — memória da equipe sobre o caso; nas filas
               o nome do paciente ganha "!" enquanto houver anotação. Nunca sai para fora. */}
           {orderId && <BlocoAnotacoes orderId={orderId} />}
+
+          {/* Pedido do Fabrício (reunião 20/09): bilhete de ida e volta ao jurídico — o pedido vai para
+              a 1.1 com o que falta e volta sozinho para onde estava quando a Valéria responde. */}
+          {orderId && <BlocoPendenciaJuridica orderId={orderId} onMudou={aoMudarSituacao} />}
 
           <section className="fic__situacao">
             <header className="fic__situacao-cab">

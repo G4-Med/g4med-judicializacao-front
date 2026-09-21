@@ -122,12 +122,16 @@ export function buildMenuItems({
   currentPath,
   canView,
   onNavigate,
+  contadores,
 }: {
   navigate: NavigateFunction;
   currentPath: string;
   canView: (screen: ScreenKey) => boolean;
   onNavigate?: () => void;
+  /** número ao lado do item (ex.: pendências 1.1 abertas em Análise Jurídica) — só aparece se > 0 */
+  contadores?: Record<string, number>;
 }): MenuItem[] {
+  const comContador = (rotulo: string, path: string) => (contadores?.[path] ? `${rotulo} (${contadores[path]})` : rotulo);
   const go = (path: string) => {
     navigate(path);
     onNavigate?.();
@@ -144,7 +148,7 @@ export function buildMenuItems({
           icon: item.icon,
           className: visibleChildren.some((child) => child.path === currentPath) ? 'menu-active-item' : '',
           items: visibleChildren.map((child) => ({
-            label: rotularComNumeroDaRegra(child.label, child.path),
+            label: comContador(rotularComNumeroDaRegra(child.label, child.path), child.path),
             icon: child.icon,
             command: () => go(child.path),
             className: child.path === currentPath ? 'menu-active-item' : '',

@@ -4,6 +4,7 @@ import { useAccess } from '../../access/AccessContext'
 import { buildMenuItems } from '../navigation/menuConfigClean'
 import { DONOS } from '../../pages/processoOperacional/conteudo'
 import type { MenuItem } from 'primereact/menuitem'
+import { usePendenciasAbertas } from '../../components/PendenciaJuridica/PendenciaJuridica'
 import './Menu.css'
 
 interface MenuItemComDono extends MenuItem {
@@ -55,7 +56,8 @@ export function Menu({ visible, onHide }: Props) {
   const location = useLocation()
   const { canView } = useAccess()
 
-  const items = buildMenuItems({ navigate, currentPath: location.pathname, canView })
+  const pendenciasAbertas = usePendenciasAbertas()
+  const items = buildMenuItems({ navigate, currentPath: location.pathname, canView, contadores: { '/juridico': pendenciasAbertas } })
   const sections = agruparPorSecao(items)
 
   // estado: quais itens com filhos estão abertos

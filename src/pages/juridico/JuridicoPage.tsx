@@ -31,6 +31,7 @@ import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, c
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
+import { AbaPendenciasJuridicas, usePendenciasAbertas } from '../../components/PendenciaJuridica/PendenciaJuridica';
 
 // Meta desta fase (triagem jurídica) — espelha backend/funil.py FASES['triagem'].meta_dias.
 // "a análise sai no dia seguinte — libera para mim até meio-dia" (fala do @R na reunião).
@@ -108,7 +109,10 @@ const CONSULTAS_PROCESSO = [
 
 export function JuridicoPage() {
   // Recarrega a tabela quando a ficha muda a situação de um pedido (@R 17/09).
-  const { versaoDados } = useFichaPedido();
+  const { versaoDados, abrir: abrirFicha } = useFichaPedido();
+  // Reunião 20/09 (Fabrício): aba das pendências que voltaram da fase 3 para o jurídico resolver.
+  const [aba, setAba] = useState<'analise' | 'pendencias'>('analise');
+  const pendenciasAbertas = usePendenciasAbertas();
   const { isReadOnly, profile } = useAccess();
   const readOnly = isReadOnly('juridico');
   // Gerente só consulta esta tela, mas também recebe pedidos fora do e-mail: pode cadastrar à mão.
@@ -423,6 +427,13 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
       </div>
 
       {readOnly && <ReadOnlyBanner />}
+
+      <div className="mc-pend-abas" role="tablist" aria-label="Análise Jurídica">
+        <button type="button" role="tab" aria-selected={aba === 'analise'} className={aba === 'analise' ? 'ativa' : ''} onClick={() => setAba('analise')}>1. Análise</button>
+        <button type="button" role="tab" aria-selected={aba === 'pendencias'} className={aba === 'pendencias' ? 'ativa' : ''} onClick={() => setAba('pendencias')}>1.1 Pendências ({pendenciasAbertas})</button>
+      </div>
+      {aba === 'pendencias' && <AbaPendenciasJuridicas onAbrirFicha={abrirFicha} readOnly={readOnly} />}
+      <div style={{ display: aba === 'analise' ? undefined : 'none' }}>
 
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid">
@@ -1067,6 +1078,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
           )}
         </div>
       </Dialog>
+      </div>
     </div>
   );
 }

@@ -24,6 +24,7 @@ import { atualizarOrder, getOrcamentoMedico, salvarOrcamentoMedico, getAnexosOrd
 import { getBaseOrcamento, getStatusOrcamentoPersonalizado, criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { getStatusTagStyle } from '../../utils/statusTag';
 import { EnviarOrcamentoDialog } from './EnviarOrcamentoDialog';
+import { DialogAbrirPendencia } from '../../components/PendenciaJuridica/PendenciaJuridica';
 import { useAccess } from '../../access/AccessContext';
 import './OrcamentoMedicoPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
@@ -137,6 +138,7 @@ export function OrcamentoMedicoPage() {
   const [parecerNaoFaco, setParecerNaoFaco] = useState('');
   const [salvandoNaoFaco, setSalvandoNaoFaco] = useState(false);
   const [processoSelecionado, setProcessoSelecionado] = useState<ProcessoOrcamentoRow | null>(null);
+  const [pendenciaVisible, setPendenciaVisible] = useState(false);   // bilhete 1.1 (Fabrício, 20/09)
   const [exames, setExames] = useState('');
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -1169,6 +1171,9 @@ ${blocos}
                 severity="danger" outlined
                 onClick={() => { setMotivoNaoFaco('MEDICO_RECUSOU'); setParecerNaoFaco(''); setNaoFacoVisible(true); }} />
               }
+              {!readOnly && <Button label="Devolver ao jurídico (1.1)" icon="pi pi-reply"
+                severity="help" outlined title="Pedir algo ao jurídico: o pedido vai para a 1.1 e volta sozinho para cá"
+                onClick={() => setPendenciaVisible(true)} />}
               {!readOnly && <Button label="Trocar médico" icon="pi pi-user-edit"
                 severity="secondary" outlined
                 onClick={() => { setNovoMedicoId(null); setTrocarMedicoVisible(true); }} />
@@ -1252,6 +1257,9 @@ ${blocos}
           <Button label="Confirmar" icon="pi pi-check" disabled={!novoMedicoId} loading={trocandoMedico} onClick={handleTrocarMedico} />
         </div>
       </Dialog>
+
+      <DialogAbrirPendencia orderId={processoSelecionado?.id ?? null} visible={pendenciaVisible}
+        onHide={() => setPendenciaVisible(false)} onFeito={() => { setDetalheVisible(false); carregarDados(); }} />
 
       <EnviarOrcamentoDialog
         visible={escolhaVisible && !readOnly}
