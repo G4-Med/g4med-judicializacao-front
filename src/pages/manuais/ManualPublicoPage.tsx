@@ -39,7 +39,7 @@ export function ManualPublicoPage() {
   return (
     <div className="manual-pagina">
       <header className="manual-topo">
-        <span className="manual-marca">G4MED</span>
+        <span className="manual-marca">G<b>4</b>MED</span>
         <button type="button" className="manual-pdf" onClick={() => window.print()}>Salvar em PDF</button>
       </header>
       {/* conteúdo fixo, escapado pelo conversor antes de qualquer marcação */}

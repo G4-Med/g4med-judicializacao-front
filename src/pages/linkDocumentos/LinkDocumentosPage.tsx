@@ -108,7 +108,7 @@ export function LinkDocumentosPage() {
   return (
     <div style={pagina}>
       <header style={{ background: cor.marca, color: '#fff', padding: '18px 16px 16px' }}>
-        <div style={{ fontWeight: 800, letterSpacing: '0.08em', fontSize: 13, color: '#FEDD00' }}>G4MED</div>
+        <div style={{ fontWeight: 800, letterSpacing: '0.08em', fontSize: 13, color: '#fff' }}>G<span style={{ color: '#FEDD00' }}>4</span>MED</div>
         <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>
           {dados ? `Documentos do pedido #${dados.pedido}` : 'Documentos do pedido'}
         </div>
