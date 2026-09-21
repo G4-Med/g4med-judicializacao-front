@@ -12,7 +12,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Dialog } from 'primereact/dialog';
 import { FilterMatchMode } from 'primereact/api';
-import { getJuridico, salvarJuridico, getStatusOrders, getAnexosOrder, getCnjCandidatos, confirmarCnj, uploadAnexoOrder, getInteligenciaPedido } from '../../services/api/orders';
+import { getJuridico, salvarJuridico, getStatusOrders, getAnexosOrder, getCnjCandidatos, confirmarCnj, uploadAnexoOrder, getInteligenciaPedido, removerInteiroTeor } from '../../services/api/orders';
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import './JuridicoPage.css';
@@ -160,6 +160,8 @@ export function JuridicoPage() {
   const [intel, setIntel] = useState<any | null>(null)
   // Peça de inteiro teor (@R 27/08): obrigatória ao decidir Cotar OU Não Cotar.
   const [inteiroTeorFile, setInteiroTeorFile] = useState<File | null>(null)
+  const [trocandoPeca, setTrocandoPeca] = useState<'' | 'removendo' | 'enviando'>('')
+  const [avisoPeca, setAvisoPeca] = useState<string>('')
   const [inteiroTeorJaAnexado, setInteiroTeorJaAnexado] = useState(false)
   // @R 15/09: a fase 1 NÃO trava mais por falta de peça nem de CNJ — abre um aviso do que se perde e
   // a pessoa decide. O que falta NESTA decisão; null = aviso fechado.
@@ -279,6 +281,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
   // inteiro teor: se o pedido JÁ tem a peça, não avisar de novo
   setInteiroTeorFile(null)
   setInteiroTeorJaAnexado(false)
+  setAvisoPeca('')
   getAnexosOrder(rowData.id, 'DECISAO_INTEIRO_TEOR')
     .then((res: any) => setInteiroTeorJaAnexado((res.data.anexos ?? []).length > 0))
     .catch(() => setInteiroTeorJaAnexado(false))
@@ -908,19 +911,65 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                 )}
               </label>
               {inteiroTeorJaAnexado ? (
-                <small style={{ color: '#16a34a' }}>
-                  <i className="pi pi-check-circle" /> Este pedido já tem a peça de inteiro teor anexada.
-                </small>
+                <div className="juridico-peca-linha">
+                  <small style={{ color: '#16a34a' }}>
+                    <i className="pi pi-check-circle" /> Este pedido já tem a peça de inteiro teor anexada.
+                  </small>
+                  {/* Carol 21/09: a peça errada não tinha como sair. A antiga NÃO é apagada — fica no
+                      pedido como "Outro", com quem e quando trocou; o pedido volta a pedir a peça. */}
+                  {!readOnly && processoEditando && (
+                    <Button
+                      type="button"
+                      label="Trocar a peça"
+                      icon="pi pi-refresh"
+                      size="small"
+                      outlined
+                      severity="warning"
+                      loading={trocandoPeca === 'removendo'}
+                      onClick={async () => {
+                        if (!window.confirm('Trocar a peça de inteiro teor deste pedido?\n\nA peça atual NÃO é apagada: continua nos documentos do pedido como "Outro" (peça substituída). Em seguida você anexa a correta.')) return;
+                        setTrocandoPeca('removendo'); setAvisoPeca('');
+                        try {
+                          await removerInteiroTeor(processoEditando.id);
+                          setInteiroTeorJaAnexado(false); setInteiroTeorFile(null);
+                          setAvisoPeca('Peça anterior retirada. Escolha o PDF correto e clique em "Enviar esta peça agora".');
+                        } catch (e: any) {
+                          setAvisoPeca(e?.response?.data?.error || 'Não consegui trocar a peça agora. Tente de novo.');
+                        } finally { setTrocandoPeca(''); }
+                      }}
+                    />
+                  )}
+                </div>
               ) : (
-                <>
+                <div className="juridico-peca-linha">
                   <input
                     type="file"
                     accept="application/pdf"
                     disabled={readOnly}
                     onChange={(e) => setInteiroTeorFile(e.target.files?.[0] ?? null)}
                   />
-                </>
+                  {inteiroTeorFile && !readOnly && processoEditando && (
+                    <Button
+                      type="button"
+                      label="Enviar esta peça agora"
+                      icon="pi pi-upload"
+                      size="small"
+                      loading={trocandoPeca === 'enviando'}
+                      onClick={async () => {
+                        setTrocandoPeca('enviando'); setAvisoPeca('');
+                        try {
+                          await uploadAnexoOrder(processoEditando.id, inteiroTeorFile, 'DECISAO_INTEIRO_TEOR');
+                          setInteiroTeorJaAnexado(true); setInteiroTeorFile(null);
+                          setAvisoPeca('Peça anexada.');
+                        } catch (e: any) {
+                          setAvisoPeca(e?.response?.data?.error || 'O envio falhou. Tente de novo.');
+                        } finally { setTrocandoPeca(''); }
+                      }}
+                    />
+                  )}
+                </div>
               )}
+              {avisoPeca && <small className="juridico-peca-aviso" role="status">{avisoPeca}</small>}
             </div>
 
             <div className="field field-span-4">

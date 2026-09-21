@@ -166,6 +166,10 @@ export const uploadAnexoOrder = (orderId: number, file: File, tipo: string) => {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 };
+/** Trocar a peça de inteiro teor (@R 21/09, pedido da Carol): a anterior NÃO é apagada — vira
+ *  'Outro' renomeada com quem/quando trocou, e o pedido fica pronto para receber a nova. */
+export const removerInteiroTeor = (orderId: number, motivo?: string) =>
+  api.post(`/orders/${orderId}/inteiro-teor/remover/`, { motivo: motivo ?? '' });
 export const getAnexosOrder = (orderId: number, tipo?: string) => {
   const params = tipo ? `?tipo=${tipo}` : '';
   return api.get(`/orders/${orderId}/anexos/${params}`);

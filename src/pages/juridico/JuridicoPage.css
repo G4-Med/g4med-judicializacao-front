@@ -445,3 +445,7 @@ body.dark-theme .candidato-cnj { background: rgba(148,98,13,0.15); border-color:
   padding: .5rem .75rem; border-radius: 6px; font-size: .9rem; line-height: 1.35;
   background: rgba(251, 191, 36, .16); border: 1px solid rgba(217, 119, 6, .45); color: #78350f;
 }
+
+/* Peça de inteiro teor: estado + ação na mesma linha (Carol 21/09) */
+.juridico-peca-linha { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.juridico-peca-aviso { display: block; margin-top: .35rem; color: #1e3a8a; }
