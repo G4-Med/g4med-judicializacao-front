@@ -613,7 +613,7 @@ export function SelecionarMedicoPage() {
 
           <Column expander style={{ width: '3rem' }} frozen alignFrozen="left" />
           {!readOnly && <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} frozen alignFrozen="left" />}
-          <Column field="sequencial" header="#" style={{ minWidth: '4rem' }} frozen alignFrozen="left" />
+          <Column field="id" header="#" headerTooltip="Número do pedido (o mesmo da Ficha, dos e-mails e da API)" style={{ minWidth: '4rem' }} frozen alignFrozen="left" />
           {/* Ações da fase ao lado do paciente (@R 29/08): a decisão desta tela é escolher o médico. */}
 {colunaAcoesFase({
             readOnly,

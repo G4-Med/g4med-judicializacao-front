@@ -261,7 +261,7 @@ export function EnviadoSesPage() {
 
           <Column expander style={{ width: '3rem' }} frozen alignFrozen="left" />
           <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} frozen alignFrozen="left" />
-          <Column field="sequencial" header="#" style={{ minWidth: '4rem' }}  frozen alignFrozen="left" />
+          <Column field="id" header="#" headerTooltip="Número do pedido (o mesmo da Ficha, dos e-mails e da API)" style={{ minWidth: '4rem' }}  frozen alignFrozen="left" />
           {/* Ações da fase ao lado do paciente (@R 29/08) — mesmos botões, agora fixos à esquerda. */}
 {colunaAcoesFase({ corpo: (r: any) => <>{(((r: LinhaEnviadoSes) => (!readOnly
               ? <Button label="Registrar" icon="pi pi-flag" size="small" outlined onClick={() => abrirResultado(r)} />

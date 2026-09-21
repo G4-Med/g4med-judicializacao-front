@@ -635,10 +635,10 @@ const kpis = useMemo(() => {
           <Column expander style={{ width: '3rem' }} frozen alignFrozen="left" />
           <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} frozen alignFrozen="left" />
           <Column
-            field="sequencial"
+            field="id"
             header="#"
             style={{ minWidth: '4rem' }}
-            body={(rowData: ResultadoProcessoTableRow) => rowData.sequencial}
+            body={(rowData: ResultadoProcessoTableRow) => rowData.id}
            frozen alignFrozen="left" />
           {/* Ações da fase ao lado do paciente (@R 29/08) — mesmos botões, agora fixos à esquerda. */}
 {/* A etiqueta Ganho/Perda SAIU daqui (@R 08/09: ⟦ou você tira de ações os status e

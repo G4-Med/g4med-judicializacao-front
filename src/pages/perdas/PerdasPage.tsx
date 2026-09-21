@@ -417,11 +417,11 @@ export function PerdasPage() {
           <Column expander style={{ width: '3rem' }} />
           <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} />
           <Column
-            field="sequencial"
+            field="id"
             header="#"
             sortable
             style={{ minWidth: '4rem' }}
-            body={(rowData: PerdaProcessoTableRow) => rowData.sequencial}
+            body={(rowData: PerdaProcessoTableRow) => rowData.id}
           />
           {/* Reabrir a perda (@R 29/08 14:07): volta o pedido para a fase de onde saiu. */}
           {colunaAcoesFase({

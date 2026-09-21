@@ -542,10 +542,10 @@ useEffect(() => { carregarDados(); }, [fila, versaoDados]);
 
           {!readOnly && <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} frozen alignFrozen="left" />}
           <Column
-            field="sequencial"
+            field="id"
             header="#"
             style={{ minWidth: '4rem' }}
-            body={(rowData: SegredoJusticaTableRow) => rowData.sequencial}
+            body={(rowData: SegredoJusticaTableRow) => rowData.id}
            frozen alignFrozen="left" />
           {/* Ações da fase ao lado do paciente (@R 29/08) — mesmos botões, agora fixos à esquerda. */}
 {colunaAcoesFase({ corpo: (r: any) => <>{atualizarBodyTemplate(r)}</> })}

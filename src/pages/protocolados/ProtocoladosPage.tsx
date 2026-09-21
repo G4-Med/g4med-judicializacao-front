@@ -589,10 +589,10 @@ export function ProtocoladosPage() {
           <Column expander style={{ width: '3rem' }} frozen alignFrozen="left" />
           {!readOnly && <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} frozen alignFrozen="left" />}
           <Column
-            field="sequencial"
+            field="id"
             header="#"
             style={{ minWidth: '4rem' }}
-            body={(rowData: ProtocoladoTableRow) => rowData.sequencial}
+            body={(rowData: ProtocoladoTableRow) => rowData.id}
            frozen alignFrozen="left" />
           {/* Ações da fase ao lado do paciente (@R 29/08) — mesmos botões, agora fixos à esquerda. */}
 {colunaAcoesFase({ corpo: (r: any) => <>{atualizarBodyTemplate(r)}{resultadoBodyTemplate(r)}</>, excluir: carregarDados })}

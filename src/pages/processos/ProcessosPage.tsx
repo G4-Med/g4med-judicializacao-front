@@ -2270,10 +2270,10 @@ ${linhasAnexos}
           <Column expander style={{ width: '3rem' }} frozen alignFrozen="left" />
           <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} frozen alignFrozen="left" />
           <Column
-            field="sequencial"
+            field="id"
             header="#"
             style={{ minWidth: '4rem' }}
-            body={(rowData: ProcessoTableRow) => rowData.sequencial}
+            body={(rowData: ProcessoTableRow) => rowData.id}
            frozen alignFrozen="left" />
           {/* Ações da fase ao lado do paciente (@R 29/08) — mesmos botões, agora fixos à esquerda. */}
 {colunaAcoesFase({ corpo: (r: any) => <>{acoesBodyTemplate(r)}{editarBodyTemplate(r)}{ehAdmin && (((r: any) => (
