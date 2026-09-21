@@ -25,7 +25,17 @@ interface MenuLeafConfig {
   /** @R 20/09 15:47: item visível mas NÃO clicável, com o motivo no rótulo — a tela
    *  existe e vai voltar, só não deve ser usada enquanto está sendo refeita. */
   emReforma?: boolean;
+  /** @R 20/09 21:24: "fechar a integração do funil comercial g4med e a opção do menu para abrir
+   *  corretamente". Item que abre um endereço EXTERNO em nova aba (o Funil Comercial roda em
+   *  outro app). Quando presente, `path` é só a chave do item; o clique vai para a URL. */
+  externo?: string;
 }
+
+/** Endereço do Funil Comercial G4MED. Hoje o túnel da máquina DEV; após a migração ao servidor
+ *  (sessão extensoes, GO @R 20/09) vira https://comercial.g4med.com.br — trocar via
+ *  VITE_FUNIL_COMERCIAL_URL no publicar_front.sh ou aqui. */
+const FUNIL_COMERCIAL_URL: string =
+  (import.meta.env.VITE_FUNIL_COMERCIAL_URL as string | undefined) || 'https://g4medcomercial.share.zrok.io/';
 
 interface MenuGroupConfig {
   label: string;
@@ -42,6 +52,7 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
   { label: 'Home', icon: 'pi pi-home', path: '/home', screen: 'home' },
   { label: 'Dashboard', icon: 'pi pi-chart-bar', path: '/dashboard', screen: 'dashboard', emReforma: true },
   { label: 'Funil', icon: 'pi pi-filter', path: '/funil', screen: 'funil' },
+  { label: 'Funil Comercial G4MED', icon: 'pi pi-external-link', path: '/funil-comercial', screen: 'home', externo: FUNIL_COMERCIAL_URL },
   { label: 'SLA', icon: 'pi pi-clock', path: '/sla', screen: 'sla' },
   { label: 'Notificações', icon: 'pi pi-bell', path: '/notificacoes-historico', screen: 'notificacoesHistorico' },
   { label: 'Base de Processos', icon: 'pi pi-briefcase', path: '/base-processos', screen: 'processos' },
@@ -151,6 +162,18 @@ export function buildMenuItems({
           icon: 'pi pi-wrench',
           disabled: true,
           className: 'menu-em-reforma',
+        } as MenuItem,
+      ];
+    }
+
+    if (item.externo) {
+      const url = item.externo;
+      return [
+        {
+          label: item.label,
+          icon: item.icon,
+          command: () => { window.open(url, '_blank', 'noopener,noreferrer'); },
+          className: '',
         } as MenuItem,
       ];
     }
