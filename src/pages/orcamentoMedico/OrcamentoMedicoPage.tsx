@@ -5,6 +5,7 @@ import { CelulaMedico } from '../../components/TrocarMedico/CelulaMedico';
 import { CelulaCotacaoConcorrente, DialogCotacaoConcorrente } from '../../components/CotacaoConcorrente/CotacaoConcorrente';
 import { FaixaDaPeca } from '../../components/CotacaoConcorrente/FaixaDaPeca';
 import { registrarCotacaoPedida, montarCotacaoMedico, darPerdaNoOrcamento } from '../../services/api/orders';
+import { DialogoCopiarPedido, type PedidoParaCopiar } from './DialogoCopiarPedido';
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
@@ -113,6 +114,12 @@ export function OrcamentoMedicoPage() {
   // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
   // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
   const { versaoDados, abrir: abrirFichaPedido } = useFichaPedido();
+  // diálogo do link seguro (Copiar): a função de copiar vive fora do componente e chama por aqui
+  const [copiaComLink, setCopiaComLink] = useState<{ p: PedidoParaCopiar; recarregar?: () => void } | null>(null);
+  useEffect(() => {
+    abrirCopiaComLink = (p, recarregar) => setCopiaComLink({ p, recarregar });
+    return () => { abrirCopiaComLink = null; };
+  }, []);
   // @R 28/08 03:37: painel do pedido abre ABAIXO da linha, em toda fase.
   const [expandidas, setExpandidas] = useState<any>(undefined);
   const { isReadOnly } = useAccess();
@@ -475,181 +482,22 @@ const copiarParaWhatsapp = async (rowData: ProcessoOrcamentoRow, recarregar?: ()
     const avisosEsp: string[] = (av?.data?.avisos || []).filter((a: string) => a.startsWith('Especialidade'))
     if (avisosEsp.length && !window.confirm(avisosEsp.join('\n\n') + '\n\nCopiar mesmo assim?')) return
   } catch { /* aviso é ajuda, não gate */ }
-  /* OS ANEXOS PRECISAM DIZER O QUE SÃO (@R 18/09: "arrumar a mensagem para falar o que
-     é cada anexo que estamos mandando").
-
-     DOIS DEFEITOS MEDIDOS NA MENSAGEM ANTIGA:
-
-     1. Ela buscava SÓ tipo='RELATORIO'. Medido nos 45 pedidos da fase: 60 relatórios —
-        e 101 LAUDOS + 47 EXAMES que nunca eram enviados. O médico recebia justamente o
-        que menos ajuda a cotar, e faltava o que mais ajuda. Não era uma mensagem curta:
-        era uma mensagem incompleta com cara de completa.
-
-     2. Rotulava tudo como "Anexo 1, Anexo 2" + um link. Quem recebe não sabe se abre um
-        laudo, um exame ou a decisão judicial — e abrir link por link para descobrir é o
-        atrito que faz o orçamento demorar (ou voltar com pergunta em vez de preço).
-
-     Agora vai AGRUPADO POR TIPO, com o nome do documento quando ele é legível. Tipos
-     administrativos (e-mail original, comprovantes) ficam de fora: o médico cota a
-     cirurgia, não audita o processo — mandar tudo é tão ruim quanto mandar de menos,
-     porque enterra o que importa. */
-  const ROTULO_ANEXO: Record<string, string> = {
-    LAUDO: 'Laudo médico',
-    EXAME: 'Exame',
-    RELATORIO: 'Relatório médico',
-    DECISAO_INTEIRO_TEOR: 'Decisão judicial (inteiro teor)',
-    RECEITA: 'Receita',
-    PRESCRICAO: 'Prescrição',
-  }
-  /* O QUE NÃO VAI PARA O MÉDICO, e é de propósito: o mapa acima é LISTA BRANCA — só
-     entra o que ele precisa para cotar. Ficam de fora, medidos na produção em 18/09:
-     ORCAMENTO (295) — é a cotação de OUTRO médico; mandar junto entrega o preço do
-     concorrente a quem ainda vai fazer o seu; EMAIL_ORIGINAL (82) — a mensagem interna
-     do órgão, com dados e conversa que não são dele; PROTOCOLO (322) e ACOMPANHAMENTO —
-     rastro processual nosso, posterior à cotação. Tipo novo que apareça no banco NÃO
-     entra sozinho: precisa ser escrito aqui, e essa fricção é a proteção. */
-  let linhasAnexos = 'Nenhum documento clínico anexado a este pedido ainda'
-  try {
-    const res: any = await getAnexosOrder(rowData.id)
-    const todos: any[] = (res.data.anexos || []).filter(
-      (a: any) => ROTULO_ANEXO[a.tipo] && a.linkImagem)
-    if (todos.length > 0) {
-      // ordem CLÍNICA: é como um médico lê para chegar ao preço (diagnóstico → evidência
-      // → relatório → o que a Justiça determinou). Ordem de banco não serve a ninguém.
-      const ORDEM = ['LAUDO', 'EXAME', 'RELATORIO', 'RECEITA', 'PRESCRICAO', 'DECISAO_INTEIRO_TEOR']
-      todos.sort((a: any, b: any) => ORDEM.indexOf(a.tipo) - ORDEM.indexOf(b.tipo))
-      const porTipo = new Map<string, any[]>()
-      for (const a of todos) {
-        if (!porTipo.has(a.tipo)) porTipo.set(a.tipo, [])
-        porTipo.get(a.tipo)!.push(a)
-      }
-      const blocos: string[] = []
-      for (const [tipo, itens] of porTipo) {
-        blocos.push(`${ROTULO_ANEXO[tipo]}${itens.length > 1 ? ` (${itens.length})` : ''}:`)
-        for (const a of itens) {
-          // `nomeLegivel` existe no modelo exatamente para isto — é o nome que alguém
-          // conferiu. Vazio significa "ninguém identificou ainda"; nesse caso vai só o
-          // link, porque um hash no lugar do nome confunde mais que a ausência dele (é o
-          // que faz o médico devolver pedindo esclarecimento em vez de mandar o preço).
-          const nome = (a.nomeLegivel || '').trim()
-          const ehLegivel = nome.length > 0 && nome.length < 70
-          blocos.push(ehLegivel ? `- ${nome}\n  ${a.linkImagem}` : `- ${a.linkImagem}`)
-        }
-      }
-      linhasAnexos = blocos.join('\n')
-    }
-  } catch {
-    linhasAnexos = 'Não foi possível carregar os documentos — confira na plataforma antes de enviar'
-  }
-
-  // "dias em aberto" saiu da mensagem: é o nosso controle de fila, e dito ao médico soa
-  // como cobrança antes do primeiro pedido. O cálculo foi junto — código que só existia
-  // para alimentar uma linha removida vira ruído na próxima leitura.
-  /* 'Orçamentos citados nos autos' é campo do BLOCO DE DECISÃO JURÍDICA (interno): estratégia e teto
-     de preço. Saía no WhatsApp do prestador sob 'ORÇAMENTOS JÁ REGISTRADOS NESTE PROCESSO' — removido
-     20/09 (mandato @R). Se um dia o médico precisar saber disso, será um campo PRÓPRIO redigido para sair. */
-
-  /* A MENSAGEM QUE VAI AO MÉDICO (@R 18/09) — reescrita com três mudanças:
-     · os documentos dizem O QUE SÃO (ver o bloco de anexos acima)
-     · entra o aviso de que a SES acompanha o status — @R verbatim
-     · saem os campos de USO INTERNO que não ajudam quem vai cotar
-
-     O QUE SAIU, E POR QUÊ: "Status: Solicitado ao Medico" e "Dias em Aberto" são o NOSSO
-     controle de fila, não informação para quem cota — e "dias em aberto" dito ao médico
-     soa como cobrança antes mesmo do primeiro pedido. O que ele precisa é: quem é o
-     paciente, o que fazer, e o que ler para chegar ao preço.
-
-     A FRASE DA TRANSPARÊNCIA é literal do pedido do @R, e é VERDADE verificável: existem
-     8 templates de e-mail à SES no sistema (recebimento, orçamento enviado, perda) —
-     medido em 18/09. Uma frase dessas só pode existir se o sistema de fato notificar;
-     prometer acompanhamento que não acontece seria pior que não dizer nada.
-     Escrevi "órgão solicitante" e não "prefeitura": os 546 pedidos com origem medida vêm
-     de @saude.mg.gov.br (Estado). Dizer prefeitura erraria na maioria dos casos. */
-  /* ═══ A MENSAGEM AO MÉDICO — formato único (@R 18/09) ═══
-     ⟦"pensar na mensagem para ser fácil e em um formato único para passar AUTORIDADE ao
-     pedido, e explicativo para acessar os exames extraídos e informações, segue os
-     arquivos juntos, profissionais"⟧
-
-     DE ONDE VEM A AUTORIDADE DE UM TEXTO ASSIM — e não é de adjetivo:
-     · de quem ASSINA (G4MED, por processo judicial) e de POR QUE aquilo chegou nele
-     · de o pedido ser ESPECÍFICO (paciente, procedimento, especialidade) — pedido
-       genérico parece disparo em massa e é tratado como tal
-     · de o material estar PRONTO (documentos nomeados, agrupados, em ordem clínica)
-     · de dizer o que acontece DEPOIS (a SES acompanha o status)
-     Escrever "solicitamos com urgência" ou "prezado doutor" não acrescenta nada disso —
-     só ocupa a primeira linha, que é a única que todo mundo lê.
-
-     ORDEM CLÍNICA, ¬alfabética: laudo (o diagnóstico) → exame (a evidência) → relatório
-     → decisão judicial. É a ordem em que um médico lê para chegar ao preço; qualquer
-     outra obriga ele a reorganizar mentalmente antes de começar.
-
-     NÚMERO DO PEDIDO no fim: é a chave que a pessoa cita ao responder, e é o que
-     transforma um "quanto fica?" solto numa resposta rastreável até este processo. */
-  const totalDocs = (linhasAnexos.match(/\n?- /g) || []).length
-  const texto = `*G4MED · SOLICITAÇÃO DE ORÇAMENTO*
-Processo judicial de saúde — Secretaria de Estado de Saúde de MG
-
-*PACIENTE:* ${rowData.paciente}${rowData.idade ? ` · ${rowData.idade} anos` : ''}
-*PROCEDIMENTO:* ${rowData.procedimento}
-*ESPECIALIDADE:* ${rowData.area}${rowData.subarea ? ` · ${rowData.subarea}` : ''}
-
-Doutor(a), este paciente aguarda decisão judicial para o procedimento acima e precisamos
-do seu orçamento para dar seguimento.
-
-*DOCUMENTOS DO PROCESSO*${totalDocs ? ` (${totalDocs})` : ''}
-Os arquivos abaixo foram extraídos do processo e estão identificados por tipo. Basta
-abrir cada link — não é necessário cadastro.
-
-${linhasAnexos}
-*O QUE PRECISAMOS*
-Valor do procedimento, com a composição (equipe, hospitalar e OPME quando houver). Se
-faltar algum exame para você fechar o valor, responda dizendo qual — nós buscamos.
-
-A Secretaria de Estado de Saúde de Minas Gerais será notificada do status deste pedido
-para acompanhamento da cotação, conforme a transparência acordada junto à entidade e ao
-órgão solicitante.
-
-_Pedido #${rowData.id} · G4MED · ${formatarData(new Date().toISOString().slice(0, 10))}_`
-
-  const copiar = async (texto: string) => {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(texto)
-    } else {
-      const textarea = document.createElement('textarea')
-      textarea.value = texto
-      textarea.style.position = 'fixed'
-      textarea.style.opacity = '0'
-      document.body.appendChild(textarea)
-      textarea.focus()
-      textarea.select()
-      document.execCommand('copy')
-      document.body.removeChild(textarea)
-    }
-  }
-
-  try {
-    await copiar(texto)
-    /* COPIAR CONTA COMO PEDIDO (@R 18/09: "ao clicar em copiar conta como coleta do
-       pedido"). É o mais perto que o sistema chega do ato: o envio sai do WhatsApp,
-       fora daqui — medido em 18/09, ZERO e-mails de cotação foram gerados, porque o
-       canal real é outro.
-
-       O registro vem DEPOIS do copiar dar certo: marcar antes contaria um pedido que
-       falhou na área de transferência. E a falha do registro NÃO derruba o copiar —
-       quem precisa da mensagem já a tem; o que se perde é a marca, e ela é recuperável
-       (basta copiar de novo). O contrário — perder a mensagem por causa da marca —
-       seria trocar o essencial pelo acessório. */
-    try {
-      await registrarCotacaoPedida(rowData.id)
-      recarregar?.()
-    } catch {
-      // silêncio proposital: ver o comentário acima
-    }
-    alert('Copiado! Cole no WhatsApp.\n\nRegistrado como pedido ao médico — se não for enviar, use o ✕ na coluna "Pedido ao médico".')
-  } catch {
-    alert('Não foi possível copiar.')
-  }
+  /* O TEXTO E OS DOCUMENTOS AGORA SAEM PELO DIÁLOGO DO LINK SEGURO (@R 21/09 18:27): em vez de N
+     links públicos do R2, 1 link da G4MED que registra cada abertura e não deixa baixar — e quem
+     copia vê antes os valores (real × deflacionado) e escolhe se vão. A lista branca de tipos, a
+     ordem clínica e a frase da SES moraram aqui até hoje e foram para DialogoCopiarPedido.tsx
+     (texto) e backend/link_documentos.py (lista branca, servidor). */
+  const m = rowData as any
+  abrirCopiaComLink?.({
+    id: rowData.id, paciente: rowData.paciente, idade: rowData.idade, procedimento: rowData.procedimento,
+    area: rowData.area, subarea: rowData.subarea,
+    idMedico: m.idMedico ?? m.medicoId ?? m.medico_id ?? null, medico: m.nomeMedico ?? m.medico ?? null,
+  }, recarregar)
 }
+
+// a função acima vive FORA do componente (é chamada de 2 lugares); o componente registra aqui
+// quem abre o diálogo — mesmo motivo do `recarregar` passado por parâmetro
+let abrirCopiaComLink: ((p: PedidoParaCopiar, recarregar?: () => void) => void) | null = null
 
 const copiarTexto = async (texto: string) => {
   if (navigator.clipboard && window.isSecureContext) {
@@ -721,6 +569,8 @@ ${blocos}
 
   return (
     <div className="orcamento-medico-page">
+      <DialogoCopiarPedido pedido={copiaComLink?.p ?? null} onClose={() => setCopiaComLink(null)}
+        onCopiado={() => copiaComLink?.recarregar?.()} />
       <PrimeiraVisitaInfo etapaId="orcamento-medico" />
       <div className="page-header">
         <CabecalhoFase nome="Orçamento Médico" screen="orcamentoMedico" slaDias={SLA_META_DIAS_ORCAMENTO}

@@ -1,3 +1,4 @@
+import { LinkDocumentosPage } from '../../pages/linkDocumentos/LinkDocumentosPage';
 import { Route, Routes, Navigate } from 'react-router-dom';
 
 import { MainLayout } from '../layout/MainLayout';
@@ -45,6 +46,8 @@ export function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/recuperar-senha" element={<RecuperarSenhaPage />} />
+      {/* link seguro dos documentos (@R 21/09): público, sem login e sem o menu interno */}
+      <Route path="/d/:token" element={<LinkDocumentosPage />} />
 
       <Route
         element={(

@@ -563,3 +563,14 @@ export const cancelarPendenciaJuridica = (orderId: number, pendenciaId: number, 
   api.post<PendenciaJuridica>(`/orders/${orderId}/pendencia-juridica/${pendenciaId}/cancelar/`, { motivo });
 export const marcarPendenciaLida = (orderId: number, pendenciaId: number) =>
   api.post<PendenciaJuridica>(`/orders/${orderId}/pendencia-juridica/${pendenciaId}/lida/`, {});
+
+/* LINK RASTREÁVEL DOS DOCUMENTOS (@R 21/09 18:27) — 1 link seguro da G4MED no lugar dos links
+   públicos: registra cada abertura, só visualiza (imagem com marca d'água), revogável. */
+export const previaLinkDocumentos = (orderId: number) =>
+  api.get(`/orders/${orderId}/link-documentos/previa/`);
+export const gerarLinkDocumentos = (orderId: number, dados: { destino?: string; medicoId?: number | null; mostrarValores: boolean }) =>
+  api.post(`/orders/${orderId}/link-documentos/`, dados);
+export const rastroLinksDocumentos = (orderId: number) =>
+  api.get(`/orders/${orderId}/link-documentos/rastro/`);
+export const revogarLinkDocumentos = (linkId: number) =>
+  api.post(`/link-documentos/${linkId}/revogar/`, {});
