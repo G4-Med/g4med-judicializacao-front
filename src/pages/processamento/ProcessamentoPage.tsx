@@ -165,7 +165,7 @@ export function ProcessamentoPage() {
       {/* @R 19/09/2026: "saber que tudo está funcional com o sistema do nosso computador e diagnosticar
           caso não esteja, na aba da rota". O card mostra o que o CRON da máquina do Rapha mandou como
           batimento e, quando algo está errado, a CAUSA medida e o CONSERTO (comando) — não "verifique". */}
-      <Card className="mt-3" title="Leitor de peças — máquina do Rapha">
+      <Card className="mt-3" title="Leitor de peças — servidor">
         {!d.leitor ? (
           <p className="mt-0 text-color-secondary">Esta versão do servidor ainda não manda o estado do leitor.</p>
         ) : (
@@ -195,8 +195,9 @@ export function ProcessamentoPage() {
               ))}
             </ul>
             <p className="text-sm text-color-secondary mb-0 mt-2">
-              O leitor roda no computador do Rapha (cron a cada 10 min, 3 peças por vez). O servidor só guarda a fila.
-              Sem batimento por mais de 25 min = o cron não está rodando lá.
+              Desde 21/09/2026 o leitor roda no próprio servidor (cron a cada 10 min, 3 peças por vez) — saiu do
+              computador do Rapha, que ficava ocupado e pulava a leitura (o pedido #1272 esperou 50 min).
+              Sem batimento por mais de 25 min = o cron do servidor não está rodando.
             </p>
           </>
         )}
