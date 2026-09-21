@@ -43,6 +43,8 @@ export interface LinhaIdentificada {
   id?: number;
   segredo?: 'sim' | 'possivel' | 'nao' | null;
   temInteiroTeor?: boolean | null;
+  /** Estado da LEITURA da peça pelo robô (@R 21/09: erro na leitura tem de aparecer na tela). */
+  inteiroTeorLeitura?: { status: string | null; mensagem: string; em: string | null } | null;
   semPecaInteiroTeor?: boolean | null;
   semPecaDeclaracao?: string | null;
   solicitante?: string | null;
@@ -651,8 +653,26 @@ function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
        resolveria: o bucket não manda Content-Disposition, então o Chrome ABRE o PDF (8,8 MB
        no #1252) em vez de baixar, e o atributo `download` é ignorado em cross-origin.
        Por isso aponta para a rota do backend, que força o attachment. */
-    const tag = <Tag value="Inteiro teor ✓" severity="success" icon="pi pi-file-check"
-      title="A peça de inteiro teor já está anexada a este pedido" />;
+    /* O SELO DIZ COMO FOI A LEITURA, não só que a peça existe (@R 21/09 13:05, #1272: a leitura
+       tinha dado ERRO e a tabela seguia verde — "não mostra que tem erro nos documentos").
+       Verde só quando o robô leu e tudo subiu; amarelo = na fila/lendo/lida em parte/1 documento
+       não subiu; vermelho = erro. A mensagem do leitor vai no title. */
+    const lt = linha.inteiroTeorLeitura;
+    const st = lt?.status ?? null;
+    const msg = lt?.mensagem ?? '';
+    const docFaltou = st === 'PROCESSADO' && /não subiu/i.test(msg);
+    const [valor, severity, icon, titulo]: [string, 'success' | 'warning' | 'danger' | 'info', string, string] =
+      st === 'ERRO' ? ['Inteiro teor — ERRO na leitura', 'danger', 'pi pi-exclamation-triangle',
+                       `A peça está anexada, mas o robô NÃO conseguiu ler: ${msg || 'sem detalhe'}. Use Reprocessar.`]
+      : st === 'PENDENTE' || st === 'PROCESSANDO' ? ['Inteiro teor — lendo…', 'info', 'pi pi-clock',
+                       'A peça está anexada e na fila do leitor (roda a cada 10 min no servidor).']
+      : st === 'PARCIAL' ? ['Inteiro teor — lida em parte', 'warning', 'pi pi-exclamation-circle',
+                       `Há páginas não analisadas: ${msg || 'sem detalhe'}. Use Reprocessar.`]
+      : docFaltou ? ['Inteiro teor — 1 documento não subiu', 'warning', 'pi pi-exclamation-circle',
+                       `${msg}. Reprocessar sobe só o que faltou (os já gravados não duplicam).`]
+      : ['Inteiro teor ✓', 'success', 'pi pi-file-check',
+         st === 'PROCESSADO' ? `Peça anexada e lida pelo robô. ${msg}` : 'A peça de inteiro teor já está anexada a este pedido'];
+    const tag = <Tag value={valor} severity={severity} icon={icon} title={titulo} />;
     if (!linha.id) return tag;
     /* ⚠ NÃO usar <a href>: navegação de browser não manda o header Authorization e a rota
        devolve 401 (foi o que aconteceu com o @R em 18/09). O download passa pelo axios. */
