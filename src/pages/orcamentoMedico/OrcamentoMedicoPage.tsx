@@ -729,6 +729,10 @@ ${blocos}
           <Button label={`Retornos do jurídico${nRetornos ? ` (${nRetornos})` : ''}`} icon="pi pi-reply" outlined
             severity={nRetornos ? 'success' : 'secondary'} title="Respostas do jurídico aos pedidos que você devolveu (1.1), esperando o seu Li"
             onClick={() => setRetornosVisible(true)} />
+          {agirPendencias.paradas > 0 && (
+            <span role="status" title="Pedidos devolvidos ao jurídico que estão sem resposta há 2 dias ou mais — eles estão fora desta fila enquanto isso"
+              style={{ alignSelf: 'center', fontWeight: 700, color: '#b91c1c' }}>{agirPendencias.paradas} parada(s) no jurídico</span>
+          )}
           <Button
             label="Por médico"
             icon="pi pi-users"

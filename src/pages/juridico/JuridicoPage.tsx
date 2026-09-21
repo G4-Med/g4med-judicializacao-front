@@ -31,7 +31,7 @@ import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, c
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
-import { AbaPendenciasJuridicas, usePendenciasAbertas } from '../../components/PendenciaJuridica/PendenciaJuridica';
+import { AbaPendenciasJuridicas, usePendenciasAbertas, usePendenciasParaAgir } from '../../components/PendenciaJuridica/PendenciaJuridica';
 
 // Meta desta fase (triagem jurídica) — espelha backend/funil.py FASES['triagem'].meta_dias.
 // "a análise sai no dia seguinte — libera para mim até meio-dia" (fala do @R na reunião).
@@ -113,6 +113,7 @@ export function JuridicoPage() {
   // Reunião 20/09 (Fabrício): aba das pendências que voltaram da fase 3 para o jurídico resolver.
   const [aba, setAba] = useState<'analise' | 'pendencias'>('analise');
   const pendenciasAbertas = usePendenciasAbertas();
+  const { paradas: pendenciasParadas } = usePendenciasParaAgir();   // o menu abre fechado: o número tem de estar na tela de trabalho
   const { isReadOnly, profile } = useAccess();
   const readOnly = isReadOnly('juridico');
   // Gerente só consulta esta tela, mas também recebe pedidos fora do e-mail: pode cadastrar à mão.
@@ -430,7 +431,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
 
       <div className="mc-pend-abas" role="tablist" aria-label="Análise Jurídica">
         <button type="button" role="tab" id="aba-analise" aria-controls="painel-analise" aria-selected={aba === 'analise'} className={aba === 'analise' ? 'ativa' : ''} onClick={() => setAba('analise')}>1. Análise</button>
-        <button type="button" role="tab" id="aba-pendencias" aria-controls="painel-pendencias" aria-selected={aba === 'pendencias'} className={aba === 'pendencias' ? 'ativa' : ''} onClick={() => setAba('pendencias')}>1.1 Pendências ({pendenciasAbertas})</button>
+        <button type="button" role="tab" id="aba-pendencias" aria-controls="painel-pendencias" aria-selected={aba === 'pendencias'} className={aba === 'pendencias' ? 'ativa' : ''} onClick={() => setAba('pendencias')}>1.1 Pendências ({pendenciasAbertas}{pendenciasParadas ? ` · ${pendenciasParadas} parada(s)` : ''})</button>
       </div>
       {aba === 'pendencias' && <div role="tabpanel" id="painel-pendencias" aria-labelledby="aba-pendencias"><AbaPendenciasJuridicas onAbrirFicha={abrirFicha} readOnly={readOnly} /></div>}
       <div role="tabpanel" id="painel-analise" aria-labelledby="aba-analise" style={{ display: aba === 'analise' ? undefined : 'none' }}>

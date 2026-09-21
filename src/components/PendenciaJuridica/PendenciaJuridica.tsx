@@ -285,7 +285,7 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
           <div><small>{p.procedimento}{p.nprocesso ? ` · ${p.nprocesso}` : ''} · volta para “{p.faseOrigem}”</small></div>
           {p.foraDoJuridico && <p role="note" style={{ margin: '.4rem 0' }}><strong>Atenção:</strong> este pedido foi tirado do jurídico por outra tela e hoje está em “{p.faseAtual}”. Responder aqui <strong>registra a resposta e encerra a pendência</strong>, sem mover o pedido.</p>}
           <p style={{ margin: '.5rem 0' }}>{p.texto}</p>
-          {p.tipo === 'INTEIRO_TEOR' && (
+          {p.tipo === 'INTEIRO_TEOR' && !readOnly && (
             <div>
               <label className="p-button p-button-outlined p-button-sm" style={{ cursor: 'pointer' }}>
                 <i className="pi pi-paperclip" style={{ marginRight: '.4rem' }} />{anexando === p.id ? 'Anexando…' : 'Anexar peça de inteiro teor (PDF)'}
