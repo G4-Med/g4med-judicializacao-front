@@ -105,3 +105,10 @@
 .acv-vazio { color: var(--acv-texto-2); opacity: .7; font-size: .85rem; }
 .acv-baixar { text-decoration: none; display: inline-flex; align-items: center; gap: .3rem; color: var(--acv-acento); }
 .acv-baixar:hover { text-decoration: underline; }
+
+/* Pedido e chips abrem a Ficha (@R 21/09: "ter como abrir os pedidos ou as fichas dos pedidos"). */
+.acv-link { background: none; border: 0; padding: 0 .2rem; font: inherit; color: var(--mc-primary, #1e40af);
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+button.acv-id-chip.acv-link { padding: .1rem .45rem; text-decoration: none; }
+.acv-link:hover { filter: brightness(.85); }
+.acv-link:focus-visible { outline: 2px solid var(--mc-primary, #1e40af); outline-offset: 2px; }

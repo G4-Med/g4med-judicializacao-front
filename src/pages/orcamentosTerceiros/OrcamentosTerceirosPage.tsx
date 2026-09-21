@@ -12,6 +12,7 @@ import { Tag } from 'primereact/tag';
 import { getAcervoPrecos, getOrcamentosTerceiros } from '../../services/api/orders';
 import { cabecalhoComHint } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { ContadorRegistros } from '../../components/ContadorRegistros/ContadorRegistros';
+import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import './OrcamentosTerceirosPage.css';
 
 /**
@@ -51,8 +52,20 @@ function Lente({ s, vazio = 'sem dado' }: { s?: Stats; vazio?: string }) {
 }
 
 /** Detalhe da linha: os orçamentos de terceiros daquele procedimento + pedidos sem orçamento. */
+/** O papel vem do servidor como ORCAMENTO_VENCEDOR / ORCAMENTO_CONCORRENTE / OPME…; a tela comparava
+ *  com 'VENCEDOR' e nunca acertava — todo orçamento aparecia como texto cru. */
+const PAPEL: Record<string, { rotulo: string; sev: 'success' | 'info' | 'warning' | 'secondary' }> = {
+  ORCAMENTO_VENCEDOR: { rotulo: 'venceu', sev: 'success' }, ORCAMENTO_CONCORRENTE: { rotulo: 'concorreu', sev: 'info' },
+  ORCAMENTO_VARIANTE: { rotulo: 'variante', sev: 'secondary' }, OPME: { rotulo: 'OPME', sev: 'warning' },
+  HONORARIO: { rotulo: 'honorário', sev: 'secondary' }, INTERNACAO: { rotulo: 'internação', sev: 'secondary' },
+  TAXA: { rotulo: 'taxa', sev: 'secondary' }, MEDICAMENTO: { rotulo: 'medicamento', sev: 'secondary' },
+  EXAME: { rotulo: 'exame', sev: 'secondary' }, OUTRO: { rotulo: 'outro', sev: 'secondary' },
+};
+const ORIGEM_ROTULO: Record<string, string> = { RECORTE: 'a folha', ARQUIVO: 'arquivo', PECA: 'processo' };
+
 function DetalheProcedimento({ linha }: { linha: Linha }) {
   const ordenacaoItens = useOrdenacao('valorTotal', -1);
+  const ficha = useFichaPedido();
   const [itens, setItens] = useState<any[] | null>(null);
   useEffect(() => {
     getOrcamentosTerceiros({ procedimento: linha.procedimento })
@@ -71,23 +84,25 @@ function DetalheProcedimento({ linha }: { linha: Linha }) {
             <Column field="prestador" header="Prestador" sortable
               body={(r) => r.prestador || <span className="acv-vazio">não informado</span>} />
             <Column field="categoria" header="Papel" style={{ width: '9rem' }}
-              body={(r) => r.categoria
-                ? <Tag value={r.categoria === 'VENCEDOR' ? 'venceu' : r.categoria === 'CONCORRENTE' ? 'concorreu' : r.categoria.toLowerCase()}
-                    severity={r.categoria === 'VENCEDOR' ? 'success' : 'info'} />
-                : <span className="acv-vazio">—</span>} />
+              body={(r) => { const p = r.categoria ? PAPEL[r.categoria] : null;
+                return p ? <Tag value={p.rotulo} severity={p.sev} /> : <span className="acv-vazio" title="Ainda não classificado">—</span>; }} />
             <Column field="valorTotal" header="Valor" sortable style={{ width: '9rem' }}
               bodyStyle={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} body={(r) => brl(r.valorTotal)} />
             <Column field="dataOrcamento" header="Data" sortable style={{ width: '7.5rem' }} body={(r) => r.dataOrcamento || '—'} />
             <Column field="paciente" header="Paciente / pedido"
-              body={(r) => <span>{r.paciente || '—'}{r.orderId ? <span className="acv-pedido-id col-paciente-upper">#{r.orderId}</span> : null}</span>} />
+              body={(r) => <span>{r.paciente || '—'}{r.orderId
+                ? <button type="button" className="acv-pedido-id acv-link col-paciente-upper" title="Abrir a Ficha do Pedido"
+                    onClick={() => ficha.abrir(r.orderId)}>#{r.orderId}</button>
+                : (r.cnj20 ? <span className="acv-vazio" title="Processo coletado que não é pedido nosso"> · processo {r.cnj20}</span> : null)}</span>} />
             <Column header="Conferido" style={{ width: '7rem' }} bodyStyle={{ textAlign: 'center' }}
               body={(r) => r.confirmado ? <Tag value="sim" severity="success" /> : <Tag value="não" severity="warning" />} />
-            <Column header="Origem" style={{ width: '8rem' }} bodyStyle={{ textAlign: 'center' }}
-              body={(r) => (r.linkArquivo
-                ? <a href={r.linkArquivo} target="_blank" rel="noreferrer" className="acv-baixar" title="Abrir o documento de origem">
-                    <i className="pi pi-download" /> {r.paginaOrigem ? `p. ${r.paginaOrigem}` : 'baixar'}
+            <Column header="Documento" style={{ width: '9rem' }} bodyStyle={{ textAlign: 'center' }}
+              body={(r) => (r.linkAbrir
+                ? <a href={r.linkAbrir} target="_blank" rel="noreferrer" className="acv-baixar"
+                    title={r.origemAbrir === 'PECA' ? `Abre o processo inteiro${r.paginaOrigem ? ` — o orçamento está na página ${r.paginaOrigem}` : ''}` : 'Abrir o documento de origem'}>
+                    <i className="pi pi-file-pdf" /> {ORIGEM_ROTULO[r.origemAbrir] ?? 'abrir'}{r.paginaOrigem ? ` · p. ${r.paginaOrigem}` : ''}
                   </a>
-                : (r.paginaOrigem ? `p. ${r.paginaOrigem}` : <span className="acv-vazio">—</span>))} />
+                : <span className="acv-vazio" title="Este valor veio da base de processos coletados sem o arquivo">sem arquivo</span>)} />
           </DataTable>
         )}
       </div>
@@ -97,7 +112,9 @@ function DetalheProcedimento({ linha }: { linha: Linha }) {
         {linha.demanda.semOrcamento === 0
           ? <p className="acv-vazio">Todos os pedidos deste procedimento já têm orçamento.</p>
           : <div className="acv-ids">
-              {linha.demanda.pedidosSemOrcamentoIds.map((id) => <span key={id} className="acv-id-chip">#{id}</span>)}
+              {linha.demanda.pedidosSemOrcamentoIds.map((id) => (
+                <button type="button" key={id} className="acv-id-chip acv-link" title="Abrir a Ficha do Pedido" onClick={() => ficha.abrir(id)}>#{id}</button>
+              ))}
               {linha.demanda.semOrcamento > linha.demanda.pedidosSemOrcamentoIds.length &&
                 <span className="acv-vazio">+{linha.demanda.semOrcamento - linha.demanda.pedidosSemOrcamentoIds.length} mais</span>}
             </div>}
