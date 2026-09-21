@@ -470,6 +470,20 @@ function Respostas({ statusInicial }: { statusInicial: string | null }) {
               )}
             </span>
           )} />
+        {/* @R 21/09: onde o pedido está HOJE — para conferir se o e-mail ainda condiz (e se foi classificado certo) */}
+        <Column field="statusProcesso" header="Status do pedido" sortable style={{ minWidth: '10rem' }}
+          body={(r) => {
+            // e-mail de PERDA ainda na fila de um pedido que NÃO está em perda: enviar diria à SES que desistimos de um
+            // pedido que está andando. Medido em 21/09: o único item da fila (#1248) estava exatamente assim.
+            const incoerente = r.tipoEmail === 'DAR_PERDA' && r.status === 'PENDENTE' && !!r.statusProcesso && r.statusProcesso !== 'Perda';
+            return r.statusProcesso
+              ? <span><span className="ce-sub" style={{ color: '#111827' }}>{r.statusProcesso}</span>
+                  {incoerente && <span role="alert" style={{ display: 'block', marginTop: 2, fontSize: '.72rem', fontWeight: 700, color: '#b91c1c' }}>
+                    <i className="pi pi-exclamation-triangle" /> pedido NÃO está em perda — não envie; cancele este e-mail</span>}</span>
+              : <span style={{ color: '#9ca3af' }}>—</span>;
+          }} />
+        <Column field="statusJuridico" header="Status jurídico" sortable style={{ minWidth: '9rem' }}
+          body={(r) => r.statusJuridico ? <span className="ce-sub" style={{ color: '#111827' }}>{r.statusJuridico}</span> : <span style={{ color: '#9ca3af' }}>—</span>} />
         <Column field="tipoEmail" header="Tipo" sortable style={{ width: '13rem' }}
           body={(r) => (
             <span>
