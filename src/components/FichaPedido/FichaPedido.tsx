@@ -6,7 +6,7 @@ import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
 import './FichaPedido.css';
 import { BlocoAnotacoes } from '../Anotacoes/BlocoAnotacoes';
-import { BlocoPendenciaJuridica } from '../PendenciaJuridica/PendenciaJuridica';
+import { BlocoPendenciaJuridica, DialogAbrirPendencia } from '../PendenciaJuridica/PendenciaJuridica';
 
 import { baixarAnexo, salvarBlob, uploadAnexoOrder, getOrcamentoVersoes, criarOrcamentoVersao, reenviarOrcamentoVersao, promoverOrcamentoVersao, getWhatsappGrupoPedido, enviarWhatsappGrupoPedido } from '../../services/api/orders';
 
@@ -327,10 +327,18 @@ export function FichaPedido({
   // MOVER a situação (@R 17/09). Distinto do "voltar fase": aquele DESFAZ o que
   // aconteceu; este COLOCA o pedido onde ele deveria estar. Não dispara e-mail — se
   // disparasse, corrigir um cadastro mandaria a cotação de novo ao órgão público.
+  const [pendenciaPelaSituacao, setPendenciaPelaSituacao] = useState(false);
   const mudarSituacao = async (campo: string, valor: string | null) => {
     if (!orderId) return;
     const atual = (dados?.situacao as Record<string, unknown> | undefined)?.[campo] ?? null;
     if (atual === valor) return;
+    // 21/09: mandar ao jurídico um pedido que está em Orçamento/Protocolar por AQUI era o "recado solto" —
+    // sem dizer o que falta, sem guardar a origem, sem volta. O caminho certo é o bilhete 1.1.
+    if (campo === 'statusProcesso' && valor === 'Aguardando Juridico'
+        && (atual === 'Aguardando Orçamento' || atual === 'Aguardando Protocolar')) {
+      setPendenciaPelaSituacao(true);
+      return;
+    }
     const ok = window.confirm(
       `Mudar ${rotuloCampo(campo)} de "${atual ?? '(vazio)'}" para "${valor ?? '(vazio)'}"?\n\n` +
       'Isto corrige o cadastro e fica registrado no histórico com o seu nome.\n' +
@@ -492,6 +500,9 @@ export function FichaPedido({
           {/* Pedido do Fabrício (reunião 20/09): bilhete de ida e volta ao jurídico — o pedido vai para
               a 1.1 com o que falta e volta sozinho para onde estava quando a Valéria responde. */}
           {orderId && <BlocoPendenciaJuridica orderId={orderId} onMudou={aoMudarSituacao} />}
+          <DialogAbrirPendencia orderId={orderId ?? null} visible={pendenciaPelaSituacao}
+            onHide={() => setPendenciaPelaSituacao(false)}
+            onFeito={async () => { if (orderId) { const r = await getFichaPedido(orderId); setDados(r.data); } aoMudarSituacao?.(); }} />
 
           <section className="fic__situacao">
             <header className="fic__situacao-cab">

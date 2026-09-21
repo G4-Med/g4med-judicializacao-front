@@ -3,8 +3,9 @@ import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Dropdown } from 'primereact/dropdown';
 import { InputTextarea } from 'primereact/inputtextarea';
+import { BotaoCopiar } from '../BotaoCopiar/BotaoCopiar';
 import {
-  getPendenciasJuridicas, abrirPendenciaJuridica, responderPendenciaJuridica, marcarPendenciaLida, getMedicosSelect,
+  getPendenciasJuridicas, uploadAnexoOrder, abrirPendenciaJuridica, responderPendenciaJuridica, marcarPendenciaLida, cancelarPendenciaJuridica, getMedicosSelect,
 } from '../../services/api/orders';
 import type { PendenciaJuridica, TipoPendenciaJuridica } from '../../services/api/orders';
 import './PendenciaJuridica.css';
@@ -26,26 +27,29 @@ const erroDe = (e: any, padrao: string) => e?.response?.data?.error || padrao;
 
 /* ── cache de módulo: 1 chamada por tela (mesmo desenho do MarcadorAnotacao) ─────────────── */
 let cache: Record<string, PendenciaJuridica> | null = null;
+let carregadoEm = 0;
+const VALIDADE_MS = 60_000;   // o selo e o contador se renovam sozinhos: quem pediu vê o ↩ sem recarregar a página
 let totais = { ABERTA: 0, RESPONDIDA: 0, LIDA: 0 };
 let carregando: Promise<void> | null = null;
 const ouvintes = new Set<() => void>();
 
 async function carregar(): Promise<void> {
-  if (cache) return;
+  if (cache && Date.now() - carregadoEm < VALIDADE_MS) return;
   if (!carregando) {
     carregando = getPendenciasJuridicas({ status: 'ABERTA,RESPONDIDA' })
       .then((r) => {
         const novo: Record<string, PendenciaJuridica> = {};
         // a lista vem da mais nova para a mais velha: a 1ª de cada pedido é a que vale
         for (const p of r.data?.itens ?? []) if (!novo[String(p.orderId)]) novo[String(p.orderId)] = p;
-        cache = novo; totais = r.data?.total ?? totais;
+        cache = novo; carregadoEm = Date.now(); totais = r.data?.total ?? totais;
       })
-      .catch(() => { cache = {}; })
+      // erro NÃO vira "sem pendências": o cache fica nulo e a próxima tela tenta de novo (antes {} congelava em 0)
+      .catch(() => { cache = null; carregadoEm = 0; })
       .finally(() => { carregando = null; });
   }
   return carregando;
 }
-export function invalidarPendencias() { cache = null; carregar().then(() => ouvintes.forEach((f) => f())); }
+export function invalidarPendencias() { cache = null; carregadoEm = 0; carregar().then(() => ouvintes.forEach((f) => f())); }
 
 function usePendenciaDoPedido(orderId: number) {
   const [p, setP] = useState<PendenciaJuridica | null>(cache?.[String(orderId)] ?? null);
@@ -65,7 +69,8 @@ export function usePendenciasAbertas(): number {
     let vivo = true;
     const atualizar = () => { if (vivo) setN(totais.ABERTA); };
     carregar().then(atualizar); ouvintes.add(atualizar);
-    return () => { vivo = false; ouvintes.delete(atualizar); };
+    const t = window.setInterval(() => { carregar().then(() => ouvintes.forEach((f) => f())); }, VALIDADE_MS);
+    return () => { vivo = false; ouvintes.delete(atualizar); window.clearInterval(t); };
   }, []);
   return n;
 }
@@ -88,12 +93,18 @@ export function SeloPendencia({ orderId }: { orderId: number }) {
     <>
       <button type="button" className={`mc-pend-selo mc-pend-selo--${respondida ? 'respondida' : 'aberta'}`}
         title={respondida ? 'Retornou do jurídico — clique para ler a resposta' : `No jurídico (1.1): ${p.tipoRotulo}`}
-        aria-label={respondida ? 'Retornou do jurídico' : 'Pendência aberta no jurídico'}
+        aria-label={respondida ? `Retornou do jurídico: ${p.tipoRotulo}. Abrir a resposta` : `No jurídico aguardando: ${p.tipoRotulo}`}
         onClick={(e) => { e.stopPropagation(); setAberto(true); }}>{respondida ? '↩' : '⚖'}</button>
       <Dialog header={respondida ? 'Retornou do jurídico' : 'No jurídico (1.1)'} visible={aberto} modal dismissableMask
         style={{ width: '34rem', maxWidth: '94vw' }} onHide={() => setAberto(false)}>
         <ItemPendencia p={p} />
-        {respondida && <Button label="Li" icon="pi pi-check" loading={salvando} onClick={li} />}
+        {respondida && (
+          <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', marginTop: '.6rem', flexWrap: 'wrap' }}>
+            <Button label="Li" icon="pi pi-check" loading={salvando} onClick={li} title="Quem marca como lida é quem pediu (ou Admin/Gerente)" />
+            {/* A resposta costuma ser para o MÉDICO que perguntou; quem pediu aqui só fez a ponte (ata 20/09). */}
+            <span>Copiar a resposta para o médico <BotaoCopiar valor={p.resposta} rotulo="resposta do jurídico" /></span>
+          </div>
+        )}
       </Dialog>
     </>
   );
@@ -110,8 +121,10 @@ function ItemPendencia({ p }: { p: PendenciaJuridica }) {
           <strong>Resposta do jurídico:</strong> {p.resposta}
           {p.medicoIndicadoNome && <div>Médico indicado: <strong>{p.medicoIndicadoNome}</strong></div>}
           <small>{p.respondidaPor || '—'} em {quando(p.respondidaEm)}{p.lidaEm ? ` · lida por ${p.lidaPor || '—'} em ${quando(p.lidaEm)}` : ''}</small>
+          {p.faseRestaurada === false && <div role="note"><strong>Atenção:</strong> quando o jurídico respondeu o pedido já tinha sido movido por outra pessoa, então ele <strong>não voltou</strong> para “{p.faseOrigem}”. Confira a fase na Ficha.</div>}
         </div>
       )}
+      {p.status === 'CANCELADA' && <small>cancelada por {p.canceladaPor || '—'} em {quando(p.canceladaEm)} — {p.motivoCancelamento}</small>}
     </div>
   );
 }
@@ -154,14 +167,24 @@ export function DialogAbrirPendencia({ orderId, visible, onHide, onFeito }:
 export function BlocoPendenciaJuridica({ orderId, onMudou }: { orderId: number; onMudou?: () => void }) {
   const [itens, setItens] = useState<PendenciaJuridica[]>([]);
   const [abrir, setAbrir] = useState(false);
+  const [falhou, setFalhou] = useState(false);
   const recarregar = useCallback(() => {
-    getPendenciasJuridicas({ status: 'ABERTA,RESPONDIDA,LIDA', orderId }).then((r) => setItens(r.data?.itens ?? [])).catch(() => setItens([]));
+    getPendenciasJuridicas({ status: 'ABERTA,RESPONDIDA,LIDA,CANCELADA', orderId })
+      .then((r) => { setItens(r.data?.itens ?? []); setFalhou(false); })
+      // falha de rede NÃO é "sem pendências": sem isto o botão Devolver reabilitava com uma aberta escondida
+      .catch(() => setFalhou(true));
   }, [orderId]);
   useEffect(() => { recarregar(); }, [recarregar]);
   const temAberta = itens.some((i) => i.status === 'ABERTA');
   const li = async (p: PendenciaJuridica) => {
     try { await marcarPendenciaLida(p.orderId, p.id); invalidarPendencias(); recarregar(); }
     catch (e) { alert(erroDe(e, 'Não foi possível marcar como lida.')); }
+  };
+  const cancelar = async (p: PendenciaJuridica) => {
+    const motivo = window.prompt('Por que está cancelando este pedido ao jurídico? (mínimo 5 caracteres)');
+    if (!motivo || motivo.trim().length < 5) return;
+    try { await cancelarPendenciaJuridica(p.orderId, p.id, motivo.trim()); invalidarPendencias(); recarregar(); onMudou?.(); }
+    catch (e) { alert(erroDe(e, 'Não foi possível cancelar.')); }
   };
   return (
     <section>
@@ -172,12 +195,15 @@ export function BlocoPendenciaJuridica({ orderId, onMudou }: { orderId: number; 
             <li key={p.id} className={p.status.toLowerCase()}>
               <ItemPendencia p={p} />
               {p.status === 'ABERTA' && <small>aguardando o jurídico</small>}
+              {p.status === 'ABERTA' && <Button label="Cancelar pedido ao jurídico" icon="pi pi-undo" size="small" text severity="secondary"
+                title="Abriu por engano? Cancela e o pedido volta de onde saiu (só quem abriu, Admin ou Gerente)" onClick={() => cancelar(p)} style={{ marginTop: '.35rem' }} />}
               {p.status === 'RESPONDIDA' && <Button label="Li" icon="pi pi-check" size="small" outlined onClick={() => li(p)} style={{ marginTop: '.35rem' }} />}
             </li>
           ))}
         </ul>
       )}
-      <Button label="Devolver ao jurídico (1.1)" icon="pi pi-reply" outlined size="small" disabled={temAberta}
+      {falhou && <p role="alert">Não consegui carregar os pedidos ao jurídico deste pedido. <button type="button" onClick={recarregar}>Tentar de novo</button></p>}
+      <Button label="Devolver ao jurídico (1.1)" icon="pi pi-reply" outlined size="small" disabled={temAberta || falhou}
         title={temAberta ? 'Já existe uma pendência aberta para este pedido' : 'Pedir algo ao jurídico: o pedido vai e volta sozinho'}
         onClick={() => setAbrir(true)} />
       <DialogAbrirPendencia orderId={orderId} visible={abrir} onHide={() => setAbrir(false)} onFeito={() => { recarregar(); onMudou?.(); }} />
@@ -193,9 +219,14 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
   const [medicos, setMedicos] = useState<Record<number, number | null>>({});
   const [opcoesMedico, setOpcoesMedico] = useState<{ label: string; value: number }[]>([]);
   const [salvando, setSalvando] = useState<number | null>(null);
+  const [semPeca, setSemPeca] = useState<Record<number, boolean>>({});
+  const [falhou, setFalhou] = useState(false);
+  const [anexando, setAnexando] = useState<number | null>(null);
+  const [anexadas, setAnexadas] = useState<Record<number, string>>({});
   const recarregar = useCallback(() => {
     setCarregandoLista(true);
-    getPendenciasJuridicas({ status: 'ABERTA' }).then((r) => setItens(r.data?.itens ?? [])).catch(() => setItens([]))
+    getPendenciasJuridicas({ status: 'ABERTA' }).then((r) => { setItens(r.data?.itens ?? []); setFalhou(false); })
+      .catch(() => setFalhou(true))   // nunca mostrar "nenhuma pendência" quando o que houve foi erro
       .finally(() => setCarregandoLista(false));
   }, []);
   useEffect(() => { recarregar(); }, [recarregar]);
@@ -207,13 +238,26 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
   const responder = async (p: PendenciaJuridica) => {
     setSalvando(p.id);
     try {
-      await responderPendenciaJuridica(p.orderId, p.id, (respostas[p.id] || '').trim(), medicos[p.id] ?? null);
+      const r = await responderPendenciaJuridica(p.orderId, p.id, (respostas[p.id] || '').trim(), medicos[p.id] ?? null, !!semPeca[p.id]);
+      if (r.data?.faseRestaurada === false) alert('Resposta registrada. Atenção: o pedido já tinha sido movido por outra pessoa e NÃO voltou para a fase de origem — confira na Ficha.');
+      else if (r.data?.medicoMudouNoMeio) alert('Resposta registrada e pedido devolvido. Atenção: o médico do pedido mudou enquanto ele estava aqui (troca ou recusa) — vale o médico atual, não o de quando o pedido chegou.');
+      else if ((r.data?.pecasNaFilaDeLeitura ?? 0) > 0) alert(`Resposta registrada e pedido devolvido. ${r.data.pecasNaFilaDeLeitura} peça(s) entraram na fila de leitura: o médico vai receber o pedido com laudo, exames e orçamentos extraídos.`);
       invalidarPendencias(); recarregar();
     } catch (e) { alert(erroDe(e, 'Não foi possível responder.')); }
     finally { setSalvando(null); }
   };
+  // B1 do desenho grau 1: a Valéria era mandada anexar "pela Ficha", que não faz este upload, e o pedido em 1.1
+  // está fora da lista da Análise — ficava sem porta. A peça se anexa AQUI, no próprio cartão.
+  const anexarPeca = async (p: PendenciaJuridica, arquivo?: File | null) => {
+    if (!arquivo) return;
+    setAnexando(p.id);
+    try { await uploadAnexoOrder(p.orderId, arquivo, 'DECISAO_INTEIRO_TEOR'); setAnexadas((s) => ({ ...s, [p.id]: arquivo.name })); }
+    catch (e) { alert(erroDe(e, 'Não foi possível anexar a peça.')); }
+    finally { setAnexando(null); }
+  };
   if (carregandoLista) return <p>Carregando pendências…</p>;
-  if (!itens.length) return <p>Nenhuma pendência aberta. Quando quem cota precisar de algo do jurídico, o pedido aparece aqui.</p>;
+  if (falhou) return <p role="alert">Não consegui carregar as pendências. <button type="button" onClick={recarregar}>Tentar de novo</button></p>;
+  if (!itens.length) return <p>Nenhuma pendência aberta. Quando quem cota precisar de algo do jurídico, o pedido aparece aqui. (A “Pendência jurídica” que você mesma marca na análise de um pedido novo continua na aba “1. Análise”.)</p>;
   return (
     <div>
       {itens.map((p) => (
@@ -223,8 +267,22 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
             <small>há {p.dias ?? 0} dia(s) · pedido por {p.abertaPor || '—'} em {quando(p.abertaEm)}</small>
           </header>
           <div><small>{p.procedimento}{p.nprocesso ? ` · ${p.nprocesso}` : ''} · volta para “{p.faseOrigem}”</small></div>
+          {p.foraDoJuridico && <p role="note" style={{ margin: '.4rem 0' }}><strong>Atenção:</strong> este pedido foi tirado do jurídico por outra tela e hoje está em “{p.faseAtual}”. Responder aqui <strong>registra a resposta e encerra a pendência</strong>, sem mover o pedido.</p>}
           <p style={{ margin: '.5rem 0' }}>{p.texto}</p>
-          {p.tipo === 'INTEIRO_TEOR' && <small>Anexe a peça pela Ficha do pedido (Documentos) e depois responda aqui.</small>}
+          {p.tipo === 'INTEIRO_TEOR' && (
+            <div>
+              <label className="p-button p-button-outlined p-button-sm" style={{ cursor: 'pointer' }}>
+                <i className="pi pi-paperclip" style={{ marginRight: '.4rem' }} />{anexando === p.id ? 'Anexando…' : 'Anexar peça de inteiro teor (PDF)'}
+                <input type="file" accept="application/pdf" hidden disabled={anexando === p.id}
+                  onChange={(e) => { anexarPeca(p, e.target.files?.[0]); e.target.value = ''; }} />
+              </label>
+              {anexadas[p.id] && <small style={{ marginLeft: '.5rem' }}>✓ anexada: {anexadas[p.id]}</small>}
+              <label style={{ display: 'block', marginTop: '.3rem' }}>
+                <input type="checkbox" checked={!!semPeca[p.id]} onChange={(e) => setSemPeca((s) => ({ ...s, [p.id]: e.target.checked }))} />{' '}
+                Não há peça nova para anexar (explique na resposta)
+              </label>
+            </div>
+          )}
           {!readOnly && (
             <div className="acoes">
               <div style={{ flex: '1 1 18rem' }}>

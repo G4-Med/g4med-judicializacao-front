@@ -429,11 +429,11 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
       {readOnly && <ReadOnlyBanner />}
 
       <div className="mc-pend-abas" role="tablist" aria-label="Análise Jurídica">
-        <button type="button" role="tab" aria-selected={aba === 'analise'} className={aba === 'analise' ? 'ativa' : ''} onClick={() => setAba('analise')}>1. Análise</button>
-        <button type="button" role="tab" aria-selected={aba === 'pendencias'} className={aba === 'pendencias' ? 'ativa' : ''} onClick={() => setAba('pendencias')}>1.1 Pendências ({pendenciasAbertas})</button>
+        <button type="button" role="tab" id="aba-analise" aria-controls="painel-analise" aria-selected={aba === 'analise'} className={aba === 'analise' ? 'ativa' : ''} onClick={() => setAba('analise')}>1. Análise</button>
+        <button type="button" role="tab" id="aba-pendencias" aria-controls="painel-pendencias" aria-selected={aba === 'pendencias'} className={aba === 'pendencias' ? 'ativa' : ''} onClick={() => setAba('pendencias')}>1.1 Pendências ({pendenciasAbertas})</button>
       </div>
-      {aba === 'pendencias' && <AbaPendenciasJuridicas onAbrirFicha={abrirFicha} readOnly={readOnly} />}
-      <div style={{ display: aba === 'analise' ? undefined : 'none' }}>
+      {aba === 'pendencias' && <div role="tabpanel" id="painel-pendencias" aria-labelledby="aba-pendencias"><AbaPendenciasJuridicas onAbrirFicha={abrirFicha} readOnly={readOnly} /></div>}
+      <div role="tabpanel" id="painel-analise" aria-labelledby="aba-analise" style={{ display: aba === 'analise' ? undefined : 'none' }}>
 
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid">

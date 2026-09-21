@@ -512,10 +512,12 @@ export const getAnotacoesIds = () => api.get<{ ids: Record<string, number> }>('/
 export type TipoPendenciaJuridica = 'INTEIRO_TEOR' | 'ACHAR_MEDICO' | 'CONTATO_PACIENTE_ADVOGADO' | 'VERIFICACAO' | 'RECADO';
 export interface PendenciaJuridica {
   id: number; orderId: number; tipo: TipoPendenciaJuridica; tipoRotulo: string; texto: string;
-  status: 'ABERTA' | 'RESPONDIDA' | 'LIDA';
+  status: 'ABERTA' | 'RESPONDIDA' | 'LIDA' | 'CANCELADA';
   abertaPor: string | null; abertaEm: string; faseOrigem: string; statusOrcamentoOrigem: string | null;
   resposta: string | null; medicoIndicado: number | null; medicoIndicadoNome: string | null;
   respondidaPor: string | null; respondidaEm: string | null; lidaPor: string | null; lidaEm: string | null;
+  faseRestaurada?: boolean | null; canceladaPor?: string | null; canceladaEm?: string | null; motivoCancelamento?: string | null;
+  pecasNaFilaDeLeitura?: number; medicoMudouNoMeio?: boolean; foraDoJuridico?: boolean;
   paciente?: string; procedimento?: string; faseAtual?: string; nprocesso?: string | null; dias?: number;
 }
 export interface ListaPendenciasJuridicas { total: { ABERTA: number; RESPONDIDA: number; LIDA: number }; itens: PendenciaJuridica[] }
@@ -523,7 +525,9 @@ export const getPendenciasJuridicas = (params: { status?: string; orderId?: numb
   api.get<ListaPendenciasJuridicas>('/orders/pendencias-juridicas/', { params });
 export const abrirPendenciaJuridica = (orderId: number, tipo: TipoPendenciaJuridica, texto: string) =>
   api.post<PendenciaJuridica>(`/orders/${orderId}/pendencia-juridica/`, { tipo, texto });
-export const responderPendenciaJuridica = (orderId: number, pendenciaId: number, resposta: string, medicoId?: number | null) =>
-  api.post<PendenciaJuridica>(`/orders/${orderId}/pendencia-juridica/${pendenciaId}/responder/`, { resposta, medicoId: medicoId ?? null });
+export const responderPendenciaJuridica = (orderId: number, pendenciaId: number, resposta: string, medicoId?: number | null, semPeca?: boolean) =>
+  api.post<PendenciaJuridica>(`/orders/${orderId}/pendencia-juridica/${pendenciaId}/responder/`, { resposta, medicoId: medicoId ?? null, semPeca: !!semPeca });
+export const cancelarPendenciaJuridica = (orderId: number, pendenciaId: number, motivo: string) =>
+  api.post<PendenciaJuridica>(`/orders/${orderId}/pendencia-juridica/${pendenciaId}/cancelar/`, { motivo });
 export const marcarPendenciaLida = (orderId: number, pendenciaId: number) =>
   api.post<PendenciaJuridica>(`/orders/${orderId}/pendencia-juridica/${pendenciaId}/lida/`, {});

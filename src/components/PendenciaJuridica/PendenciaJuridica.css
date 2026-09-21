@@ -17,3 +17,5 @@
 .mc-pend-card header { display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; justify-content: space-between; }
 .mc-pend-card .tipo { font-weight: 700; color: #6d28d9; }
 .mc-pend-card .acoes { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .6rem; align-items: flex-end; }
+
+.mc-pend-abas button:focus-visible, .mc-pend-selo:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
