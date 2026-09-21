@@ -1,5 +1,6 @@
 import { ManualPublicoPage } from '../../pages/manuais/ManualPublicoPage';
 import { ManuaisPage } from '../../pages/manuais/ManuaisPage';
+import { PropostasPage } from '../../pages/manuais/PropostasPage';
 import { LinkDocumentosPage } from '../../pages/linkDocumentos/LinkDocumentosPage';
 import { Route, Routes, Navigate } from 'react-router-dom';
 
@@ -80,6 +81,7 @@ export function AppRoutes() {
         <Route path="/sla" element={<ProtectedScreen screen="sla"><SlaPage /></ProtectedScreen>} />
         <Route path="/notificacoes-historico" element={<ProtectedScreen screen="notificacoesHistorico"><NotificacoesHistoricoPage /></ProtectedScreen>} />
         <Route path="/manuais" element={<ProtectedScreen screen="processoOperacional"><ManuaisPage /></ProtectedScreen>} />
+        <Route path="/manuais/propostas" element={<ProtectedScreen screen="processoOperacional"><PropostasPage /></ProtectedScreen>} />
         <Route path="/processo-operacional" element={<ProtectedScreen screen="processoOperacional"><ProcessoOperacionalPage /></ProtectedScreen>} />
         <Route path="/juridico" element={<ProtectedScreen screen="juridico"><JuridicoPage /></ProtectedScreen>} />
         <Route path="/emails-juridico" element={<ProtectedScreen screen="juridico"><EmailsJuridicoPage /></ProtectedScreen>} />

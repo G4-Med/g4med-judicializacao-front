@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import medico from './conteudo/MANUAL_MEDICO.md?raw';
 import hospital from './conteudo/MANUAL_HOSPITAL.md?raw';
 import { markdownParaHtml } from './markdownSimples';
@@ -17,10 +17,12 @@ export type QualManual = keyof typeof MANUAIS;
 
 export function ManualPublicoPage() {
   const { qual = '' } = useParams();
+  const [busca] = useSearchParams();
+  const para = (busca.get('para') || '').trim().slice(0, 120);   // @R 19:32: o nome do cliente no topo
   const manual = MANUAIS[qual as QualManual];
   const html = useMemo(() => (manual ? markdownParaHtml(manual.texto) : ''), [manual]);
 
-  useEffect(() => { document.title = manual ? `${manual.titulo} · G4MED` : 'Manuais · G4MED'; }, [manual]);
+  useEffect(() => { document.title = manual ? `${manual.titulo}${para ? ` · ${para}` : ''} · G4MED` : 'Manuais · G4MED'; }, [manual, para]);
 
   if (!manual) {
     return (
@@ -42,6 +44,7 @@ export function ManualPublicoPage() {
         <span className="manual-marca">G<b>4</b>MED</span>
         <button type="button" className="manual-pdf" onClick={() => window.print()}>Salvar em PDF</button>
       </header>
+      {para && <div className="manual-para">Preparado para <b>{para}</b></div>}
       {/* conteúdo fixo, escapado pelo conversor antes de qualquer marcação */}
       <main className="manual-corpo" dangerouslySetInnerHTML={{ __html: html }} />
     </div>

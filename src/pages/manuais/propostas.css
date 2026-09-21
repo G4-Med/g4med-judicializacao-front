@@ -1,0 +1,51 @@
+.propostas-pagina { display: grid; grid-template-columns: 260px 1fr; gap: 1rem; padding: 1rem; align-items: start; }
+.propostas-lista { display: flex; flex-direction: column; gap: .5rem; }
+.pl-vazio { color: #6b7280; font-size: .9rem; }
+.pl-item { text-align: left; background: #fff; border: 1px solid #e3eaef; border-radius: 10px; padding: .6rem .75rem; cursor: pointer; display: flex; flex-direction: column; gap: 2px; font: inherit; }
+.pl-item.ativo { border-color: #00a651; box-shadow: 0 0 0 2px #e6f7ef; }
+.pl-item span { color: #2b4158; font-size: .85rem; }
+.pl-item small { color: #8a96a3; }
+.propostas-edicao { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 1rem; align-items: start; }
+.pe-form { background: #fff; border: 1px solid #e3eaef; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: .4rem; position: sticky; top: 80px; }
+.pe-form h1 { font-size: 1.1rem; margin: 0 0 .5rem; }
+.pe-form label { font-size: .8rem; color: #5b6b7a; margin-top: .4rem; }
+.pe-linha { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.pe-linha > div { display: flex; flex-direction: column; gap: .4rem; }
+.pe-botoes { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .75rem; }
+.pe-aviso { color: #0a3d62; font-size: .9rem; }
+.pe-rastro { margin-top: .5rem; font-size: .8rem; color: #5b6b7a; border-top: 1px solid #eef2f5; padding-top: .5rem; display: flex; flex-direction: column; gap: 2px; }
+.pe-previa { background: #fff; border: 1px solid #e3eaef; border-radius: 12px; padding: 1.5rem; overflow-x: auto; }
+
+/* o documento — marca do plataforma */
+.proposta-doc { font-family: Inter, "Helvetica Neue", Arial, sans-serif; color: #0f2236; max-width: 760px; margin: 0 auto; font-size: 14px; line-height: 1.55; }
+.proposta-doc h1, .proposta-doc h2 { font-family: Poppins, Inter, sans-serif; color: #0a3d62; }
+.pd-capa { border-bottom: 3px solid #00a651; padding-bottom: 1rem; margin-bottom: 1rem; }
+.pd-marca { font-family: Poppins, Inter, sans-serif; font-weight: 800; font-size: 28px; letter-spacing: .04em; color: #0a3d62; }
+.pd-marca b { color: #00a651; }
+.pd-sub { color: #5b6b7a; font-size: 12px; }
+.pd-capa h1 { margin: .75rem 0 .1rem; font-size: 22px; }
+.pd-cliente { font-size: 18px; font-weight: 600; }
+.pd-data { color: #5b6b7a; font-size: 13px; }
+.proposta-doc section { margin: 1rem 0; break-inside: avoid; }
+.proposta-doc h2 { font-size: 15px; margin: 0 0 .4rem; }
+.proposta-doc ol { padding-left: 1.2rem; margin: .3rem 0; }
+.pd-destaque { font-weight: 600; color: #008f46; }
+.pd-tabela { width: 100%; border-collapse: collapse; font-size: 13px; margin: .5rem 0; }
+.pd-tabela th, .pd-tabela td { text-align: left; border-bottom: 1px solid #e3eaef; padding: 6px 8px; vertical-align: top; }
+.pd-tabela th { background: #f5f7f9; }
+.pd-remuneracao { background: #e6f7ef; border-radius: 10px; padding: .75rem 1rem; }
+.pd-fee { font-size: 15px; }
+.pd-rodape { margin-top: 1.5rem; padding-top: .75rem; border-top: 1px solid #e3eaef; color: #5b6b7a; font-size: 11.5px; }
+
+@media (max-width: 900px) {
+  .propostas-pagina, .propostas-edicao { grid-template-columns: 1fr; }
+  .pe-form { position: static; }
+}
+/* PDF: só o documento sai no papel */
+@media print {
+  body * { visibility: hidden !important; }
+  .proposta-doc, .proposta-doc * { visibility: visible !important; }
+  .proposta-doc { position: absolute; left: 0; top: 0; width: 100%; max-width: none; }
+  .pd-remuneracao { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  @page { margin: 15mm 14mm; }
+}
