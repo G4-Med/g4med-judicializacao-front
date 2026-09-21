@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { DataTable } from 'primereact/datatable';
-import { excluirOrder, getOrders, getStatusOrders, atualizarOrder, getMedicosCompleto, getAnexosOrder, uploadAnexoOrder, criarOrderProcess, processarOrderProcess, salvarJuridico, uploadArquivoIntegracao, marcarSemProfissional, analisarEmpenho, extrairEmail, salvarOrcamentoMedico } from '../../services/api/orders';
+import { excluirOrder, getOrders, getStatusOrders, atualizarOrder, getMedicosCompleto, getAnexosOrder, uploadAnexoOrder, criarOrderProcess, processarOrderProcess, salvarJuridico, uploadArquivoIntegracao, marcarSemProfissional, analisarEmpenho, extrairEmail, darPerdaNoOrcamento } from '../../services/api/orders';
 import type {
   DataTableFilterMeta,
   DataTablePageEvent,
@@ -2201,7 +2201,8 @@ ${linhasAnexos}
               if (!perdaProcesso) return;
               setSalvandoPerda(true);
               try {
-                await salvarOrcamentoMedico(perdaProcesso.id, { acao: 'nao_faco', motivoPerdaCategoria: perdaMotivo, parecer: perdaParecer.trim() });
+                const feito = await darPerdaNoOrcamento(perdaProcesso.id, { motivoPerdaCategoria: perdaMotivo, parecer: perdaParecer.trim() });
+                if (!feito) return;
                 setPerdaProcesso(null); await carregarDados();
                 alert('Perda registrada. O e-mail à SES está pendente na Central de E-mails.');
               } catch (e: any) { alert(e?.response?.data?.error || 'Não foi possível registrar a perda.'); }

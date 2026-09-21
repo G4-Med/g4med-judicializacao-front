@@ -4,7 +4,7 @@ import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgenci
 import { CelulaMedico } from '../../components/TrocarMedico/CelulaMedico';
 import { CelulaCotacaoConcorrente, DialogCotacaoConcorrente } from '../../components/CotacaoConcorrente/CotacaoConcorrente';
 import { FaixaDaPeca } from '../../components/CotacaoConcorrente/FaixaDaPeca';
-import { registrarCotacaoPedida, montarCotacaoMedico } from '../../services/api/orders';
+import { registrarCotacaoPedida, montarCotacaoMedico, darPerdaNoOrcamento } from '../../services/api/orders';
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
@@ -360,11 +360,8 @@ const abrirDetalhe = (rowData: ProcessoOrcamentoRow) => {
     }
     setSalvandoNaoFaco(true);
     try {
-      await salvarOrcamentoMedico(processoSelecionado.id, {
-        acao: 'nao_faco',
-        motivoPerdaCategoria: motivoNaoFaco,
-        parecer: parecerNaoFaco,
-      });
+      const feito = await darPerdaNoOrcamento(processoSelecionado.id, { motivoPerdaCategoria: motivoNaoFaco, parecer: parecerNaoFaco });
+      if (!feito) return;   // havia outro médico cotando e a pessoa desistiu da perda do pedido inteiro
       setNaoFacoVisible(false);
       setDetalheVisible(false);
       setParecerNaoFaco('');

@@ -455,6 +455,22 @@ export const unificarOrcamento = (orderId: number, arquivos: File[]) => {
 export const editarEmailPendente = (id: number, assunto: string, corpo: string) =>
   api.post(`/orders/emails/${id}/editar/`, { assunto, corpo });
 
+/** Dar perda na fase de orçamento. Se houver OUTRO médico convidado ainda cotando, o servidor devolve 409
+ *  `outros_medicos_cotando`: a recusa de UM médico não é a perda do pedido (incidente do #1241, 20/09). Aqui a pessoa
+ *  lê o motivo e só segue se confirmar que quer a negativa do pedido INTEIRO. Devolve false se ela desistiu. */
+export const darPerdaNoOrcamento = async (id: number, dados: { motivoPerdaCategoria: unknown; parecer: string }): Promise<boolean> => {
+  try {
+    await salvarOrcamentoMedico(id, { acao: 'nao_faco', ...dados });
+    return true;
+  } catch (e: unknown) {
+    const r = (e as { response?: { status?: number; data?: { codigo?: string; error?: string } } })?.response;
+    if (r?.status !== 409 || r?.data?.codigo !== 'outros_medicos_cotando') throw e;
+    if (!window.confirm(`${r.data.error}\n\nDar a perda do pedido INTEIRO mesmo assim?`)) return false;
+    await salvarOrcamentoMedico(id, { acao: 'nao_faco', ...dados, confirmarPerdaComOutrosCotando: true });
+    return true;
+  }
+};
+
 export const getPreferencia = (chave: string) =>
   api.get(`/preferencias/${chave}/`);
 
