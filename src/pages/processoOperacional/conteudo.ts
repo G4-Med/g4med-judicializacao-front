@@ -253,6 +253,7 @@ export const PRAZOS: { prazo: string; oQue: string; deQuem: string }[] = [
  *  para manter o processo operacional atualizado"). Cada linha diz O QUE mudou e ONDE — a data é a da entrada no ar. */
 export interface Atualizacao { data: string; onde: string; oQue: string }
 export const ATUALIZACOES: Atualizacao[] = [
+  { data: '21/09/2026', onde: 'Análise Jurídica → Salvar a decisão', oQue: 'Ao enviar Cotar, Não Cotar ou Pendência jurídica abre sempre a "Conferência antes de enviar" com as pendências do pedido. Para Cotar, o único obrigatório é "Orçamentos citados nos autos" (preencher ali ou clicar em "Não há orçamento nos autos"). A observação não é obrigatória — é o recado para o Fabrício. Nada mais trava sem dizer o que falta.' },
   { data: '21/09/2026', onde: 'Menu → 1,2 E-mails e ofícios', oQue: 'Ponto de corte: só conta como NOVO o que chegou a partir de 01/09/2026. Tudo que é anterior foi marcado como VISTO (aparece no filtro "Tratados") — a fila começa limpa para a equipe jurídica.' },
   { data: '21/09/2026', onde: 'Menu → 1,2 E-mails e ofícios', oQue: 'Coluna "Idade": há quantos dias a mensagem chegou (hoje, ontem, N dias) — verde até 2 dias, âmbar até 7, cinza depois.' },
   { data: '21/09/2026', onde: 'Barra do topo (todas as telas)', oQue: 'Data e hora de agora, no horário de Brasília, ao lado da versão do sistema.' },

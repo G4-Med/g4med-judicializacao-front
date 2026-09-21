@@ -315,27 +315,27 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
   // ANTES: Cotar sem CNJ travava aqui, e a peça travava o escritório (a caixa "não teve peça", de 29/08,
   // teve 0 usos em produção em 15/09). AGORA: falta de CNJ ou de peça abre o aviso; só confirmar grava.
   // `confirmado` vem SÓ do botão do aviso — o Salvar chama handleSalvar() sem argumento.
+  /** O que impede o envio desta decisão — null quando pode enviar. Única régua da conferência. */
+  const motivoBloqueioConferencia = (): string | null => {
+    if (statusJuridico === 'Cotar' && orcamentos.trim().length < 3)
+      return 'Preencha os orçamentos citados nos autos, ou clique em "Não há orçamento nos autos".';
+    if (statusJuridico === 'Não Cotar' && obs.trim().length < 20)
+      return 'Para "Não Cotar", descreva o motivo com suas palavras (mínimo 20 letras).';
+    if (statusJuridico === 'Pendência jurídica' && obs.trim().length < 10)
+      return 'Para "Pendência jurídica", diga o que falta (mínimo 10 letras).';
+    return null;
+  };
+
   const handleSalvar = async (confirmado = false) => {
     if (!processoEditando) return;
 
-    // Recusa exige o motivo com as palavras da pessoa (mín. 20 chars) — é este texto
-    // que alimenta a análise de padrões de recusa (regra também aplicada no backend).
-    if (statusJuridico === 'Não Cotar' && obs.trim().length < 20) {
-      setObsObrigatorio(true);
-      return;
-    }
-    // Reunião Fabrício 20/09 (Fase 4): para COTAR, os orçamentos citados nos autos e a observação
-    // são obrigatórios (mesma regra no servidor). Pendência jurídica (1.1) exige dizer o que falta.
-    if (statusJuridico === 'Cotar' && orcamentos.trim().length < 3) {
-      alert('Registre os orçamentos citados nos autos antes de marcar Cotar (se não houver nenhum, escreva "nenhum").');
-      return;
-    }
-    if ((statusJuridico === 'Cotar' || statusJuridico === 'Pendência jurídica') && obs.trim().length < 10) {
-      setObsObrigatorio(true);
-      return;
-    }
-
+    // @R 21/09 16:11-16:12 (Valéria travada no #1273: o Salvar recusava CALADO): ao enviar uma
+    // decisão, abre SEMPRE a "Conferência antes de enviar" com as pendências do pedido. Para Cotar,
+    // o ÚNICO campo obrigatório é "Orçamentos citados nos autos" (preenche ali, ou declara que não há).
+    // A observação não trava — só lembra que é por ela que o Fabrício recebe o que importa.
+    // Não Cotar (motivo ≥20) e Pendência jurídica (o que falta ≥10) seguem exigindo o texto.
     const decidindo = statusJuridico === 'Cotar' || statusJuridico === 'Não Cotar';
+    const conferir = decidindo || statusJuridico === 'Pendência jurídica';
     // @R 15/09 12:17: número digitado com dígito errado travava num alerta sem saída (3 tentativas no
     // mesmo pedido às 11:38). Agora vira o mesmo aviso: corrigir, ou seguir SEM o número (nunca gravar
     // o número errado — ele quebra o cruzamento com o pagamento). Mesma regra do backend: só confere se mudou.
@@ -343,11 +343,14 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
     const cnjInvalido = cnjDigitado !== '' && cnjDigitado !== (processoEditando.nprocesso ?? '') && !cnjDigitoValido(cnjDigitado);
     const semCnj = statusJuridico === 'Cotar' && (!cnjDigitado || cnjInvalido);
     const semPeca = decidindo && !inteiroTeorJaAnexado && !inteiroTeorFile;
-    if (!confirmado && (semCnj || semPeca || cnjInvalido)) {
+    if (!confirmado && (conferir || cnjInvalido)) {
       setCienteSemCnj(false);
       setAvisoAvanco({ semCnj, semPeca, cnjInvalido });
       return;
     }
+    // Rede de segurança (a conferência já não deixa chegar aqui assim): nunca recusar calado.
+    const bloqueio = motivoBloqueioConferencia();
+    if (bloqueio) { alert(bloqueio); return; }
     setAvisoAvanco(null);
     if (cnjInvalido) setNprocesso('');
 
@@ -937,7 +940,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
             <div className="field field-span-4">
               <label>
                 Observações
-                {(statusJuridico === 'Não Cotar' || statusJuridico === 'Cotar') && (
+                {statusJuridico === 'Não Cotar' && (
                   <span style={{ color: '#ef4444', marginLeft: '4px' }}>*obrigatório</span>
                 )}
                 {statusJuridico === 'Pendência jurídica' && (
@@ -948,8 +951,10 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                 value={obs}
                 onChange={(e) => {
                   setObs(e.target.value);
-                  if (e.target.value.trim().length >= 20) setObsObrigatorio(false);
+                  const min = statusJuridico === 'Não Cotar' ? 20 : 10;
+                  if (e.target.value.trim().length >= min) setObsObrigatorio(false);
                 }}
+                id="juridico-obs"
                 rows={3}
                 autoResize
                 placeholder="Observações sobre o processo..."
@@ -958,7 +963,9 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
               />
               {obsObrigatorio && (
                 <small style={{ color: '#ef4444' }}>
-                  Para "Não Cotar", descreva o motivo com suas palavras (mínimo 20 caracteres)
+                  {statusJuridico === 'Não Cotar'
+                    ? 'Para "Não Cotar", descreva o motivo com suas palavras (mínimo 20 letras)'
+                    : 'Diga o que falta (mínimo 10 letras)'}
                 </small>
               )}
             </div>
@@ -972,10 +979,47 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
       </Dialog>
 
       {/* Aviso de avanço sem CNJ / sem peça (@R 15/09): diz o que se perde e deixa a pessoa decidir. */}
-      <Dialog header="Seguir sem todas as informações?" visible={avisoAvanco !== null}
-        style={{ width: '40rem', maxWidth: '96vw' }} modal onHide={() => setAvisoAvanco(null)}>
+      <Dialog header="Conferência antes de enviar" visible={avisoAvanco !== null}
+        style={{ width: '44rem', maxWidth: '96vw' }} modal onHide={() => setAvisoAvanco(null)}>
         {avisoAvanco && (
-          <div className="aviso-avanco">
+          <div className="aviso-avanco conferencia">
+            {/* @R 21/09 16:11-16:12: sempre abre ao enviar a decisão e mostra as pendências do pedido.
+                Obrigatório de verdade: orçamentos citados (Cotar), motivo (Não Cotar), o que falta (1.1). */}
+            <p className="conferencia-decisao">
+              Decisão: <strong>{statusJuridico}</strong>
+              {processoEditando ? <> · pedido <strong>#{processoEditando.id}</strong></> : null}
+            </p>
+
+            {statusJuridico === 'Cotar' && (
+              <div className={`conferencia-item ${orcamentos.trim().length >= 3 ? 'ok' : 'falta'}`}>
+                <div className="conferencia-titulo">
+                  <i className={`pi ${orcamentos.trim().length >= 3 ? 'pi-check-circle' : 'pi-exclamation-circle'}`} />
+                  Orçamentos citados nos autos <span className="conferencia-obrig">obrigatório</span>
+                </div>
+                <InputTextarea id="conferencia-orcamentos" value={orcamentos} onChange={(e) => setOrcamentos(e.target.value)}
+                  rows={3} autoResize style={{ width: '100%' }}
+                  placeholder="Local completo e valor de cada orçamento que está nos autos" />
+                <Button label="Não há orçamento nos autos" icon="pi pi-ban" size="small" outlined severity="secondary"
+                  className="mt-2" onClick={() => setOrcamentos('nenhum')} />
+              </div>
+            )}
+
+            <div className={`conferencia-item ${
+              (statusJuridico === 'Não Cotar' && obs.trim().length < 20) || (statusJuridico === 'Pendência jurídica' && obs.trim().length < 10)
+                ? 'falta' : obs.trim() ? 'ok' : 'lembrete'}`}>
+              <div className="conferencia-titulo">
+                <i className={`pi ${obs.trim() ? 'pi-check-circle' : 'pi-info-circle'}`} />
+                Observação para o Fabrício
+                {statusJuridico === 'Não Cotar' && <span className="conferencia-obrig">obrigatório · mín. 20 letras</span>}
+                {statusJuridico === 'Pendência jurídica' && <span className="conferencia-obrig">obrigatório · diga o que falta</span>}
+              </div>
+              {statusJuridico === 'Cotar' && !obs.trim() && (
+                <small className="conferencia-dica">Não é obrigatória, mas é aqui que você passa ao Fabrício as informações importantes da peça (prazo, o que foi deferido, cuidados).</small>
+              )}
+              <InputTextarea value={obs} onChange={(e) => setObs(e.target.value)} rows={3} autoResize style={{ width: '100%' }}
+                placeholder="O que o Fabrício precisa saber para cotar certo" />
+            </div>
+
             {avisoAvanco.semPeca && (
               <p style={{ lineHeight: 1.5, margin: '0 0 .9rem' }}>
                 <i className="pi pi-exclamation-triangle" style={{ color: '#b45309', marginRight: '.4rem' }} />
@@ -1020,14 +1064,18 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
               </label>
             )}
             <div className="dialog-footer-actions">
-              <Button label="Voltar e completar" outlined onClick={() => setAvisoAvanco(null)} />
+              {motivoBloqueioConferencia() && (
+                <small className="conferencia-falta-msg"><i className="pi pi-exclamation-circle" /> {motivoBloqueioConferencia()}</small>
+              )}
+              <Button label="Voltar" outlined onClick={() => setAvisoAvanco(null)} />
               {avisoAvanco.semCnj && (
                 <Button label="Não localizei — marcar Segredo de Justiça" outlined severity="secondary"
                   onClick={() => { if (avisoAvanco.cnjInvalido) setNprocesso(''); setStatusJuridico('Segredo de Justiça'); setAvisoAvanco(null); }} />
               )}
-              <Button label={avisoAvanco.semCnj || avisoAvanco.cnjInvalido ? 'Seguir sem o CNJ' : 'Confirmar e avançar'}
-                icon="pi pi-check" severity="warning"
-                disabled={(avisoAvanco.semCnj || avisoAvanco.cnjInvalido) && !cienteSemCnj}
+              <Button label={avisoAvanco.semCnj || avisoAvanco.cnjInvalido ? 'Enviar sem o CNJ' : 'Enviar'}
+                icon="pi pi-send" severity={avisoAvanco.semCnj || avisoAvanco.cnjInvalido || avisoAvanco.semPeca ? 'warning' : undefined}
+                disabled={((avisoAvanco.semCnj || avisoAvanco.cnjInvalido) && !cienteSemCnj) || motivoBloqueioConferencia() !== null}
+                tooltip={motivoBloqueioConferencia() ?? undefined} tooltipOptions={{ showOnDisabled: true, position: 'top' }}
                 onClick={() => void handleSalvar(true)} />
             </div>
           </div>

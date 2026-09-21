@@ -421,3 +421,20 @@ body.dark-theme .candidato-cnj { background: rgba(148,98,13,0.15); border-color:
 .sem-peca-box { display: flex; align-items: flex-start; gap: .5rem; margin-top: .5rem; padding: .5rem .65rem; border: 1px dashed #d8a24a; border-radius: 8px; background: #fff8ea; font-size: .85rem; }
 .sem-peca-box label { cursor: pointer; line-height: 1.35; }
 .sem-peca-box small { color: #7a5a1a; }
+
+/* Conferência antes de enviar (@R 21/09 16:12): cada pendência é um cartão com estado legível
+   (verde = ok, âmbar = lembrete, vermelho = falta) — nada trava calado. */
+.conferencia .conferencia-decisao { margin: 0 0 .9rem; color: #334155; }
+.conferencia .conferencia-item { border: 1px solid #e2e8f0; border-left-width: 4px; border-radius: 8px;
+  padding: .7rem .85rem; margin: 0 0 .8rem; background: #fff; }
+.conferencia .conferencia-item.ok { border-left-color: #16a34a; }
+.conferencia .conferencia-item.lembrete { border-left-color: #f59e0b; background: #fffbeb; }
+.conferencia .conferencia-item.falta { border-left-color: #dc2626; background: #fef2f2; }
+.conferencia .conferencia-titulo { display: flex; align-items: center; gap: .45rem; font-weight: 600; margin-bottom: .45rem; }
+.conferencia .conferencia-item.ok .conferencia-titulo .pi { color: #16a34a; }
+.conferencia .conferencia-item.lembrete .conferencia-titulo .pi { color: #b45309; }
+.conferencia .conferencia-item.falta .conferencia-titulo .pi { color: #dc2626; }
+.conferencia .conferencia-obrig { margin-left: auto; font-size: .72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .03em; color: #b91c1c; }
+.conferencia .conferencia-dica { display: block; color: #92400e; margin: 0 0 .45rem; line-height: 1.4; }
+.conferencia .conferencia-falta-msg { color: #b91c1c; margin-right: auto; align-self: center; }
