@@ -70,6 +70,9 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
     icon: 'pi pi-file-edit',
     children: [
       { label: 'Análise Jurídica', icon: 'pi pi-angle-right', path: '/juridico', screen: 'juridico' },
+      // sub-item da Análise Jurídica: o bilhete que a fase 3 devolve ao jurídico (1.1 de retorno). Tem entrada
+      // própria porque a aba, dentro da tela, ficava invisível para quem navega pelo menu (@R 21/09).
+      { label: '1,1 Pendências jurídicas', icon: 'pi pi-angle-double-right', path: '/juridico?aba=pendencias', screen: 'juridico' },
       { label: 'Selecionar Médico', icon: 'pi pi-angle-right', path: '/selecionar-medico', screen: 'selecionarMedico' },
       { label: 'Orçamento Médico', icon: 'pi pi-angle-right', path: '/orcamento-medico', screen: 'orcamentoMedico' },
       { label: 'Protocolar', icon: 'pi pi-angle-right', path: '/para-protocolar', screen: 'paraProtocolar' },

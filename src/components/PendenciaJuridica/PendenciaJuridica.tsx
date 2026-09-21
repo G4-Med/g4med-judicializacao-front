@@ -50,7 +50,13 @@ async function carregar(): Promise<void> {
   }
   return carregando;
 }
-export function invalidarPendencias() { cache = null; carregadoEm = 0; carregar().then(() => ouvintes.forEach((f) => f())); }
+// Se já há uma carga em voo (o intervalo do menu), ela foi pedida ANTES da mudança: esperar acabar e carregar de novo,
+// senão o dado velho era carimbado como novo e o selo/contador ficavam errados por até 60 s.
+export function invalidarPendencias() {
+  const emVoo = carregando;
+  const recarregar = () => { cache = null; carregadoEm = 0; return carregar(); };
+  (emVoo ? emVoo.then(recarregar, recarregar) : recarregar()).then(() => ouvintes.forEach((f) => f()));
+}
 
 function usePendenciaDoPedido(orderId: number) {
   const [p, setP] = useState<PendenciaJuridica | null>(cache?.[String(orderId)] ?? null);
@@ -254,7 +260,7 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
   const responder = async (p: PendenciaJuridica) => {
     setSalvando(p.id);
     try {
-      const r = await responderPendenciaJuridica(p.orderId, p.id, (respostas[p.id] || '').trim(), medicos[p.id] ?? null, !!semPeca[p.id], !!semMedico[p.id]);
+      const r = await responderPendenciaJuridica(p.orderId, p.id, (respostas[p.id] || '').trim(), semMedico[p.id] ? null : (medicos[p.id] ?? null), !!semPeca[p.id], !!semMedico[p.id]);
       if (r.data?.faseRestaurada === false) alert('Resposta registrada. Atenção: o pedido já tinha sido movido por outra pessoa e NÃO voltou para a fase de origem — confira na Ficha.');
       else if (r.data?.medicoMudouNoMeio) alert('Resposta registrada e pedido devolvido. Atenção: o médico do pedido mudou enquanto ele estava aqui (troca ou recusa) — vale o médico atual, não o de quando o pedido chegou.');
       else if ((r.data?.pecasNaFilaDeLeitura ?? 0) > 0) alert(`Resposta registrada e pedido devolvido. ${r.data.pecasNaFilaDeLeitura} peça(s) entraram na fila de leitura: o médico vai receber o pedido com laudo, exames e orçamentos extraídos.`);

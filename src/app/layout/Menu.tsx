@@ -58,7 +58,7 @@ export function Menu({ visible, onHide }: Props) {
 
   const pendenciasAbertas = usePendenciasAbertas()
   const agir = usePendenciasParaAgir()   // retornos esperando o "Li" de quem pediu (+ os antigos, para Admin/Gerente)
-  const items = buildMenuItems({ navigate, currentPath: location.pathname, canView, contadores: { '/juridico': agir.paradas ? `${pendenciasAbertas} · ${agir.paradas} parada(s)` : pendenciasAbertas, '/orcamento-medico': (agir.meusRetornos + agir.semLerAntigas) ? `${agir.meusRetornos + agir.semLerAntigas} retorno(s) do jurídico` : 0 } })
+  const items = buildMenuItems({ navigate, currentPath: location.pathname + (location.pathname === '/juridico' && location.search === '?aba=pendencias' ? location.search : ''), canView, contadores: { '/juridico?aba=pendencias': agir.paradas ? `${pendenciasAbertas} · ${agir.paradas} parada(s)` : pendenciasAbertas, '/orcamento-medico': (agir.meusRetornos + agir.semLerAntigas) ? `${agir.meusRetornos + agir.semLerAntigas} retorno(s) do jurídico` : 0 } })
   const sections = agruparPorSecao(items)
 
   // estado: quais itens com filhos estão abertos

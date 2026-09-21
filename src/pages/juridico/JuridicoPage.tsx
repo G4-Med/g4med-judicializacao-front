@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgencia';
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
@@ -111,7 +112,11 @@ export function JuridicoPage() {
   // Recarrega a tabela quando a ficha muda a situação de um pedido (@R 17/09).
   const { versaoDados, abrir: abrirFicha } = useFichaPedido();
   // Reunião 20/09 (Fabrício): aba das pendências que voltaram da fase 3 para o jurídico resolver.
-  const [aba, setAba] = useState<'analise' | 'pendencias'>('analise');
+  // A aba mora na URL (?aba=pendencias): o menu tem entrada própria para o 1.1 (@R 21/09: "cadê a parte do 1.1?" —
+  // com o menu aberto a aba ficava escondida atrás dele). Estado local faria menu e botões discordarem.
+  const [parametros, setParametros] = useSearchParams();
+  const aba: 'analise' | 'pendencias' = parametros.get('aba') === 'pendencias' ? 'pendencias' : 'analise';
+  const setAba = (a: 'analise' | 'pendencias') => setParametros(a === 'pendencias' ? { aba: 'pendencias' } : {}, { replace: true });
   const pendenciasAbertas = usePendenciasAbertas();
   const { paradas: pendenciasParadas } = usePendenciasParaAgir();   // o menu abre fechado: o número tem de estar na tela de trabalho
   const { isReadOnly, profile } = useAccess();

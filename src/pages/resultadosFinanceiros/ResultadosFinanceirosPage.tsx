@@ -272,7 +272,7 @@ export function ResultadosFinanceirosPage() {
           emptyMessage="Nenhum registro financeiro."
           className="rf-table"
         >
-          <Column field="id" header="#" headerTooltip="Número do pedido (o mesmo da Ficha, dos e-mails e da API)" sortable style={{ minWidth: '4rem' }} />
+          <Column field="orderId" header="#" headerTooltip="Número do pedido (o mesmo da Ficha, dos e-mails e da API)" sortable style={{ minWidth: '4rem' }} />
           <Column
             field="paciente" className="col-paciente-upper"
             header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')}
