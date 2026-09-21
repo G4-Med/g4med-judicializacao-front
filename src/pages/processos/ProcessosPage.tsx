@@ -422,12 +422,28 @@ export function ProcessosPage() {
           }
           obsRecusa = motivo.trim();
         }
-        await salvarJuridico(rowData.id, {
-          nprocesso: rowData.nprocesso || null,
-          statusJuridico: extraValue,
-          orcamentos: null,
-          obs: obsRecusa,
-        });
+        // 21/09: desde a Fase 4 da reunião (20/09) o servidor exige, para COTAR, os orçamentos citados
+        // nos autos e a observação. Este menu mandava os dois vazios → 400 sempre, com alerta genérico.
+        let orcamentosCitados: string | null = null;
+        if (extraValue === 'Cotar') {
+          const citados = window.prompt('Orçamentos citados nos autos (local completo e valor). Se não houver, escreva "nenhum":');
+          if (!citados || citados.trim().length < 3) { alert('Nada foi salvo: informe os orçamentos citados (ou "nenhum").'); return; }
+          const observacao = window.prompt('Observação do jurídico para a fase de orçamento (mínimo 10 caracteres):');
+          if (!observacao || observacao.trim().length < 10) { alert('Nada foi salvo: a observação precisa ter pelo menos 10 caracteres.'); return; }
+          orcamentosCitados = citados.trim(); obsRecusa = observacao.trim();
+        }
+        try {
+          await salvarJuridico(rowData.id, {
+            nprocesso: rowData.nprocesso || null,
+            statusJuridico: extraValue,
+            orcamentos: orcamentosCitados,
+            obs: obsRecusa,
+          });
+        } catch (e: any) {
+          // o servidor explica a recusa (ex.: pedido com pendência 1.1 aberta) — mostrar o motivo dele
+          alert(e?.response?.data?.error || 'Não foi possível salvar o status jurídico.');
+          return;
+        }
         setProcessoMenuSelecionado(null);
         await carregarDados();
         alert(`Status jurídico atualizado para "${extraValue}".`);
@@ -460,6 +476,10 @@ export function ProcessosPage() {
       }
 
       if (action === 'copiar_linha') {
+        if ((rowData as any).segredo === 'sim' || rowData.statusJuridico === 'Segredo de Justiça') {
+          alert('Este processo está em SEGREDO DE JUSTIÇA e não pode ser enviado a prestador.\n\nNada foi copiado.');
+          return;
+        }
         let linhasAnexos = 'Nenhum anexo';
 
         try {
@@ -693,6 +713,11 @@ ${linhasAnexos}
         // Recusa em LOTE também exige motivo real (nunca frase-carimbo) — 1 motivo
         // declarado vale para todos os selecionados, e o operador sabe disso.
         let obsRecusaLote: string | null = null;
+        if (valor === 'Cotar') {
+          alert('Cotar é um processo por vez: cada um tem os seus orçamentos citados nos autos e a sua observação. Use o menu da linha.');
+          setExecutandoAcaoMassa(false);
+          return;
+        }
         if (valor === 'Não Cotar') {
           const motivo = window.prompt(
             `Motivo da recusa jurídica (mínimo 20 caracteres) — será aplicado aos ` +
