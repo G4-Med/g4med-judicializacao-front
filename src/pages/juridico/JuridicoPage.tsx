@@ -974,7 +974,16 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
 
         <div className="dialog-footer-actions">
           <Button label="Cancelar" outlined onClick={() => setEditDialogVisible(false)} />
-          {!readOnly && <Button label="Salvar" icon="pi pi-check" onClick={() => void handleSalvar()} />}
+          {/* Caso Valéria (21/09): o Salvar SUMIA calado para quem só lê esta tela, e ela achou que era
+              defeito. Agora diz por quê e o que fazer. */}
+          {readOnly ? (
+            <span className="juridico-somente-leitura" role="status">
+              <i className="pi pi-lock" aria-hidden="true" /> Seu usuário só pode <strong>ver</strong> a Análise Jurídica.
+              Para decidir (Cotar, Não Cotar, Pendência) peça ao Admin o grupo <strong>Jurídico</strong> — depois é só recarregar a página.
+            </span>
+          ) : (
+            <Button label="Salvar" icon="pi pi-check" onClick={() => void handleSalvar()} />
+          )}
         </div>
       </Dialog>
 

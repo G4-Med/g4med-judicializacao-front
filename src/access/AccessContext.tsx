@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo } from 'react';
-import { readAuthProfile, type AuthProfile } from './authProfile';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { gravarGruposDoServidor, readAuthProfile, type AuthProfile } from './authProfile';
+import api from '../services/api';
 import {
   canEditScreen,
   canExportReport,
@@ -25,6 +26,19 @@ interface AccessContextValue {
 const AccessContext = createContext<AccessContextValue | null>(null);
 
 export function AccessProvider({ children }: { children: React.ReactNode }) {
+  // Os grupos são confirmados no SERVIDOR a cada abertura (caso Valéria, 21/09): trocou o grupo
+  // no admin, a tela acompanha sem precisar sair e entrar. Falhou a pergunta: fica o do login.
+  const [versaoPerfil, setVersaoPerfil] = useState(0);
+  useEffect(() => {
+    if (!localStorage.getItem('access_token')) return;
+    api
+      .get('auth/eu/')
+      .then((r) => {
+        if (gravarGruposDoServidor(r.data)) setVersaoPerfil((v) => v + 1);
+      })
+      .catch(() => undefined);
+  }, []);
+
   const value = useMemo<AccessContextValue>(() => {
     const profile = readAuthProfile();
     const grupos = profile.groups?.length ? profile.groups : [profile.group];
@@ -51,7 +65,7 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
         });
       },
     };
-  }, []);
+  }, [versaoPerfil]);
 
   return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;
 }

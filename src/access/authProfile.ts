@@ -180,12 +180,47 @@ export function persistAuthProfile(source?: Record<string, unknown> | null) {
   return profile;
 }
 
-export function readAuthProfile() {
-  return buildProfileFromSources();
+/** Grupos CONFIRMADOS pelo servidor (GET auth/eu/). @R 21/09 (caso Valéria): o token guarda os
+ *  grupos do momento do login — trocar o grupo no admin não chegava à tela até a pessoa sair e
+ *  entrar, e ninguém sabe que precisa. Guardado por username para nunca vazar para outro login. */
+const GRUPOS_SERVIDOR_KEY = 'auth_grupos_servidor';
+
+function gruposDoServidor(username: string): { groups: string[]; isSuperuser: boolean } | null {
+  const g = parseJsonSafe<{ username?: string; groups?: string[]; isSuperuser?: boolean }>(
+    localStorage.getItem(GRUPOS_SERVIDOR_KEY),
+  );
+  if (!g || !username || g.username !== username || !Array.isArray(g.groups)) return null;
+  return { groups: g.groups, isSuperuser: Boolean(g.isSuperuser) };
+}
+
+export function readAuthProfile(): AuthProfile {
+  const base = buildProfileFromSources();
+  const srv = gruposDoServidor(base.username);
+  if (!srv || !srv.groups.length) return base;
+  const grupos = srv.groups.map((g) => normalizeGroupName(g)).filter(Boolean) as UserGroup[];
+  if (!grupos.length) return base;
+  const isSuperuser = srv.isSuperuser || base.isSuperuser;
+  return {
+    ...base,
+    isSuperuser,
+    group: isSuperuser ? 'ADMIN' : grupos[0],
+    rawGroup: srv.groups[0],
+    groups: isSuperuser ? ['ADMIN', ...grupos] : grupos,
+  };
+}
+
+/** Pergunta ao servidor os grupos de agora; devolve true se mudaram em relação à tela. */
+export function gravarGruposDoServidor(data: { username?: string; groups?: string[]; is_superuser?: boolean }): boolean {
+  if (!data?.username || !Array.isArray(data.groups)) return false;
+  const antes = localStorage.getItem(GRUPOS_SERVIDOR_KEY);
+  const depois = JSON.stringify({ username: data.username, groups: data.groups, isSuperuser: Boolean(data.is_superuser) });
+  localStorage.setItem(GRUPOS_SERVIDOR_KEY, depois);
+  return antes !== depois;
 }
 
 export function clearAuthProfile() {
   localStorage.removeItem(AUTH_PROFILE_KEY);
+  localStorage.removeItem(GRUPOS_SERVIDOR_KEY);
   localStorage.removeItem('user_group');
   localStorage.removeItem('group_name');
   localStorage.removeItem('linked_medico_ids');

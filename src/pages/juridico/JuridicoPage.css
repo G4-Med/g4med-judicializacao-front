@@ -438,3 +438,10 @@ body.dark-theme .candidato-cnj { background: rgba(148,98,13,0.15); border-color:
   letter-spacing: .03em; color: #b91c1c; }
 .conferencia .conferencia-dica { display: block; color: #92400e; margin: 0 0 .45rem; line-height: 1.4; }
 .conferencia .conferencia-falta-msg { color: #b91c1c; margin-right: auto; align-self: center; }
+
+/* Aviso no lugar do Salvar para quem só lê (21/09) */
+.juridico-somente-leitura {
+  display: inline-flex; align-items: center; gap: .5rem; max-width: 34rem;
+  padding: .5rem .75rem; border-radius: 6px; font-size: .9rem; line-height: 1.35;
+  background: rgba(251, 191, 36, .16); border: 1px solid rgba(217, 119, 6, .45); color: #78350f;
+}

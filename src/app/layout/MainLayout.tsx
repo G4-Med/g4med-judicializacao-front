@@ -1,3 +1,4 @@
+import { AvisoNovaVersao } from './AvisoNovaVersao'
 import 'primereact/resources/primereact.min.css'
 import 'primeicons/primeicons.css'
 import 'primeflex/primeflex.css'
@@ -94,6 +95,7 @@ function MainLayoutInner() {
   return (
     <div style={{ minHeight: '100vh' }}>
       <BarraDeCarregamento />
+      <AvisoNovaVersao />
       <Header onMenuClick={menu.toggle} />
 
       <Menu
