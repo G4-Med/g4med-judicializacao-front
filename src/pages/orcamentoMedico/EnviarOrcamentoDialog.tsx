@@ -522,7 +522,14 @@ export function EnviarOrcamentoDialog({
 
     setEnviandoArquivo(true);
     try {
-      await salvarOrcamentoMedico(processo.id, {
+      // ORDEM INVERTIDA (21/09): o PDF sobe ANTES. O e-mail à SES agora sai no próprio salvar e anexa
+      // "o último PDF de orçamento" — subindo depois, ele iria sem anexo, ou com o PDF antigo.
+      if (arquivoSelecionado) {
+        await uploadAnexoOrder(processo.id, arquivoSelecionado, 'ORCAMENTO');
+      }
+      // alerta GRAVE da leitura (paciente diferente, página não lida) segura o envio: fica na fila com o motivo
+      const grave = (leitura?.alertas ?? []).find((x) => x.nivel === 'grave');
+      const r = await salvarOrcamentoMedico(processo.id, {
         acao: 'enviar_orcamento',
         equipeMedica: [],
         taxasHospitalar: [],
@@ -530,15 +537,17 @@ export function EnviarOrcamentoDialog({
         anatomiaPatologica: [],
         medicamentos: [],
         valorTotal: valorArquivo,
+        enviarAgora: !!arquivoSelecionado,
+        segurarEnvioMotivo: grave ? `a leitura do PDF apontou: ${grave.texto}` : '',
       });
-
-      if (arquivoSelecionado) {
-        await uploadAnexoOrder(processo.id, arquivoSelecionado, 'ORCAMENTO');
-      }
+      const ses = (r?.data as { emailSes?: { enviado: boolean; naFila: boolean; para?: string; motivo?: string } | null })?.emailSes;
 
       setArquivoSelecionado(null);
       setValorArquivo(null);
       await handleSuccess();
+      // o desfecho REAL do e-mail, nunca "sucesso" genérico: quem anexou precisa saber se a SES recebeu
+      if (ses?.enviado) alert(`Orçamento salvo e e-mail ENVIADO à SES (${ses.para ?? 'solicitante'}), com o PDF em anexo.`);
+      else if (ses) alert(`Orçamento salvo, mas o e-mail à SES NÃO saiu: ${ses.motivo}.${ses.naFila ? ' Ele está na fila da Central de E-mails — confira e envie por lá.' : ''}`);
     } catch (error) {
       console.error('[EnviarOrcamentoDialog] erro ao enviar orçamento por arquivo', error);
       alert('Erro ao enviar orçamento.');

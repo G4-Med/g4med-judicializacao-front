@@ -2386,6 +2386,35 @@ ${linhasAnexos}
             body={(rowData: ProcessoTableRow) => statusBodyTemplate(rowData, 'status')}
             style={{ minWidth: '12rem' }}
           />
+          {/* @R 21/09: "falta uma coluna ao lado de status para saber quem moveu o item, dia e hora ... e um botão
+              para ver os registros". VAZIO É DADO: só ~110 dos 1.164 pedidos têm usuário nomeado no histórico
+              (o resto veio de planilha ou é anterior ao histórico) — a tela diz isso em vez de inventar autor. */}
+          <Column
+            field="statusEm"
+            header={cabecalhoComHint('Movido por', 'Quem mudou o status por último, com dia e hora. Vazio = mudança anterior ao histórico ou vinda de carga de planilha: ninguém sabe quem foi.')}
+            sortable
+            style={{ minWidth: '13rem' }}
+            body={(r: any) => {
+              const quando = r.statusEm ? new Date(r.statusEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
+              const rotulo: Record<string, string> = { statusProcesso: 'fase', statusJuridico: 'jurídico', statusOrcamento: 'orçamento', statusPerda: 'perda' };
+              return (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '.35rem' }}>
+                  <span style={{ lineHeight: 1.25 }} title={quando ? `${rotulo[r.statusCampo] ?? r.statusCampo}: "${r.statusDe ?? '—'}" → "${r.statusPara ?? '—'}"${r.statusOrigem ? ` · origem: ${r.statusOrigem}` : ''}` : undefined}>
+                    {quando
+                      ? <><strong style={{ fontWeight: 600 }}>{r.statusPor ?? (r.statusOrigem ? `sistema (${r.statusOrigem})` : 'sem autor registrado')}</strong><br /><span style={{ fontSize: '.78rem', color: '#6b7280' }}>{quando}</span></>
+                      : <span style={{ color: '#9ca3af' }}>—</span>}
+                  </span>
+                  {ficha.disponivel && (
+                    <button type="button" className="p-button p-button-text p-button-sm" style={{ padding: '.15rem .3rem' }}
+                      onClick={() => ficha.abrir(Number(r.id))} title="Ver os registros de alteração deste pedido (Ficha do Pedido → histórico)"
+                      aria-label={`Ver os registros de alteração do pedido ${r.id}`}>
+                      <i className="pi pi-history" />
+                    </button>
+                  )}
+                </span>
+              );
+            }}
+          />
           <Column
             field="statusJuridico"
             header="Status Jurídico"

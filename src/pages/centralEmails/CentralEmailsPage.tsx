@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TabView, TabPanel } from 'primereact/tabview';
+import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
@@ -360,6 +361,7 @@ const ROTULO_ENVIO: Record<string, string> = { PENDENTE: 'Na fila', ENVIADO: 'En
  *  que mandou pedido? estamos mandando?"). Cada e-mail que o sistema montou para quem pediu, com
  *  o que aconteceu com ele — e o botão de enviar aqui mesmo, porque o envio é manual. */
 function Respostas({ statusInicial }: { statusInicial: string | null }) {
+  const ficha = useFichaPedido();   // @R 21/09: da linha do e-mail direto para a Ficha (histórico do pedido)
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<string | null>(statusInicial);
   const [tipo, setTipo] = useState<string | null>(null);
@@ -456,7 +458,18 @@ function Respostas({ statusInicial }: { statusInicial: string | null }) {
         <Column expander style={{ width: '3rem' }} />
         <Column field="destinatario" header="Para" sortable style={{ minWidth: '15rem' }} />
         <Column field="paciente" header="Paciente / pedido" sortable style={{ minWidth: '14rem' }}
-          body={(r) => <span>{r.paciente || '—'}{r.orderId ? <span className="acv-pedido-id col-paciente-upper"> #{r.orderId}</span> : null}</span>} />
+          body={(r) => (
+            <span>
+              {r.paciente || '—'}{r.orderId ? <span className="acv-pedido-id col-paciente-upper"> #{r.orderId}</span> : null}
+              {r.orderId && ficha.disponivel && (
+                <button type="button" className="p-button p-button-text p-button-sm" style={{ marginLeft: '.35rem', padding: '.1rem .35rem' }}
+                  onClick={() => ficha.abrir(r.orderId)} title="Abrir a Ficha do Pedido — histórico, acompanhamentos e anexos"
+                  aria-label={`Abrir a ficha do pedido ${r.orderId}`}>
+                  <i className="pi pi-id-card" /><span style={{ marginLeft: '.25rem', fontSize: '.75rem' }}>Ficha</span>
+                </button>
+              )}
+            </span>
+          )} />
         <Column field="tipoEmail" header="Tipo" sortable style={{ width: '13rem' }}
           body={(r) => (
             <span>
