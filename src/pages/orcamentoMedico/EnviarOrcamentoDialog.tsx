@@ -9,7 +9,7 @@ import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
 import { baixarArquivoR2 } from '../../services/api/orders';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { getBaseOrcamento, getDadosMedico, type TipoBaseOrcamento } from '../../services/api/client';
-import { salvarOrcamentoMedico, uploadAnexoOrder, getInteligenciaPedido, lerOrcamentoDoArquivo } from '../../services/api/orders';
+import { salvarOrcamentoMedico, uploadAnexoOrder, getInteligenciaPedido, lerOrcamentoDoArquivo, unificarOrcamento } from '../../services/api/orders';
 import './OrcamentoMedicoPage.css';
 
 GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -143,6 +143,8 @@ function extrairMedicoId(dados: Record<string, unknown>): number | null {
 type AlertaOrcamento = { nivel: 'grave' | 'aviso'; campo: string; texto: string };
 type LeituraOrcamento = {
   ok: boolean;
+  paginasLidas?: number;
+  paginasTotal?: number;
   motivo: string;
   valorTotal: number | null;
   paciente: string | null;
@@ -165,6 +167,9 @@ export function EnviarOrcamentoDialog({
   const [modo, setModo] = useState<'escolha' | 'arquivo' | 'manual'>('escolha');
   const [valorArquivo, setValorArquivo] = useState<number | null>(null);
   const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(null);
+  // Vários arquivos viram 1 PDF ANTES da leitura: o que é lido é o que sobe e vai à SES (@R 21/09).
+  const [partesUnidas, setPartesUnidas] = useState<{ nome: string; paginas: number }[]>([]);
+  const [erroUnificar, setErroUnificar] = useState('');
   const [enviandoArquivo, setEnviandoArquivo] = useState(false);
 
   /** LEITURA DO ORÇAMENTO (@R 17/09): ao escolher o arquivo, a visão computacional lê o
@@ -811,18 +816,57 @@ export function EnviarOrcamentoDialog({
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => {
-              const f = e.target.files?.[0] ?? null;
-              setArquivoSelecionado(f);
-              setLeitura(null);
-              if (f) lerArquivoDoOrcamento(f);
+            multiple
+            onChange={async (e) => {
+              const lista = Array.from(e.target.files ?? []);
+              setLeitura(null); setPartesUnidas([]); setErroUnificar('');
+              if (lista.length <= 1) {
+                const f = lista[0] ?? null;
+                setArquivoSelecionado(f);
+                if (f) lerArquivoDoOrcamento(f);
+                return;
+              }
+              // 2+ arquivos: unifica PRIMEIRO. Se falhar, não seleciona nada — enviar só o 1º calado
+              // mandaria à SES um orçamento faltando um pedaço.
+              setArquivoSelecionado(null);
+              if (!processo?.id) return;
+              setLendoArquivo(true);
+              try {
+                const r = await unificarOrcamento(processo.id, lista);
+                const paginas = String(r.headers?.['x-orcamento-paginas'] ?? '').split(',');
+                const unico = new File([r.data as Blob], `ORCAMENTO_UNIFICADO_pedido_${processo.id}.pdf`, { type: 'application/pdf' });
+                setPartesUnidas(lista.map((a, i) => ({ nome: a.name, paginas: Number(paginas[i]) || 0 })));
+                setArquivoSelecionado(unico);
+                await lerArquivoDoOrcamento(unico);
+              } catch (err: unknown) {
+                let motivo = 'não consegui unir os arquivos';
+                const blob = (err as { response?: { data?: Blob } })?.response?.data;
+                try { if (blob instanceof Blob) motivo = JSON.parse(await blob.text())?.motivo ?? motivo; } catch { /* corpo não era JSON */ }
+                setErroUnificar(`${motivo}. Nenhum arquivo foi selecionado — junte-os num PDF só ou tente de novo.`);
+                setLendoArquivo(false);
+              }
             }}
             style={{ width: '100%' }}
           />
+          <span style={{ fontSize: '0.78rem', color: '#6b7280', marginTop: '4px', display: 'block' }}>
+            O orçamento veio em mais de um arquivo (hospital, equipe, anestesia)? Selecione todos juntos: viram 1 PDF, lido por inteiro e enviado assim.
+          </span>
           {arquivoSelecionado && (
             <span style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '6px', display: 'block' }}>
               <i className="pi pi-file" style={{ marginRight: '4px' }} />
               {arquivoSelecionado.name}
+            </span>
+          )}
+          {partesUnidas.length > 1 && (
+            <span style={{ fontSize: '0.8rem', color: '#065f46', marginTop: '4px', display: 'block' }}>
+              <i className="pi pi-clone" style={{ marginRight: '4px' }} />
+              {partesUnidas.length} arquivos unidos em 1 PDF de {partesUnidas.reduce((t, x) => t + x.paginas, 0)} página(s), nesta ordem:{' '}
+              {partesUnidas.map((x) => `${x.nome} (${x.paginas} pág.)`).join(' + ')}. É este PDF que será enviado.
+            </span>
+          )}
+          {erroUnificar && (
+            <span role="alert" style={{ fontSize: '0.85rem', color: '#b91c1c', marginTop: '6px', display: 'block' }}>
+              <i className="pi pi-times-circle" style={{ marginRight: '4px' }} />{erroUnificar}
             </span>
           )}
         </div>
@@ -846,7 +890,7 @@ export function EnviarOrcamentoDialog({
             ) : (
               <>
                 <p className="orc-leitura__titulo">
-                  <i className="pi pi-eye" /> Li o documento
+                  <i className="pi pi-eye" /> Li o documento{leitura.paginasLidas ? ` — ${leitura.paginasLidas}${leitura.paginasTotal && leitura.paginasTotal > leitura.paginasLidas ? ` de ${leitura.paginasTotal}` : ''} página(s)` : ''}
                   <span className={`orc-conf orc-conf--${leitura.confianca}`}>
                     confiança {leitura.confianca}
                   </span>

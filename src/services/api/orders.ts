@@ -444,6 +444,13 @@ export const lerOrcamentoDoArquivo = (orderId: number, arquivo: File) => {
   return api.post(`/orders/${orderId}/orcamento/ler/`, form);
 };
 
+/** Vários arquivos do orçamento → 1 PDF (na ordem dada). O que a tela lê e envia é ESTE PDF. */
+export const unificarOrcamento = (orderId: number, arquivos: File[]) => {
+  const form = new FormData();
+  arquivos.forEach((a) => form.append('arquivo', a));
+  return api.post(`/orders/${orderId}/orcamento/unificar/`, form, { responseType: 'blob' });
+};
+
 export const getPreferencia = (chave: string) =>
   api.get(`/preferencias/${chave}/`);
 
