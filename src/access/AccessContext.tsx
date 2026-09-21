@@ -27,13 +27,16 @@ const AccessContext = createContext<AccessContextValue | null>(null);
 export function AccessProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<AccessContextValue>(() => {
     const profile = readAuthProfile();
+    const grupos = profile.groups?.length ? profile.groups : [profile.group];
 
     return {
       profile,
-      canView: (screen) => canViewScreen(profile.group, screen),
-      canEdit: (screen) => canEditScreen(profile.group, screen),
-      canExport: (report) => canExportReport(profile.group, report),
-      isReadOnly: (screen) => canViewScreen(profile.group, screen) && !canEditScreen(profile.group, screen),
+      // Pessoa com 2 grupos (ex.: Gerente + Jurídico) soma as permissões: vê o que QUALQUER grupo
+      // dela vê e edita o que QUALQUER um edita. O servidor já decidia assim (grupos, não grupo).
+      canView: (screen) => grupos.some((g) => canViewScreen(g, screen)),
+      canEdit: (screen) => grupos.some((g) => canEditScreen(g, screen)),
+      canExport: (report) => grupos.some((g) => canExportReport(g, report)),
+      isReadOnly: (screen) => grupos.some((g) => canViewScreen(g, screen)) && !grupos.some((g) => canEditScreen(g, screen)),
       canSeeAllMedicos: canSeeAllMedicos(profile.group),
       linkedMedicoIds: profile.linkedMedicoIds,
       defaultRoute: getDefaultRouteForGroup(profile.group),

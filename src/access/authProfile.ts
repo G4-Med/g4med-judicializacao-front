@@ -6,6 +6,9 @@ export interface AuthProfile {
   rawGroup: string;
   linkedMedicoIds: number[];
   isSuperuser: boolean;
+  /** TODOS os grupos do usuário (o `group` acima é só o principal). @R 21/09 16:40: a Valéria é
+   *  Gerente + Jurídico — a tela passou a somar as permissões dos dois, em vez de usar só o 1º. */
+  groups: UserGroup[];
 }
 
 const AUTH_PROFILE_KEY = 'auth_profile';
@@ -147,6 +150,13 @@ function buildProfileFromSources(
       '',
     group: isSuperuser ? 'ADMIN' : normalizedGroup,
     rawGroup,
+    groups: (() => {
+      const lista = [source?.groups, tokenPayload?.groups, ...(useStoredFallback ? [localProfile?.groups] : [])]
+        .find((v) => Array.isArray(v) && v.length) as unknown[] | undefined;
+      const todos = new Set<UserGroup>([isSuperuser ? 'ADMIN' : normalizedGroup]);
+      for (const g of lista ?? []) { const n = normalizeGroupName(g); if (n) todos.add(n); }
+      return [...todos];
+    })(),
     linkedMedicoIds: extractLinkedMedicoIds([
       source?.medico_ids,
       source?.medicos,
