@@ -10,6 +10,7 @@ export interface EmailJuridicoItem {
   emailProcessadoId: number;
   chegouEm: string;
   dataEmail: string | null;
+  novo: boolean;
   remetente: string | null;
   assunto: string | null;
   motivoBarrado: string | null;
@@ -34,6 +35,8 @@ export interface ContagemEmailsJuridico {
   vencidos: number;
   comPrazo: number;
   novosHoje: number;
+  novos: number;
+  abertosSemRuido: number;
   porClasse: Record<ClasseEmailJuridico, number>;
 }
 
@@ -53,3 +56,22 @@ export const tratarEmailJuridico = (id: number, body: Partial<{
 export const CLASSE_LABEL: Record<ClasseEmailJuridico, string> = {
   JUSTICA: 'Justiça', SES: 'SES', PRESTADOR: 'Hospital/prestador', OUTRO: 'Outro', RUIDO: 'Ruído',
 };
+
+export const baixarAnexoEmailJuridico = (id: number, n: number) =>
+  api.get<Blob>(`/emails/juridico/${id}/anexo/${n}/`, { responseType: 'blob' });
+
+export const baixarAnexoEmailOriginal = (orderId: number, anexoId: number, n: number) =>
+  api.get<Blob>(`/orders/${orderId}/emails/${anexoId}/anexo/${n}/`, { responseType: 'blob' });
+
+/** Responde o e-mail pelo endereço da plataforma (ato da pessoa; nunca automático). */
+export const responderEmailJuridico = (id: number, dados: { para?: string; assunto: string; corpo: string; anexos: File[] }) => {
+  const fd = new FormData();
+  if (dados.para) fd.append('para', dados.para);
+  fd.append('assunto', dados.assunto); fd.append('corpo', dados.corpo);
+  dados.anexos.forEach((f) => fd.append('anexo', f));
+  return api.post<{ ok: boolean; para: string; anexos: number; observacao: string }>(`/emails/juridico/${id}/responder/`, fd,
+    { headers: { 'Content-Type': 'multipart/form-data' } });
+};
+
+export const corrigirTextoEmail = (texto: string) =>
+  api.post<{ texto: string }>('/emails/juridico/corrigir-texto/', { texto });

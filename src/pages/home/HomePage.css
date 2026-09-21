@@ -467,3 +467,7 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
 .home-hero__fases li { display: grid; grid-template-columns: 26px 1fr auto; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,.9); }
 .home-hero__fases em { font-style: normal; font-weight: 700; font-size: 11px; text-align: center; padding: 1px 0; border-radius: 4px; background: rgba(255,255,255,.14); }
 .home-hero__fases b { font-family: var(--mc-font-heading); font-size: 16px; color: #fff; }
+
+/* 1.2 E-mails e ofícios do jurídico — linha vira alerta quando há NOVO ou prazo vencido (@R 21/09). */
+.home-hero__fases li.home-hero__fase--alerta { background: #fde8e8; border-radius: 6px; }
+.home-hero__fases li.home-hero__fase--alerta b { color: #b42318; }

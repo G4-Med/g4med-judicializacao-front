@@ -622,12 +622,12 @@ export function HomePage() {
               ))}
               {/* @R 21/09/2026 (verbatim): "área no próprio sistema em /home para ver todos [os ofícios]
                   que chegam". Não é pedido, é e-mail/ofício sem tratamento — por isso fora da soma acima. */}
-              <li key="1.2" className={emailsJur?.vencidos ? 'home-hero__fase--alerta' : ''}
+              <li key="1.2" className={(emailsJur?.vencidos || emailsJur?.novos) ? 'home-hero__fase--alerta' : ''}
                 title={emailsJur ? `${emailsJur.abertos} sem tratamento · ${emailsJur.vencidos} com prazo vencido · ${emailsJur.novosHoje} hoje` : 'carregando'}
                 style={{ cursor: 'pointer' }} onClick={() => navigate('/emails-juridico')}>
                 <em>1.2</em>
-                <span className="home-hero__fase-nome">E-mails e ofícios do jurídico{emailsJur?.vencidos ? ` · ${emailsJur.vencidos} vencido(s)` : ''}</span>
-                <b>{emailsJur ? emailsJur.abertos : '--'}</b>
+                <span className="home-hero__fase-nome">E-mails e ofícios do jurídico{emailsJur?.novos ? ` · 🔔 ${emailsJur.novos} NOVO(S)` : ''}{emailsJur?.vencidos ? ` · ${emailsJur.vencidos} vencido(s)` : ''}</span>
+                <b>{emailsJur ? emailsJur.abertosSemRuido : '--'}</b>
               </li>
             </ul>
           </div>

@@ -11,7 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import { useOrdenacao } from '../../components/Tabela/useOrdenacao';
 import type { ClasseEmailJuridico, ContagemEmailsJuridico, EmailJuridicoItem } from '../../services/api/emailsJuridico';
-import { CLASSE_LABEL, conteudoEmailJuridico, listarEmailsJuridico, tratarEmailJuridico } from '../../services/api/emailsJuridico';
+import { CLASSE_LABEL, baixarAnexoEmailJuridico, conteudoEmailJuridico, corrigirTextoEmail, listarEmailsJuridico, responderEmailJuridico, tratarEmailJuridico } from '../../services/api/emailsJuridico';
+import { salvarBlob } from '../../services/api/orders';
 
 /* ── contagem compartilhada (menu · home · fases) ─────────────────────────────────────────
    Uma chamada a cada 2 min, 1 cache para todo mundo — mesmo desenho do contador da 1.1. */
@@ -46,12 +47,13 @@ export function useEmailsJuridicoContagem(): ContagemEmailsJuridico | null {
 export function AvisoEmailsJuridico() {
   const c = useEmailsJuridicoContagem();
   const navigate = useNavigate();
-  if (!c || !c.abertos) return null;
+  if (!c || !c.abertosSemRuido) return null;
+  const alerta = c.vencidos > 0 || c.novos > 0;   // @R 21/09: "caso algo NOVO chegue... tem que ter um alerta"
   return (
-    <div className={`mc-aviso-emails ${c.vencidos ? 'mc-aviso-emails--vencido' : ''}`} role="status"
-      style={{ margin: '0 0 .75rem', padding: '.5rem .75rem', borderRadius: 6, background: c.vencidos ? '#fde8e8' : '#fff4d6', border: '1px solid ' + (c.vencidos ? '#f5b5b5' : '#f2d28a'), display: 'flex', gap: '.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-      <i className="pi pi-envelope" />
-      <span><strong>{c.abertos}</strong> e-mail(s)/ofício(s) chegaram ao jurídico e ainda não foram tratados
+    <div className={`mc-aviso-emails ${alerta ? 'mc-aviso-emails--alerta' : ''}`} role={alerta ? 'alert' : 'status'}
+      style={{ margin: '0 0 .75rem', padding: '.5rem .75rem', borderRadius: 6, background: alerta ? '#fde8e8' : '#fff4d6', border: '1px solid ' + (alerta ? '#f5b5b5' : '#f2d28a'), display: 'flex', gap: '.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <i className={alerta ? 'pi pi-bell' : 'pi pi-envelope'} />
+      <span>{c.novos ? <><strong>{c.novos} NOVO(S)</strong> e-mail(s)/ofício(s) chegaram ao jurídico desde 21/09 e ainda não foram tratados</> : <><strong>{c.abertosSemRuido}</strong> e-mail(s)/ofício(s) do jurídico ainda sem tratamento</>}
         {c.vencidos ? <> — <strong>{c.vencidos} com prazo vencido</strong></> : null}
         {c.novosHoje ? <> · {c.novosHoje} hoje</> : null}.</span>
       <Button label="Ver a fila" size="small" text onClick={() => navigate('/emails-juridico')} />
@@ -72,7 +74,7 @@ export function EmailsJuridicoPage() {
   const [busca, setBusca] = useState('');
   const [classeFiltro, setClasseFiltro] = useState<ClasseEmailJuridico | null>(null);
   const [aberto, setAberto] = useState<EmailJuridicoItem | null>(null);
-  const ordenacao = useOrdenacao('prazo', 1);
+  const ordenacao = useOrdenacao('chegouEm', -1);   // @R: mais recente primeiro, sempre
   const ficha = useFichaPedido();
 
   const carregar = useCallback(async () => {
@@ -115,6 +117,7 @@ export function EmailsJuridicoPage() {
 
       {contagem && (
         <div className="flex gap-3 flex-wrap mb-3">
+          <Tag value={`${contagem.novos} NOVO(S) desde 21/09`} severity={contagem.novos ? 'danger' : 'secondary'} icon="pi pi-bell" />
           <Tag value={`${contagem.abertos} aberto(s)`} severity={contagem.abertos ? 'warning' : 'success'} />
           <Tag value={`${contagem.vencidos} vencido(s)`} severity={contagem.vencidos ? 'danger' : 'secondary'} />
           <Tag value={`${contagem.novosHoje} hoje`} severity="info" />
@@ -136,7 +139,9 @@ export function EmailsJuridicoPage() {
       <DataTable value={visiveis} loading={carregando} size="small" stripedRows paginator rows={25} dataKey="id" {...ordenacao}
         emptyMessage={status === 'ABERTO' ? 'Nada aberto — a fila está zerada.' : 'Nenhum e-mail neste filtro.'}
         rowClassName={(r: EmailJuridicoItem) => (r.vencido ? 'mc-linha-vencida' : '')}>
-        <Column field="chegouEm" header="Chegou" sortable body={(r: EmailJuridicoItem) => fmt(r.dataEmail || r.chegouEm)} style={{ width: '9rem' }} />
+        <Column field="chegouEm" header="Chegou" sortable style={{ width: '10rem' }} body={(r: EmailJuridicoItem) => (
+          <span>{r.novo && <Tag value="NOVO" severity="danger" className="mr-1" />}{fmt(r.dataEmail || r.chegouEm)}</span>
+        )} />
         <Column field="classe" header="Classe" sortable style={{ width: '10rem' }} body={(r: EmailJuridicoItem) => (
           <Dropdown value={r.classe} options={CLASSES} onChange={(e) => aplicar(r.id, { classe: e.value })} className="p-inputtext-sm" />
         )} />
@@ -175,19 +180,92 @@ function Integra({ item, onObservacao }: { item: EmailJuridicoItem; onObservacao
   const [anexos, setAnexos] = useState<string[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [obs, setObs] = useState(item.observacao ?? '');
+  const [baixando, setBaixando] = useState<number | null>(null);
+  /* RESPONDER (@R 21/09): "a pessoa tem que ter como abrir e ver o e-mail e ter como responder e baixar
+     anexos e adicionar anexos, e ter uma área para IA corrigir o texto digitado". O envio é um clique da
+     pessoa, com confirmação — nunca sai sozinho. */
+  const [respAberta, setRespAberta] = useState(false);
+  const [para, setPara] = useState('');
+  const [assunto, setAssunto] = useState(`Re: ${item.assunto ?? ''}`);
+  const [texto, setTexto] = useState('');
+  const [arquivos, setArquivos] = useState<File[]>([]);
+  const [corrigindo, setCorrigindo] = useState(false);
+  const [enviando, setEnviando] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
   useEffect(() => {
     setCorpo(null); setErro(null);
     conteudoEmailJuridico(item.id).then(({ data }) => { setCorpo(data.corpo); setAnexos(data.anexos); })
       .catch((e) => setErro(e?.response?.data?.detail || 'Não consegui ler o e-mail.'));
   }, [item.id]);
+
+  const baixar = async (n: number, nome: string) => {
+    setBaixando(n);
+    try { const { data } = await baixarAnexoEmailJuridico(item.id, n); salvarBlob(data, nome); }
+    catch { alert('Não consegui baixar este anexo agora.'); }
+    finally { setBaixando(null); }
+  };
+  const corrigir = async () => {
+    if (texto.trim().length < 5) return;
+    setCorrigindo(true); setMsg(null);
+    try { const { data } = await corrigirTextoEmail(texto); setTexto(data.texto); setMsg('Texto revisado pela IA — confira antes de enviar.'); }
+    catch (e: any) { setMsg(e?.response?.data?.error || 'A IA não respondeu; texto mantido.'); }
+    finally { setCorrigindo(false); }
+  };
+  const enviar = async () => {
+    const dest = para.trim() || (item.remetente?.match(/<([^>]+)>/)?.[1] ?? item.remetente ?? '');
+    if (!window.confirm(`Enviar esta resposta para ${dest}${arquivos.length ? ` com ${arquivos.length} anexo(s)` : ''}?`)) return;
+    setEnviando(true); setMsg(null);
+    try {
+      const { data } = await responderEmailJuridico(item.id, { para: para.trim() || undefined, assunto, corpo: texto, anexos: arquivos });
+      setMsg(`Enviado para ${data.para}${data.anexos ? ` com ${data.anexos} anexo(s)` : ''}.`);
+      setRespAberta(false); setTexto(''); setArquivos([]);
+      onObservacao(data.observacao);
+    } catch (e: any) { setMsg(e?.response?.data?.error || 'Não consegui enviar.'); }
+    finally { setEnviando(false); }
+  };
+
   return (
     <div>
       <p className="mt-0 mb-1"><strong>De:</strong> {item.remetente} · <strong>Em:</strong> {fmt(item.dataEmail || item.chegouEm)}
         {item.cnj ? <> · <strong>CNJ:</strong> {item.cnj}</> : null} · <strong>Prazo:</strong> {fmtDia(item.prazo)}</p>
-      {anexos.length > 0 && <p className="mt-0 mb-2 text-sm"><i className="pi pi-paperclip" /> Anexos: {anexos.join(' · ')} <em>(o arquivo fica no .eml; peça ao suporte se precisar abrir)</em></p>}
+      {anexos.length > 0 && (
+        <p className="mt-0 mb-2 text-sm"><i className="pi pi-paperclip" /> Anexos:{' '}
+          {anexos.map((a, i) => (
+            <Button key={i} label={a} icon="pi pi-download" size="small" link loading={baixando === i + 1} onClick={() => baixar(i + 1, a)} />
+          ))}
+        </p>
+      )}
       {erro && <p className="text-red-600">{erro}</p>}
       {corpo == null && !erro && <p><i className="pi pi-spin pi-spinner" /> lendo…</p>}
-      {corpo != null && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', background: '#f8f9fa', padding: '.75rem', borderRadius: 6, maxHeight: '50vh', overflow: 'auto' }}>{corpo}</pre>}
+      {corpo != null && <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', background: '#f8f9fa', padding: '.75rem', borderRadius: 6, maxHeight: '40vh', overflow: 'auto' }}>{corpo}</pre>}
+
+      <div className="mt-3 flex gap-2 align-items-center">
+        <Button label={respAberta ? 'Fechar resposta' : 'Responder'} icon="pi pi-reply" size="small" onClick={() => setRespAberta((v) => !v)} />
+        {msg && <small>{msg}</small>}
+      </div>
+      {respAberta && (
+        <div className="mt-2 p-2" style={{ border: '1px solid #dee2e6', borderRadius: 6 }}>
+          <div className="flex gap-2 flex-wrap mb-2">
+            <InputText value={para} onChange={(e) => setPara(e.target.value)} placeholder={`Para (padrão: ${item.remetente?.match(/<([^>]+)>/)?.[1] ?? item.remetente ?? ''})`} className="p-inputtext-sm" style={{ flex: 1, minWidth: '18rem' }} />
+            <InputText value={assunto} onChange={(e) => setAssunto(e.target.value)} placeholder="Assunto" className="p-inputtext-sm" style={{ flex: 1, minWidth: '18rem' }} />
+          </div>
+          <InputTextarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={7} className="w-full" placeholder="Escreva a resposta. O botão 'Corrigir com IA' revisa ortografia e clareza sem mudar o sentido — você confere antes de enviar." />
+          <div className="flex gap-2 flex-wrap align-items-center mt-2">
+            <Button label="Corrigir texto com IA" icon="pi pi-sparkles" size="small" outlined loading={corrigindo} disabled={texto.trim().length < 5} onClick={corrigir} />
+            <label className="p-button p-button-sm p-button-outlined" style={{ cursor: 'pointer' }}>
+              <i className="pi pi-paperclip mr-1" /> Adicionar anexos
+              <input type="file" multiple style={{ display: 'none' }} onChange={(e) => setArquivos((xs) => [...xs, ...Array.from(e.target.files ?? [])])} />
+            </label>
+            {arquivos.map((f, i) => (
+              <Tag key={i} value={f.name} severity="secondary" icon="pi pi-times" style={{ cursor: 'pointer' }} onClick={() => setArquivos((xs) => xs.filter((_, k) => k !== i))} />
+            ))}
+            <span style={{ flex: 1 }} />
+            <Button label="Enviar resposta" icon="pi pi-send" size="small" severity="success" loading={enviando} disabled={texto.trim().length < 10 || assunto.trim().length < 3} onClick={enviar} />
+          </div>
+        </div>
+      )}
+
       <label className="block mt-3 mb-1 text-sm">Anotação interna (o que foi feito / a quem foi passado)</label>
       <InputTextarea value={obs} onChange={(e) => setObs(e.target.value)} rows={3} className="w-full" />
       <div className="mt-2"><Button label="Salvar anotação" size="small" onClick={() => onObservacao(obs)} /></div>

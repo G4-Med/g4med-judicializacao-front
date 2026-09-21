@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { listarCandidatosCotacao, convidarCandidatoCotacao, getMedicosCompleto, conferirOrcamentoPeca, getFichaPedido, getLogAuditoria, reverterHistorico, getConteudoEmail, moverSituacao } from '../../services/api/orders';
+import { baixarAnexoEmailOriginal } from '../../services/api/emailsJuridico';
 import { criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
@@ -114,7 +115,7 @@ export function FichaPedido({
   const [mudandoCampo, setMudandoCampo] = useState<string | null>(null);
   // conteúdo de e-mail carregado SOB DEMANDA: abrir a ficha não deve baixar .eml do R2
   // que ninguém vai ler — a ficha é consultada o tempo todo, o e-mail raramente.
-  const [corpos, setCorpos] = useState<Record<number, { carregando?: boolean; texto?: string; vazio?: boolean; erro?: string }>>({});
+  const [corpos, setCorpos] = useState<Record<number, { carregando?: boolean; texto?: string; vazio?: boolean; erro?: string; anexos?: string[] }>>({});
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [revertendo, setRevertendo] = useState(false);
@@ -409,7 +410,7 @@ export function FichaPedido({
     setCorpos((c) => ({ ...c, [anexoId]: { carregando: true } }));
     try {
       const r = await getConteudoEmail(orderId, anexoId);
-      setCorpos((c) => ({ ...c, [anexoId]: { texto: r.data.corpo ?? '', vazio: !!r.data.vazio } }));
+      setCorpos((c) => ({ ...c, [anexoId]: { texto: r.data.corpo ?? '', vazio: !!r.data.vazio, anexos: r.data.anexos ?? [] } }));
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } } };
       // a CAUSA vai para a tela: "não foi possível" sem motivo faz a pessoa concluir que o
@@ -931,6 +932,18 @@ export function FichaPedido({
                   )}
                   {corpos[o.anexoId]?.texto && !corpos[o.anexoId]?.vazio && (
                     <pre className="fic__corpo-email">{corpos[o.anexoId].texto}</pre>
+                  )}
+                  {/* #541 (@R 21/09): "se tem anexo na chegada temos que ter um botão para ver os anexos" —
+                      o servidor extrai do .eml guardado; cada nome vira um download. */}
+                  {(corpos[o.anexoId]?.anexos?.length ?? 0) > 0 && (
+                    <p className="fic__anexos-email"><i className="pi pi-paperclip" /> Anexos do e-mail:{' '}
+                      {corpos[o.anexoId]!.anexos!.map((nome, i) => (
+                        <button key={i} type="button" className="fic__baixar" onClick={async () => {
+                          try { const { data } = await baixarAnexoEmailOriginal(orderId as number, o.anexoId, i + 1); salvarBlob(data, nome); }
+                          catch { alert('Não consegui baixar este anexo agora.'); }
+                        }}>{nome}</button>
+                      ))}
+                    </p>
                   )}
                   <a href={o.link} target="_blank" rel="noreferrer" className="fic__baixar">
                     baixar o e-mail original (.eml)
