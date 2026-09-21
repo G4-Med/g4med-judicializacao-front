@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
@@ -21,6 +22,7 @@ export function PropostasPage() {
   const [atual, setAtual] = useState<Proposta>(VAZIA);
   const [salvando, setSalvando] = useState(false);
   const [aviso, setAviso] = useState('');
+  const navegar = useNavigate();
 
   const carregar = () => listarPropostas().then((r) => setLista(r.data.itens ?? [])).catch(() => setAviso('Não foi possível carregar as propostas.'));
   useEffect(() => { carregar(); }, []);
@@ -57,10 +59,21 @@ export function PropostasPage() {
   };
 
   return (
-    <div className="propostas-pagina">
+    <div className="propostas-pagina mc-pagina-g4">
+      <div className="g4-cabecalho">
+        <div>
+          <h1>Proposta comercial</h1>
+          <p>Preencha o cliente, o percentual e a base da cobrança. A prévia ao lado é exatamente o PDF.</p>
+        </div>
+        <div className="g4-acoes">
+          <Button label="Manuais" icon="pi pi-arrow-left" text onClick={() => navegar('/manuais')} />
+          <Button label="Nova proposta" icon="pi pi-plus" onClick={() => { setAtual(VAZIA); setAviso(''); }} />
+        </div>
+      </div>
+      <div className="propostas-corpo">
       <aside className="propostas-lista">
-        <Button label="Nova proposta" icon="pi pi-plus" size="small" onClick={() => { setAtual(VAZIA); setAviso(''); }} />
-        {lista.length === 0 && <p className="pl-vazio">Nenhuma proposta ainda.</p>}
+        <div className="pl-titulo">Propostas salvas ({lista.length})</div>
+        {lista.length === 0 && <p className="pl-vazio">Nenhuma proposta ainda. Preencha ao lado e clique em Salvar.</p>}
         {lista.map((p) => (
           <button key={p.id} type="button" className={`pl-item${p.id === atual.id ? ' ativo' : ''}`} onClick={() => { setAtual(p); setAviso(''); }}>
             <b>{p.cliente}</b>
@@ -70,7 +83,6 @@ export function PropostasPage() {
         ))}
       </aside>
 
-      <section className="propostas-edicao">
         <div className="pe-form">
           <h1>{atual.id ? 'Editar proposta' : 'Nova proposta comercial'}</h1>
           <label htmlFor="pp-cliente">Nome do cliente (hospital ou médico)</label>
@@ -120,9 +132,9 @@ export function PropostasPage() {
           )}
         </div>
         <div className="pe-previa">
-          <PropostaDocumento p={atual} />
+          <div className="pe-folha"><PropostaDocumento p={atual} /></div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { MANUAIS, type QualManual } from './ManualPublicoPage';
+import './propostas.css';
 
 /* MANUAIS NO MENU INTERNO (GO @R 19:15, "no site disponível corretamente, para nós"): a equipe abre,
    lê e copia o link público para mandar ao médico ou ao hospital. O endereço é o do domínio próprio
@@ -27,11 +28,13 @@ export function ManuaisPage() {
     catch { window.prompt('Copie o link:', url); }
   };
   return (
-    <div className="page-container" style={{ padding: '1rem', maxWidth: 900 }}>
-      <h1 style={{ marginBottom: '.25rem' }}>Manuais</h1>
-      <p style={{ color: '#6b7280', marginTop: 0 }}>
-        Para enviar ao médico ou ao hospital. O link abre sem login, no celular, e tem o botão "Salvar em PDF".
-      </p>
+    <div className="mc-pagina-g4" style={{ maxWidth: 1100 }}>
+      <div className="g4-cabecalho">
+        <div>
+          <h1>Manuais e proposta comercial</h1>
+          <p>Para enviar ao médico ou ao hospital. O link abre sem login, no celular, e tem o botão "Salvar em PDF".</p>
+        </div>
+      </div>
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
         {(Object.keys(MANUAIS) as QualManual[]).map((q) => (
           <section key={q} style={{ border: '1px solid #e5e7eb', borderRadius: 10, padding: '1rem', background: '#fff' }}>

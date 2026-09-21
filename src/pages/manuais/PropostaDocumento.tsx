@@ -36,11 +36,12 @@ export function PropostaDocumento({ p, data }: { p: Proposta; data?: Date }) {
   const hoje = data ?? new Date();
   const hospital = p.tipoCliente === 'HOSPITAL';
   const quem = p.cliente || (hospital ? 'o hospital' : 'o médico');
+  const pagoPor = p.cliente ? `por ${p.cliente}` : (hospital ? 'pelo hospital' : 'pelo médico');
   const oHospital = hospital ? 'o hospital' : 'o médico';
   const validade = somarDiasUteis(hoje, p.validadeDias || 5);
   const remuneracao = p.base === 'HONORARIO_MEDICO'
-    ? `${pct(p.percentual)} sobre o honorário médico da oportunidade contemplada, pago por ${quem}.`
-    : `${pct(p.percentual)} da oportunidade contemplada — o valor total do orçamento (honorários, parte hospitalar e OPME), pago por ${quem}.`;
+    ? `${pct(p.percentual)} sobre o honorário médico da oportunidade contemplada, pago ${pagoPor}.`
+    : `${pct(p.percentual)} da oportunidade contemplada — o valor total do orçamento (honorários, parte hospitalar e OPME), pago ${pagoPor}.`;
 
   return (
     <article className="proposta-doc">
@@ -57,7 +58,7 @@ export function PropostaDocumento({ p, data }: { p: Proposta; data?: Date }) {
         <p>
           A Secretaria de Estado de Saúde de Minas Gerais e prefeituras encaminham pedidos de orçamento de cirurgia
           por ordem judicial, com pagamento à vista antes do procedimento. O procedimento está autorizado, o paciente
-          aguarda, e falta quem atenda. {hospital ? `${quem} tem o corpo clínico` : `${quem} tem a especialidade`}; a
+          aguarda, e falta quem atenda. {hospital ? `${p.cliente || 'O hospital'} tem o corpo clínico` : `${p.cliente || 'O médico'} tem a especialidade`}; a
           G4MED é a ponte — leva o caso pronto e conduz até a conclusão. De {oHospital}, uma coisa: a cotação no prazo.
         </p>
         <p className="pd-destaque">Sem mensalidade · sem exclusividade · remuneração só no sucesso</p>
