@@ -1,4 +1,5 @@
 import type { MenuItem } from 'primereact/menuitem';
+import api from '../../services/api';
 import type { NavigateFunction } from 'react-router-dom';
 import type { ScreenKey } from '../../access/permissions';
 import { ETAPAS } from '../../pages/processoOperacional/conteudo';
@@ -172,7 +173,15 @@ export function buildMenuItems({
         {
           label: item.label,
           icon: item.icon,
-          command: () => { window.open(url, '_blank', 'noopener,noreferrer'); },
+          // @R 20/09 21:50: quem está logado aqui entra no funil sem senha. Pede à API uma URL
+          // assinada (60 s) e abre; se o SSO não estiver configurado (503) ou falhar, abre o
+          // endereço normal e o funil pede login — nunca deixa o clique sem efeito.
+          command: () => {
+            const aba = window.open('', '_blank');   // abre ANTES do await: o bloqueador de pop-up só deixa em resposta direta ao clique
+            api.get('/sso/funil-comercial/')
+              .then((r: { data?: { url?: string } }) => { const alvo = r?.data?.url || url; if (aba) aba.location.href = alvo; else window.open(alvo, '_blank', 'noopener,noreferrer'); })
+              .catch(() => { if (aba) aba.location.href = url; else window.open(url, '_blank', 'noopener,noreferrer'); });
+          },
           className: '',
         } as MenuItem,
       ];
