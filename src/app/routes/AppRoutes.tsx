@@ -28,6 +28,7 @@ import { SlaPage } from '../../pages/sla/SlaPage';
 import { NotificacoesHistoricoPage } from '../../pages/notificacoesHistorico/NotificacoesHistoricoPage';
 import { ProcessoOperacionalPage } from '../../pages/processoOperacional/ProcessoOperacionalPage';
 import { JuridicoPage } from '../../pages/juridico/JuridicoPage';
+import { EmailsJuridicoPage } from '../../pages/emailsJuridico/EmailsJuridicoPage';
 import { OrcamentoMedicoPage } from '../../pages/orcamentoMedico/OrcamentoMedicoPage';
 import { SelecionarMedicoPage } from '../../pages/selecionarMedico/SelecionarMedicoPage';
 import { RelatorioResumidoPage } from '../../pages/relatorios/RelatorioResumidoPage';
@@ -73,6 +74,7 @@ export function AppRoutes() {
         <Route path="/notificacoes-historico" element={<ProtectedScreen screen="notificacoesHistorico"><NotificacoesHistoricoPage /></ProtectedScreen>} />
         <Route path="/processo-operacional" element={<ProtectedScreen screen="processoOperacional"><ProcessoOperacionalPage /></ProtectedScreen>} />
         <Route path="/juridico" element={<ProtectedScreen screen="juridico"><JuridicoPage /></ProtectedScreen>} />
+        <Route path="/emails-juridico" element={<ProtectedScreen screen="juridico"><EmailsJuridicoPage /></ProtectedScreen>} />
         <Route path="/selecionar-medico" element={<ProtectedScreen screen="selecionarMedico"><SelecionarMedicoPage /></ProtectedScreen>} />
         <Route path="/orcamento-medico" element={<ProtectedScreen screen="orcamentoMedico"><OrcamentoMedicoPage /></ProtectedScreen>} />
 

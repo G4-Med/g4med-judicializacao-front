@@ -36,7 +36,7 @@ interface MenuLeafConfig {
  *  (sessão extensoes, GO @R 20/09) vira https://comercial.g4med.com.br — trocar via
  *  VITE_FUNIL_COMERCIAL_URL no publicar_front.sh ou aqui. */
 const FUNIL_COMERCIAL_URL: string =
-  (import.meta.env.VITE_FUNIL_COMERCIAL_URL as string | undefined) || 'https://g4medcomercial.share.zrok.io/';
+  (import.meta.env.VITE_FUNIL_COMERCIAL_URL as string | undefined) || 'https://comercial.g4med.com.br/';   // migrado ao servidor 21/09/2026 (extensoes)
 
 interface MenuGroupConfig {
   label: string;
@@ -73,6 +73,9 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
       // sub-item da Análise Jurídica: o bilhete que a fase 3 devolve ao jurídico (1.1 de retorno). Tem entrada
       // própria porque a aba, dentro da tela, ficava invisível para quem navega pelo menu (@R 21/09).
       { label: '1,1 Pendências jurídicas', icon: 'pi pi-angle-double-right', path: '/juridico?aba=pendencias', screen: 'juridico' },
+      // @R 21/09/2026 (verbatim): "os ofícios com prazos e demais questões precisamos ter uma área no próprio
+      // sistema... para a pessoa ver na íntegra o que chegou". Mesma permissão da Análise Jurídica.
+      { label: '1,2 E-mails e ofícios', icon: 'pi pi-envelope', path: '/emails-juridico', screen: 'juridico' },
       { label: 'Selecionar Médico', icon: 'pi pi-angle-right', path: '/selecionar-medico', screen: 'selecionarMedico' },
       { label: 'Orçamento Médico', icon: 'pi pi-angle-right', path: '/orcamento-medico', screen: 'orcamentoMedico' },
       { label: 'Protocolar', icon: 'pi pi-angle-right', path: '/para-protocolar', screen: 'paraProtocolar' },

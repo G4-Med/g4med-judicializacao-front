@@ -5,6 +5,7 @@ import { buildMenuItems } from '../navigation/menuConfigClean'
 import { DONOS } from '../../pages/processoOperacional/conteudo'
 import type { MenuItem } from 'primereact/menuitem'
 import { usePendenciasAbertas, usePendenciasParaAgir } from '../../components/PendenciaJuridica/PendenciaJuridica'
+import { useEmailsJuridicoContagem } from '../../pages/emailsJuridico/EmailsJuridicoPage'
 import './Menu.css'
 
 interface MenuItemComDono extends MenuItem {
@@ -57,8 +58,9 @@ export function Menu({ visible, onHide }: Props) {
   const { canView } = useAccess()
 
   const pendenciasAbertas = usePendenciasAbertas()
-  const agir = usePendenciasParaAgir()   // retornos esperando o "Li" de quem pediu (+ os antigos, para Admin/Gerente)
-  const items = buildMenuItems({ navigate, currentPath: location.pathname + (location.pathname === '/juridico' && location.search === '?aba=pendencias' ? location.search : ''), canView, contadores: { '/juridico?aba=pendencias': agir.paradas ? `${pendenciasAbertas} · ${agir.paradas} parada(s)` : pendenciasAbertas, '/orcamento-medico': (agir.meusRetornos + agir.semLerAntigas) ? `${agir.meusRetornos + agir.semLerAntigas} retorno(s) do jurídico` : 0 } })
+  const agir = usePendenciasParaAgir()
+  const emailsJur = useEmailsJuridicoContagem()   // ofícios/e-mails do jurídico ainda não tratados (@R 21/09)   // retornos esperando o "Li" de quem pediu (+ os antigos, para Admin/Gerente)
+  const items = buildMenuItems({ navigate, currentPath: location.pathname + (location.pathname === '/juridico' && location.search === '?aba=pendencias' ? location.search : ''), canView, contadores: { '/juridico?aba=pendencias': agir.paradas ? `${pendenciasAbertas} · ${agir.paradas} parada(s)` : pendenciasAbertas, '/emails-juridico': emailsJur?.vencidos ? `${emailsJur.abertos} · ${emailsJur.vencidos} vencido(s)` : (emailsJur?.abertos ?? 0), '/orcamento-medico': (agir.meusRetornos + agir.semLerAntigas) ? `${agir.meusRetornos + agir.semLerAntigas} retorno(s) do jurídico` : 0 } })
   const sections = agruparPorSecao(items)
 
   // estado: quais itens com filhos estão abertos

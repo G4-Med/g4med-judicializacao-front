@@ -34,6 +34,7 @@ import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import { AbaPendenciasJuridicas, usePendenciasAbertas, usePendenciasParaAgir } from '../../components/PendenciaJuridica/PendenciaJuridica';
 import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
+import { AvisoEmailsJuridico } from '../emailsJuridico/EmailsJuridicoPage';
 
 // Meta desta fase (triagem jurídica) — espelha backend/funil.py FASES['triagem'].meta_dias.
 // "a análise sai no dia seguinte — libera para mim até meio-dia" (fala do @R na reunião).
@@ -434,6 +435,8 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
 
       {readOnly && <ReadOnlyBanner />}
 
+      {/* @R 21/09: "aviso nas fases análise jurídica e pendências" — ofícios/e-mails sem tratamento. */}
+      <AvisoEmailsJuridico />
       <div className="mc-pend-abas" role="tablist" aria-label="Análise Jurídica">
         <button type="button" role="tab" id="aba-analise" aria-controls="painel-analise" aria-selected={aba === 'analise'} className={aba === 'analise' ? 'ativa' : ''} onClick={() => setAba('analise')}>1. Análise</button>
         <button type="button" role="tab" id="aba-pendencias" aria-controls="painel-pendencias" aria-selected={aba === 'pendencias'} className={aba === 'pendencias' ? 'ativa' : ''} onClick={() => setAba('pendencias')}>1.1 Pendências ({pendenciasAbertas}{pendenciasParadas ? ` · ${pendenciasParadas} parada(s)` : ''})</button>
