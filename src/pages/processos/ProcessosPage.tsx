@@ -1,7 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { DataTable } from 'primereact/datatable';
-import { excluirOrder, getOrders, getStatusOrders, atualizarOrder, getMedicosCompleto, getAnexosOrder, uploadAnexoOrder, criarOrderProcess, processarOrderProcess, salvarJuridico, uploadArquivoIntegracao, marcarSemProfissional, analisarEmpenho, extrairEmail } from '../../services/api/orders';
+import { excluirOrder, getOrders, getStatusOrders, atualizarOrder, getMedicosCompleto, getAnexosOrder, uploadAnexoOrder, criarOrderProcess, processarOrderProcess, salvarJuridico, uploadArquivoIntegracao, marcarSemProfissional, analisarEmpenho, extrairEmail, salvarOrcamentoMedico } from '../../services/api/orders';
 import type {
   DataTableFilterMeta,
   DataTablePageEvent,
@@ -16,7 +16,7 @@ import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { FilterMatchMode } from 'primereact/api';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TieredMenu } from 'primereact/tieredmenu';
 import type { MenuItem } from 'primereact/menuitem';
 import { useRef } from 'react';
@@ -303,6 +303,11 @@ export function ProcessosPage() {
   const [executandoAcaoMassa, setExecutandoAcaoMassa] = useState(false);
   const [enviarOrcamentoVisible, setEnviarOrcamentoVisible] = useState(false);
   const [refPrecoProcesso, setRefPrecoProcesso] = useState<ProcessoTableRow | null>(null);   // menu → Buscar Ref. Preço
+  // menu → Enviar Perda na fase de orçamento: mesma rota e mesmos motivos do "Não faço" da fase 3
+  const [perdaProcesso, setPerdaProcesso] = useState<ProcessoTableRow | null>(null);
+  const [perdaMotivo, setPerdaMotivo] = useState<string | null>(null);
+  const [perdaParecer, setPerdaParecer] = useState('');
+  const [salvandoPerda, setSalvandoPerda] = useState(false);
   const [manualProcessForm, setManualProcessForm] = useState<ManualProcessForm>(createManualProcessForm);
   const [manualAttachments, setManualAttachments] = useState<ProcessAttachmentInput[]>([createAttachmentInput()]);
   const [novoProcessoForm, setNovoProcessoForm] = useState<ManualProcessForm>(createManualProcessForm);
@@ -317,6 +322,7 @@ export function ProcessosPage() {
   // Prefiltro por URL (task #211): as telas de fase mandam o usuário para cá com
   // ?paciente=<nome> pelo botão "Processo" — a tabela abre já filtrada nele.
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const colunasCfg = useColunasVisiveis('base-processos');
   const [filters, setFilters] = useState<DataTableFilterMeta>({
     vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
@@ -468,6 +474,43 @@ export function ProcessosPage() {
         setProcessoMenuSelecionado(null);
         await carregarDados();
         alert('Perda por falta de profissional registrada com sucesso.');
+        return;
+      }
+
+      /* ═══ 21/09 · @R: "ligar os botões mortos ao fluxo real" → decisão dele: PELA FASE DO PEDIDO ═══
+         Nenhum destes três cria caminho novo de envio: cada um usa a rota que JÁ existe na fase em que
+         o pedido está, com os mesmos gates. O e-mail à SES nasce PENDENTE na Central de E-mails.
+         Fora da fase certa o botão explica o porquê — o defeito anterior era o clique mudo. */
+      if (action === 'enviar_ses' || action === 'enviar_ses_protocolar' || action === 'enviar_perda') {
+        const fase = (rowData as any).statusProcesso ?? (rowData as any).status ?? '';
+        const semMedico = !(rowData as any).idMedico || Number((rowData as any).idMedico) === 1;
+        const irProtocolar = () => navigate(`/para-protocolar?paciente=${encodeURIComponent(rowData.paciente ?? '')}`);
+        setProcessoMenuSelecionado(null);
+
+        if (action === 'enviar_ses_protocolar') {
+          if (fase === 'Aguardando Orçamento' && !semMedico) { setProcessoMenuSelecionado(rowData); setEnviarOrcamentoVisible(true); return; }
+          if (fase === 'Aguardando Orçamento') { alert('Este pedido ainda não tem médico. Defina o médico (fase 2) antes de enviar o orçamento à SES.'); return; }
+          if (fase === 'Aguardando Protocolar') { irProtocolar(); return; }
+          alert(`Enviar à SES e protocolar vale para pedidos em Orçamento ou em Protocolar. Este está em "${fase}".`);
+          return;
+        }
+        if (action === 'enviar_ses') {
+          if (fase === 'Aguardando Protocolar') {
+            alert('Vou abrir o pedido em Para Protocolar. Lá escolha "Não protocolar → já enviamos à SES, sem protocolo": a tela pede a observação e a peça de inteiro teor.');
+            irProtocolar(); return;
+          }
+          if (fase === 'Aguardando Orçamento') { alert('O orçamento ainda não foi enviado. Use "Enviar SES/Protocolar" para registrar e enviar o orçamento.'); return; }
+          alert(`"Enviado à SES sem protocolo" só existe a partir da fase Protocolar. Este pedido está em "${fase}".`);
+          return;
+        }
+        // enviar_perda
+        if (fase === 'Aguardando Juridico') { await handleRowAction('juridico', rowData, 'Não Cotar'); return; }
+        if (fase === 'Aguardando Orçamento') { setPerdaMotivo(null); setPerdaParecer(''); setPerdaProcesso(rowData); return; }
+        if (fase === 'Aguardando Protocolar') {
+          alert('Vou abrir o pedido em Para Protocolar. Lá escolha "Não protocolar → perda": a tela pede o motivo válido para esta fase e a peça de inteiro teor.');
+          irProtocolar(); return;
+        }
+        alert(`Este pedido está em "${fase}". A perda depois do protocolo é registrada em Protocolados/Resultados; pedido já encerrado não recebe nova perda.`);
         return;
       }
 
@@ -2131,6 +2174,40 @@ ${linhasAnexos}
         id="row_action_menu"
       />
 
+
+      <Dialog header="Enviar perda (fase de orçamento)" visible={!!perdaProcesso} modal
+        style={{ width: '44rem', maxWidth: '96vw' }} onHide={() => setPerdaProcesso(null)}>
+        <p style={{ marginTop: 0 }}>O pedido vira <strong>Perda</strong> e o e-mail à SES nasce <strong>pendente</strong> na Central de E-mails — nada é enviado neste clique.</p>
+        <label>Motivo (opcional — a justificativa continua obrigatória)</label>
+        <Dropdown value={perdaMotivo} onChange={(e) => setPerdaMotivo(e.value)} showClear placeholder="Escolha, se algum se aplicar"
+          style={{ width: '100%', margin: '8px 0 12px' }}
+          options={[
+            { label: 'O médico recusou o pedido', value: 'MEDICO_RECUSOU' },
+            { label: 'Não conseguimos o orçamento', value: 'ORCAMENTO_NAO_OBTIDO' },
+            { label: 'Orçamento não chegou em tempo hábil', value: 'ORCAMENTO_FORA_DO_PRAZO' },
+            { label: 'Sem exames — médico não quis cotar', value: 'SEM_EXAMES' },
+            { label: 'Perda por segredo de justiça', value: 'SEGREDO_DE_JUSTICA' },
+            { label: 'Outro (ver justificativa)', value: 'OUTRO' },
+          ]} />
+        <label>Justificativa da perda <span style={{ color: '#ef4444' }}>*obrigatória</span></label>
+        <InputTextarea value={perdaParecer} onChange={(e) => setPerdaParecer(e.target.value)} rows={4} autoResize
+          placeholder="Descreva com suas palavras por que este pedido não segue..." style={{ width: '100%', marginTop: '8px' }} />
+        <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end', marginTop: '16px' }}>
+          <Button label="Cancelar" outlined onClick={() => setPerdaProcesso(null)} />
+          <Button label="Confirmar perda" icon="pi pi-check" severity="danger" loading={salvandoPerda}
+            disabled={salvandoPerda || !perdaParecer.trim()}
+            onClick={async () => {
+              if (!perdaProcesso) return;
+              setSalvandoPerda(true);
+              try {
+                await salvarOrcamentoMedico(perdaProcesso.id, { acao: 'nao_faco', motivoPerdaCategoria: perdaMotivo, parecer: perdaParecer.trim() });
+                setPerdaProcesso(null); await carregarDados();
+                alert('Perda registrada. O e-mail à SES está pendente na Central de E-mails.');
+              } catch (e: any) { alert(e?.response?.data?.error || 'Não foi possível registrar a perda.'); }
+              finally { setSalvandoPerda(false); }
+            }} />
+        </div>
+      </Dialog>
 
       <Dialog header={refPrecoProcesso ? `Referência de preço — ${refPrecoProcesso.procedimento ?? ''}` : 'Referência de preço'}
         visible={!!refPrecoProcesso} modal dismissableMask style={{ width: '64rem', maxWidth: '96vw' }}

@@ -108,7 +108,8 @@ export function ParaProtocolarPage() {
     temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
     ...FILTRO_PAGAMENTO,   // filtrar por exato · não exato · empenhado · sem pagamento
     ...FILTROS_IDENTIFICACAO,   // CNJ · SEI · Comarca (task #214)
-    paciente: { value: '', matchMode: FilterMatchMode.CONTAINS },
+    // 21/09: a Base de Processos manda o pedido para cá já filtrado (menu → Enviar SES / Enviar Perda)
+    paciente: { value: new URLSearchParams(window.location.search).get('paciente') ?? '', matchMode: FilterMatchMode.CONTAINS },
     cliente: { value: '', matchMode: FilterMatchMode.CONTAINS },
     valor: { value: '', matchMode: FilterMatchMode.CONTAINS },
     dataEnvioOrcamento: { value: '', matchMode: FilterMatchMode.CONTAINS },
