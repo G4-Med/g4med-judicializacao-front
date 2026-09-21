@@ -39,6 +39,7 @@ import { PainelPrecos } from '../../components/PainelPrecos/PainelPrecos';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
 import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 const STATUS_PROCESSO_FALLBACK = [
   'Aguardando Juridico',
@@ -1039,9 +1040,8 @@ ${linhasAnexos}
 
   const filterElement = (options: any, placeholder: string) => {
     return (
-      <InputText
-        value={options.value || ''}
-        onChange={(e) => options.filterApplyCallback(e.target.value)}
+      <FiltroTexto
+        options={options}
         placeholder={placeholder}
         className="p-column-filter"
       />

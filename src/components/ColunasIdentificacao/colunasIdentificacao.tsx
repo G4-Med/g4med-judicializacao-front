@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
-import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
 import { BotaoCopiar } from '../BotaoCopiar/BotaoCopiar';
@@ -176,6 +175,7 @@ export const SEM_VALOR = '__SEM_VALOR__';
  * "não há nada aqui".
  */
 import { FilterService } from 'primereact/api';
+import { FiltroTexto } from '../Tabela/FiltroTexto';
 
 const CAMPOS_OPCAO = [
   'vezesPedido', 'segredo', 'origemRegistro', 'sesAnexos', 'tipoPaciente', 'area',
@@ -318,7 +318,7 @@ export const OPCOES_ANEXOS = [
 ];
 
 const filtro = (placeholder: string) => (options: any) => (
-  <InputText value={options.value || ''} onChange={(e) => options.filterApplyCallback(e.target.value)}
+  <FiltroTexto options={options}
     placeholder={placeholder} className="p-column-filter" />
 );
 

@@ -10,7 +10,6 @@ import { Dropdown } from 'primereact/dropdown';
 import { MultiSelect } from 'primereact/multiselect';
 import { FaixaDaPeca, type FaixaOrcamentoPeca } from '../../components/CotacaoConcorrente/FaixaDaPeca';
 import { Checkbox } from 'primereact/checkbox';
-import { InputText } from 'primereact/inputtext';
 import { FilterMatchMode } from 'primereact/api';
 import type { DataTableFilterMeta } from 'primereact/datatable';
 import {
@@ -42,6 +41,7 @@ import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, c
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 interface ProcessoResumo {
   id: number;
@@ -311,9 +311,8 @@ export function SelecionarMedicoPage() {
   };
 
   const filterElement = (options: any, placeholder: string) => (
-    <InputText
-      value={options.value || ''}
-      onChange={(e) => options.filterApplyCallback(e.target.value)}
+    <FiltroTexto
+      options={options}
       placeholder={placeholder}
       className="p-column-filter"
     />

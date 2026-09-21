@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DataTable } from 'primereact/datatable';
+import { useOrdenacao } from '../../components/Tabela/useOrdenacao';
 import type { DataTableFilterMeta } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
@@ -29,6 +29,7 @@ import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, c
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 /**
  * Enviado à SES (task #235, @R 28/08 00:2x): SÓ os pedidos cujo orçamento foi ao
@@ -77,6 +78,8 @@ export function EnviadoSesPage() {
   const [visiveis, setVisiveis] = useState<LinhaEnviadoSes[]>([]);
   const colunasCfg = useColunasVisiveis('enviado-ses');
 
+  // abre pelo ENVIO, do mais recente para o mais antigo (@R 21/09); era 'dias' desc = o mais antigo no topo
+  const ordenacao = useOrdenacao('dataEnvio', -1);
   const [filters, setFilters] = useState<DataTableFilterMeta>({
     vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
     segredo: { value: null, matchMode: 'custom' },
@@ -208,7 +211,7 @@ export function EnviadoSesPage() {
   }), [visiveis]);
 
   const filterElement = (options: any, placeholder: string) => (
-    <InputText value={options.value || ''} onChange={(e) => options.filterApplyCallback(e.target.value)}
+    <FiltroTexto options={options}
       placeholder={placeholder} className="p-column-filter" />
   );
 
@@ -254,7 +257,7 @@ export function EnviadoSesPage() {
           rowExpansionTemplate={(r: any) => <ExpansorPedido linha={r} />}
           onValueChange={(v) => setVisiveis(v as LinhaEnviadoSes[])}
           filters={filters} onFilter={(e) => setFilters(e.filters)} filterDisplay="row"
-          sortField="dias" sortOrder={-1}
+          {...ordenacao}
           loading={loading} tableStyle={{ minWidth: '95rem' }}
           emptyMessage="Nenhum pedido aguardando retorno da SES — quando um orçamento for enviado sem protocolo (ou em segredo de justiça), ele aparece aqui."
         >{colunasCfg.filtrar(<>

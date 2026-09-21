@@ -341,7 +341,7 @@ function Caixa() {
           ? <Tag value={ROTULO_STATUS[r.status] ?? r.status} severity={COR_STATUS[r.status] ?? 'secondary'} />
           : <Tag value={r.lido ? 'LIDA, NÃO PROCESSADA' : 'aguardando o ciclo'} severity={r.lido ? 'danger' : 'info'} />} />
         <Column header="Pedido" body={(r) => r.pedidoId ? `#${r.pedidoId}` : '—'} />
-        <Column field="chegouVezes" header={cabecalhoComHint('Chegou', 'Mesmo assunto (sem RE:/FW:) no período')} sortable style={{ width: '6rem' }} bodyStyle={{ textAlign: 'center' }}
+        <Column field="chegouVezes" header={cabecalhoComHint('Chegou', 'Mesmo assunto (sem RE:/FW:) no período')} style={{ width: '6rem' }} bodyStyle={{ textAlign: 'center' }}
           body={(r) => (r.chegouVezes ?? 1) > 1 ? <span className="mc-repedido-badge">{r.chegouVezes}×</span> : <span className="ce-sub">1×</span>} />
         <Column header="Ação" style={{ width: '12rem' }} body={(r) => r.naoVistoPeloMonitor && r.messageId
           ? <BotaoReprocessar messageId={r.messageId} rotulo="Processar agora" aoTerminar={carregar} /> : null} />

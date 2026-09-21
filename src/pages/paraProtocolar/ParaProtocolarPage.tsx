@@ -35,6 +35,7 @@ import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 interface ParaProtocolar {
   id: number;
@@ -562,9 +563,8 @@ export function ParaProtocolarPage() {
 
   const filterElement = (options: any, placeholder: string) => {
     return (
-      <InputText
-        value={options.value || ''}
-        onChange={(e) => options.filterApplyCallback(e.target.value)}
+      <FiltroTexto
+        options={options}
         placeholder={placeholder}
         className="p-column-filter"
       />

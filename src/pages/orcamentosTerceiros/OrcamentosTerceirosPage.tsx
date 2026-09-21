@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DataTable } from 'primereact/datatable';
+import { useOrdenacao } from '../../components/Tabela/useOrdenacao';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -51,6 +52,7 @@ function Lente({ s, vazio = 'sem dado' }: { s?: Stats; vazio?: string }) {
 
 /** Detalhe da linha: os orçamentos de terceiros daquele procedimento + pedidos sem orçamento. */
 function DetalheProcedimento({ linha }: { linha: Linha }) {
+  const ordenacaoItens = useOrdenacao('valorTotal', -1);
   const [itens, setItens] = useState<any[] | null>(null);
   useEffect(() => {
     getOrcamentosTerceiros({ procedimento: linha.procedimento })
@@ -64,7 +66,7 @@ function DetalheProcedimento({ linha }: { linha: Linha }) {
         <h4>Orçamentos de terceiros <small>({itens ? itens.length : '…'})</small></h4>
         {itens && itens.length === 0 && <p className="acv-vazio">Nenhum orçamento de terceiro extraído para este procedimento ainda.</p>}
         {itens && itens.length > 0 && (
-          <DataTable value={itens} size="small" dataKey="id" sortField="valorTotal" sortOrder={-1}
+          <DataTable value={itens} size="small" dataKey="id" {...ordenacaoItens}
             className="acv-subtabela" aria-label={`Orçamentos de terceiros — ${linha.procedimento}`}>
             <Column field="prestador" header="Prestador" sortable
               body={(r) => r.prestador || <span className="acv-vazio">não informado</span>} />
@@ -105,6 +107,7 @@ function DetalheProcedimento({ linha }: { linha: Linha }) {
 }
 
 export function OrcamentosTerceirosPage() {
+  const ordenacao = useOrdenacao('demanda.pedidos', -1);
   const [q, setQ] = useState('');
   const [busca, setBusca] = useState('');
   const [especialidade, setEspecialidade] = useState<string | null>(null);
@@ -192,7 +195,7 @@ export function OrcamentosTerceirosPage() {
         <TabPanel header={`Acervo por procedimento (${linhas.length})`} leftIcon="pi pi-table mr-2">
           <ContadorRegistros total={linhas.length} visiveis={linhas.length} substantivo="procedimentos" />
           <DataTable value={linhas} loading={loading} dataKey="chave" paginator rows={25}
-            rowsPerPageOptions={[25, 50, 100, 200]} sortField="demanda.pedidos" sortOrder={-1}
+            rowsPerPageOptions={[25, 50, 100, 200]} {...ordenacao}
             expandedRows={expandidas} onRowToggle={(e) => setExpandidas(e.data)}
             rowExpansionTemplate={(l: Linha) => <DetalheProcedimento linha={l} />}
             rowClassName={(l: Linha) => (l.demanda.semOrcamento > 0 ? 'acv-linha-pendente' : '')}

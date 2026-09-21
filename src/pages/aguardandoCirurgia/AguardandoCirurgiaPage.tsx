@@ -30,6 +30,7 @@ import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasV
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 interface Anexo {
   id: number;
@@ -287,9 +288,8 @@ export function AguardandoCirurgiaPage() {
   });
 
   const filterElement = (options: any, placeholder: string) => (
-    <InputText
-      value={options.value || ''}
-      onChange={(e) => options.filterApplyCallback(e.target.value)}
+    <FiltroTexto
+      options={options}
       placeholder={placeholder}
       className="p-column-filter"
     />

@@ -8,7 +8,6 @@ import type {
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
 import { Tag } from 'primereact/tag';
-import { InputText } from 'primereact/inputtext';
 import { FilterMatchMode } from 'primereact/api';
 import { getPerdas, getOrders, getMedicosCompleto, reabrirPerda } from '../../services/api/orders';
 import { getStatusTagStyle } from '../../utils/statusTag';
@@ -24,6 +23,7 @@ import { colunaExcluirAdmin } from '../../components/ExpansorPedido/colunaExclui
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 /** Data+hora em pt-BR a partir do ISO que o backend manda. Devolve '' quando não
  *  há valor — a coluna decide o que mostrar no lugar, e o vazio é dado legítimo
@@ -302,9 +302,8 @@ export function PerdasPage() {
 
   const filterElement = (options: any, placeholder: string) => {
     return (
-      <InputText
-        value={options.value || ''}
-        onChange={(e) => options.filterApplyCallback(e.target.value)}
+      <FiltroTexto
+        options={options}
         placeholder={placeholder}
         className="p-column-filter"
       />
@@ -450,7 +449,7 @@ export function PerdasPage() {
           {colunaRepedido(linhasVisiveis)}
           <Column field="procedimento" header={cabecalhoComHint('Procedimento', 'O que a decisão judicial determinou. É a chave para achar o preço histórico.')} sortable filter
             filterElement={(options: any) => (
-              <InputText value={options.value || ''} onChange={(e) => options.filterApplyCallback(e.target.value)}
+              <FiltroTexto options={options}
                 placeholder="Buscar" className="p-column-filter" />
             )}
             style={{ minWidth: '16rem' }} />

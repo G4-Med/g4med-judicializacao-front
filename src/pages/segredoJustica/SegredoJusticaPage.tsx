@@ -13,7 +13,6 @@ import { colunaRepedido } from '../../components/Repedido/repedido';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
-import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
@@ -35,6 +34,7 @@ import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExp
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 interface DocumentoProcesso {
   label: string;
@@ -327,9 +327,8 @@ useEffect(() => { carregarDados(); }, [fila, versaoDados]);
 
   const filterElement = (options: any, placeholder: string) => {
     return (
-      <InputText
-        value={options.value || ''}
-        onChange={(e) => options.filterApplyCallback(e.target.value)}
+      <FiltroTexto
+        options={options}
         placeholder={placeholder}
         className="p-column-filter"
       />

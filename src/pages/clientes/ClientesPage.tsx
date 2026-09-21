@@ -38,6 +38,7 @@ import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExp
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
 import { cabecalhoComHint } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 interface Cliente {
   id: number;
@@ -826,9 +827,8 @@ const editarBodyTemplate = (rowData: ClienteTableRow) => {
 
   const filterElement = (options: any, placeholder: string) => {
     return (
-      <InputText
-        value={options.value || ''}
-        onChange={(e) => options.filterApplyCallback(e.target.value)}
+      <FiltroTexto
+        options={options}
         placeholder={placeholder}
         className="p-column-filter"
       />

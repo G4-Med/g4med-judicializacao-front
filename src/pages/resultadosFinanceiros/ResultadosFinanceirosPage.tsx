@@ -21,6 +21,7 @@ import type {
 import './ResultadosFinanceirosPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { cabecalhoComHint } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 interface Anexo {
   id: number;
@@ -73,9 +74,8 @@ export function ResultadosFinanceirosPage() {
   });
 
   const filterElement = (options: any, placeholder: string) => (
-    <InputText
-      value={options.value || ''}
-      onChange={(e) => options.filterApplyCallback(e.target.value)}
+    <FiltroTexto
+      options={options}
       placeholder={placeholder}
       className="p-column-filter"
     />

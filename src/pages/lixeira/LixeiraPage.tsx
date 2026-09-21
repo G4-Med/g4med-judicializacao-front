@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DataTable } from 'primereact/datatable';
+import { useOrdenacao } from '../../components/Tabela/useOrdenacao';
 import { Column } from 'primereact/column';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
@@ -37,6 +38,7 @@ const fmt = (iso?: string | null) => {
 };
 
 export function LixeiraPage() {
+  const ordenacao = useOrdenacao('excluidoEm', -1);
   const { isReadOnly } = useAccess();
   const readOnly = isReadOnly('lixeira');
   const [itens, setItens] = useState<any[]>([]);
@@ -94,7 +96,7 @@ export function LixeiraPage() {
 
       <DataTable value={itens} loading={loading} dataKey="id" paginator rows={10}
         rowsPerPageOptions={[10, 25, 50, 100]} emptyMessage="A lixeira está vazia."
-        sortField="excluidoEm" sortOrder={-1} aria-label="Pedidos na lixeira">
+        {...ordenacao} aria-label="Pedidos na lixeira">
         <Column field="id" header="#" sortable style={{ width: '5rem' }} />
         <Column field="paciente" className="col-paciente-upper" header="Paciente" sortable style={{ minWidth: '14rem' }} />
         {colunaCnj()}

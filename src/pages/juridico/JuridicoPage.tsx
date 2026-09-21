@@ -33,6 +33,7 @@ import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repe
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import { AbaPendenciasJuridicas, usePendenciasAbertas, usePendenciasParaAgir } from '../../components/PendenciaJuridica/PendenciaJuridica';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 // Meta desta fase (triagem jurídica) — espelha backend/funil.py FASES['triagem'].meta_dias.
 // "a análise sai no dia seguinte — libera para mim até meio-dia" (fala do @R na reunião).
@@ -401,9 +402,8 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
   };
 
   const filterElement = (options: any, placeholder: string) => (
-    <InputText
-      value={options.value || ''}
-      onChange={(e) => options.filterApplyCallback(e.target.value)}
+    <FiltroTexto
+      options={options}
       placeholder={placeholder}
       className="p-column-filter"
     />

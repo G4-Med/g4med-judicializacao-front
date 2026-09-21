@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DataTable } from 'primereact/datatable';
+import { useOrdenacao } from '../../components/Tabela/useOrdenacao';
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
 import { InputText } from 'primereact/inputtext';
@@ -54,6 +55,7 @@ type LinhaVerificar = ResultadoFinanceiroPendente & {
 };
 
 export function AbaVerificar() {
+  const ordenacao = useOrdenacao('valorGanho', -1);
   const [linhas, setLinhas] = useState<LinhaVerificar[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -269,8 +271,7 @@ export function AbaVerificar() {
         rows={20}
         rowsPerPageOptions={[20, 50, 100]}
         emptyMessage="Nada a verificar — todo caso decidido já tem ficha financeira."
-        sortField="valorGanho"
-        sortOrder={-1}
+        {...ordenacao}
         stripedRows
       >
         <Column field="orderId" header="Pedido" sortable style={{ width: '6rem' }} />

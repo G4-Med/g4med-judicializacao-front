@@ -25,6 +25,7 @@ import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import './EmailsPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { cabecalhoComHint, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 type TipoEmail = 'ENVIAR_ORCAMENTO' | 'PEDIR_EXAMES' | 'DAR_PERDA';
 
@@ -540,9 +541,8 @@ export function EmailsPage() {
   );
 
   const filterElement = (options: any, placeholder: string) => (
-    <InputText
-      value={options.value || ''}
-      onChange={(e) => options.filterApplyCallback(e.target.value)}
+    <FiltroTexto
+      options={options}
       placeholder={placeholder}
       className="p-column-filter"
     />

@@ -41,6 +41,7 @@ import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repe
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { ModalStatusFase } from '../../components/StatusFase/ModalStatusFase';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
+import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 
 // Meta desta fase (orçamento) — espelha backend/funil.py FASES['orcamento'].meta_dias.
 // "96 horas — é o prazo que sustenta o contrato com o Estado".
@@ -376,9 +377,8 @@ const abrirDetalhe = (rowData: ProcessoOrcamentoRow) => {
   };
 
   const filterElement = (options: any, placeholder: string) => (
-    <InputText
-      value={options.value || ''}
-      onChange={(e) => options.filterApplyCallback(e.target.value)}
+    <FiltroTexto
+      options={options}
       placeholder={placeholder} className="p-column-filter"
     />
   );
