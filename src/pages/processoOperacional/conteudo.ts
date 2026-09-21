@@ -60,6 +60,7 @@ export const ETAPAS: Etapa[] = [
       'Se marcar NÃO COTAR, escreva o motivo. Sem motivo, não salva.',
       'Para COTAR, registre os orçamentos citados nos autos (ou "nenhum") e a observação — a fase de orçamento lê os dois.',
       'Falta algo para decidir? Marque PENDÊNCIA JURÍDICA (1.1) dizendo o que falta: o pedido fica aqui, com a pendência visível, até o escritório resolver.',
+      'O 1.1 é um BILHETE DE IDA E VOLTA: fase 3 → 1,1 Pendências jurídicas → fase 3. Quando a Valéria responde, o pedido volta SOZINHO para a fila do médico, na mesma posição e com o mesmo médico — ninguém precisa mover nada. Quem pediu vê ↩ no nome do paciente e o texto da resposta; clica em "Li" para dar o ciclo por fechado.',
       'A aba "1.1 Pendências" traz o que a fase de orçamento devolveu para você: falta de peça de inteiro teor, achar médico, contato com paciente ou advogado, verificação ou recado. Resolva, escreva a resposta e clique em "Responder e devolver" — o pedido volta sozinho para onde estava.',
       'Sem a peça de inteiro teor ou sem o CNJ, o sistema avisa o que se perde e deixa você decidir: sem peça não dá para extrair exames e orçamentos que vêm dentro dela; sem CNJ não é possível protocolar.',
     ],
@@ -133,6 +134,8 @@ export const ETAPAS: Etapa[] = [
       'Se o médico avisar que não consegue em 4 dias, pergunte a ele até que dia consegue.',
       'Precisa de algo do jurídico para cotar (peça de inteiro teor, um médico, um contato, uma verificação)? Use "Devolver ao jurídico (1.1)" no pedido ou na Ficha: escolha o tipo, escreva o que precisa. O pedido sai desta fila, vai para a Valéria e volta sozinho com a resposta; o selo verde ↩ fica no nome do paciente até você clicar em "Li".',
       'Sinalize esse prazo à G4MED — o @R avisa a Secretaria por e-mail e pergunta se pode aguardar.',
+      'A VOLTA: quando o jurídico responde, o pedido reaparece nesta fila sozinho, com o selo ↩ e a resposta. Se o jurídico indicou um médico, o pedido já chega com ele e o relógio da cobrança recomeça hoje. Se disse que não achou ninguém, o pedido volta para Selecionar Médico (fase 2), não para cá.',
+      'Dar "não faço" quando OUTRO médico convidado ainda está cotando não é perda do pedido: o sistema avisa quem ainda cota e só dá a perda do pedido inteiro se você confirmar. Recusa de um médico se marca em "Por médico" (✗).',
     ],
     falaDoRapha:
       'A gente não pode é mentir no prazo. Se a gente tiver que mudar 96 horas, a gente muda. ' +
@@ -244,6 +247,20 @@ export const PRAZOS: { prazo: string; oQue: string; deQuem: string }[] = [
   { prazo: '96 horas', oQue: 'o orçamento completo é entregue', deQuem: 'médico (4 dias)' },
   { prazo: '1 dia', oQue: 'avisar que NÃO temos profissional', deQuem: 'G4MED' },
   { prazo: '5 a 10 dias', oQue: 'o prazo que o Estado tem no processo — é dele que os nossos derivam', deQuem: 'Estado' },
+];
+
+/** O que mudou no processo, do mais recente para o mais antigo (@R 21/09: "adicionar a atualização ao final
+ *  para manter o processo operacional atualizado"). Cada linha diz O QUE mudou e ONDE — a data é a da entrada no ar. */
+export interface Atualizacao { data: string; onde: string; oQue: string }
+export const ATUALIZACOES: Atualizacao[] = [
+  { data: '21/09/2026', onde: 'Orçamento médico → Enviar Orçamento', oQue: 'O e-mail do orçamento à SES sai na hora do Confirmar (com o PDF anexado) e a tela diz "ENVIADO à SES". Se a leitura do PDF apontar algo grave, se não houver PDF ou se o envio falhar, ele fica na fila da Central com o motivo.' },
+  { data: '21/09/2026', onde: 'Orçamento médico → Enviar Orçamento', oQue: 'A leitura do PDF de orçamento passou a ler o documento INTEIRO (até 12 páginas, sempre incluindo a última) e aceita vários arquivos de uma vez, unindo tudo num PDF só — é esse PDF que vai à SES.' },
+  { data: '21/09/2026', onde: 'Orçamento médico → Não faço', oQue: 'Se outro médico convidado ainda está cotando, "não faço" não dá mais a perda do pedido direto: a tela avisa quem cota e pede confirmação para a perda do pedido inteiro.' },
+  { data: '21/09/2026', onde: 'Menu → 1,1 Pendências jurídicas', oQue: 'O 1.1 ganhou entrada própria no menu, abaixo de "1. Análise Jurídica". A aba mostra as pendências paradas há mais de 2 dias primeiro.' },
+  { data: '21/09/2026', onde: 'Central de E-mails → Respostas', oQue: 'Cada linha mostra o status do pedido e do jurídico, o botão Ficha, "Ver e-mail" (o texto que foi ou vai ser enviado) e "Editar antes de enviar" para o que ainda está na fila. Perda na fila de pedido que não está em perda aparece em vermelho.' },
+  { data: '21/09/2026', onde: 'Base de Processos', oQue: 'Coluna "Movido por": quem mudou o status por último, dia e hora, com o botão dos registros de alteração.' },
+  { data: '21/09/2026', onde: 'Todas as tabelas', oQue: 'Ordenar pela coluna passou a funcionar nas telas que "travavam"; Enviados à SES abre do mais recente; filtros de texto refiltram ao terminar de digitar.' },
+  { data: '20/09/2026', onde: 'Fase 1 e fase 3', oQue: 'Nasceu o 1.1 de retorno: a fase 3 devolve o pedido ao jurídico com um bilhete (peça de inteiro teor, achar médico, contato, verificação, recado) e ele volta sozinho quando o jurídico responde.' },
 ];
 
 export const REGRAS: Regra[] = [

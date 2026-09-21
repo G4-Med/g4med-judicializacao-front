@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ETAPAS, DONOS, PRAZOS, REGRAS, PORQUE, FONTE, DICAS } from './conteudo';
+import { ETAPAS, DONOS, PRAZOS, REGRAS, PORQUE, FONTE, DICAS, ATUALIZACOES } from './conteudo';
 import type { Etapa } from './conteudo';
 import './ProcessoOperacionalPage.css';
 
@@ -263,6 +263,19 @@ export function ProcessoOperacionalPage() {
             {r.fala && <blockquote className="proc-op__fala proc-op__fala--curta">{r.fala}</blockquote>}
           </div>
         ))}
+      </section>
+
+      {/* @R 21/09: a atualização fica AQUI, no fim, para o processo operacional nunca ficar velho */}
+      <section className="proc-op__regras" aria-labelledby="proc-op-atualizacoes">
+        <h2 id="proc-op-atualizacoes">O que mudou no processo</h2>
+        <ol className="proc-op__atualizacoes" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+          {ATUALIZACOES.map((a, i) => (
+            <li key={i} style={{ display: 'grid', gridTemplateColumns: '6.5rem 1fr', gap: '.75rem', padding: '.55rem 0', borderTop: '1px solid #e5e7eb' }}>
+              <span style={{ fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{a.data}</span>
+              <span><strong>{a.onde}</strong> — {a.oQue}</span>
+            </li>
+          ))}
+        </ol>
       </section>
 
       <footer className="proc-op__fonte">{FONTE}</footer>
