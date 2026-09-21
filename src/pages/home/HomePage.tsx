@@ -622,11 +622,15 @@ export function HomePage() {
               ))}
               {/* @R 21/09/2026 (verbatim): "área no próprio sistema em /home para ver todos [os ofícios]
                   que chegam". Não é pedido, é e-mail/ofício sem tratamento — por isso fora da soma acima. */}
-              <li key="1.2" className={(emailsJur?.vencidos || emailsJur?.novos) ? 'home-hero__fase--alerta' : ''}
-                title={emailsJur ? `${emailsJur.abertos} sem tratamento · ${emailsJur.vencidos} com prazo vencido · ${emailsJur.novosHoje} hoje` : 'carregando'}
+              <li key="1.2" className={(emailsJur?.vencidos || emailsJur?.novosSemRuido) ? 'home-hero__fase--alerta' : ''}
+                title={emailsJur ? `${emailsJur.abertosSemRuido} sem tratamento · ${emailsJur.novosSemRuido} novo(s) desde 01/09 · ${emailsJur.vencidos} com prazo vencido · ${emailsJur.novosHoje} hoje` : 'carregando'}
                 style={{ cursor: 'pointer' }} onClick={() => navigate('/emails-juridico')}>
                 <em>1.2</em>
-                <span className="home-hero__fase-nome">E-mails e ofícios do jurídico{emailsJur?.novos ? ` · 🔔 ${emailsJur.novos} NOVO(S)` : ''}{emailsJur?.vencidos ? ` · ${emailsJur.vencidos} vencido(s)` : ''}</span>
+                <span className="home-hero__fase-nome">
+                  E-mails e ofícios do jurídico
+                  {emailsJur?.novosSemRuido ? <span className="home-hero__selo">🔔 {emailsJur.novosSemRuido} novo(s)</span> : null}
+                  {emailsJur?.vencidos ? <span className="home-hero__selo home-hero__selo--vencido">{emailsJur.vencidos} vencido(s)</span> : null}
+                </span>
                 <b>{emailsJur ? emailsJur.abertosSemRuido : '--'}</b>
               </li>
             </ul>

@@ -253,6 +253,9 @@ export const PRAZOS: { prazo: string; oQue: string; deQuem: string }[] = [
  *  para manter o processo operacional atualizado"). Cada linha diz O QUE mudou e ONDE — a data é a da entrada no ar. */
 export interface Atualizacao { data: string; onde: string; oQue: string }
 export const ATUALIZACOES: Atualizacao[] = [
+  { data: '21/09/2026', onde: 'Menu → 1,2 E-mails e ofícios', oQue: 'Ponto de corte: só conta como NOVO o que chegou a partir de 01/09/2026. Tudo que é anterior foi marcado como VISTO (aparece no filtro "Tratados") — a fila começa limpa para a equipe jurídica.' },
+  { data: '21/09/2026', onde: 'Menu → 1,2 E-mails e ofícios', oQue: 'Coluna "Idade": há quantos dias a mensagem chegou (hoje, ontem, N dias) — verde até 2 dias, âmbar até 7, cinza depois.' },
+  { data: '21/09/2026', onde: 'Barra do topo (todas as telas)', oQue: 'Data e hora de agora, no horário de Brasília, ao lado da versão do sistema.' },
   { data: '21/09/2026', onde: 'Orçamento médico → Enviar Orçamento', oQue: 'O e-mail do orçamento à SES sai na hora do Confirmar (com o PDF anexado) e a tela diz "ENVIADO à SES". Se a leitura do PDF apontar algo grave, se não houver PDF ou se o envio falhar, ele fica na fila da Central com o motivo.' },
   { data: '21/09/2026', onde: 'Orçamento médico → Enviar Orçamento', oQue: 'A leitura do PDF de orçamento passou a ler o documento INTEIRO (até 12 páginas, sempre incluindo a última) e aceita vários arquivos de uma vez, unindo tudo num PDF só — é esse PDF que vai à SES.' },
   { data: '21/09/2026', onde: 'Orçamento médico → Não faço', oQue: 'Se outro médico convidado ainda está cotando, "não faço" não dá mais a perda do pedido direto: a tela avisa quem cota e pede confirmação para a perda do pedido inteiro.' },

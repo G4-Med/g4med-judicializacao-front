@@ -31,6 +31,29 @@ async function carregarContagem(forcar = false) {
   return contagemEmVoo;
 }
 /** Quantos e-mails/ofícios estão ABERTOS na fila do jurídico (e quantos vencidos). */
+/** Idade da mensagem em DIAS DE CALENDÁRIO até hoje, no fuso de Brasília (@R 21/09 15:29: "quantos
+ *  dias até a data de hoje para saber a idade de cada mensagem... o que é recente e o que não é").
+ *  Dia de calendário, ¬24 h corridas: um e-mail das 23h de ontem tem "1 dia", não "0". Cor pela
+ *  idade: até 2 dias verde (recente), até 7 âmbar, mais que isso cinza — a cor mede o tempo, não
+ *  a urgência (prazo vencido já tem a linha vermelha própria). */
+const DIA_BRT = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+function diasAteHoje(iso: string | null): number | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const a = Date.parse(DIA_BRT.format(d));
+  const b = Date.parse(DIA_BRT.format(new Date()));
+  return Math.round((b - a) / 86_400_000);
+}
+function Idade({ iso }: { iso: string | null }) {
+  const n = diasAteHoje(iso);
+  if (n == null) return <span className="text-500">—</span>;
+  const texto = n <= 0 ? 'hoje' : n === 1 ? 'ontem' : `${n} dias`;
+  const cor = n <= 2 ? '#15803d' : n <= 7 ? '#b45309' : '#64748b';
+  return <span style={{ color: cor, fontWeight: n <= 7 ? 700 : 500, fontVariantNumeric: 'tabular-nums' }}
+    title={n > 1 ? `chegou há ${n} dias` : texto}>{texto}</span>;
+}
+
 export function useEmailsJuridicoContagem(): ContagemEmailsJuridico | null {
   const [c, setC] = useState(contagemCache);
   useEffect(() => {
@@ -48,12 +71,12 @@ export function AvisoEmailsJuridico() {
   const c = useEmailsJuridicoContagem();
   const navigate = useNavigate();
   if (!c || !c.abertosSemRuido) return null;
-  const alerta = c.vencidos > 0 || c.novos > 0;   // @R 21/09: "caso algo NOVO chegue... tem que ter um alerta"
+  const alerta = c.vencidos > 0 || c.novosSemRuido > 0;   // @R 21/09: "caso algo NOVO chegue... tem que ter um alerta"
   return (
     <div className={`mc-aviso-emails ${alerta ? 'mc-aviso-emails--alerta' : ''}`} role={alerta ? 'alert' : 'status'}
       style={{ margin: '0 0 .75rem', padding: '.5rem .75rem', borderRadius: 6, background: alerta ? '#fde8e8' : '#fff4d6', border: '1px solid ' + (alerta ? '#f5b5b5' : '#f2d28a'), display: 'flex', gap: '.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
       <i className={alerta ? 'pi pi-bell' : 'pi pi-envelope'} />
-      <span>{c.novos ? <><strong>{c.novos} NOVO(S)</strong> e-mail(s)/ofício(s) chegaram ao jurídico desde 21/09 e ainda não foram tratados</> : <><strong>{c.abertosSemRuido}</strong> e-mail(s)/ofício(s) do jurídico ainda sem tratamento</>}
+      <span>{c.novosSemRuido ? <><strong>{c.novosSemRuido} NOVO(S)</strong> e-mail(s)/ofício(s) chegaram ao jurídico desde 01/09 e ainda não foram tratados</> : <><strong>{c.abertosSemRuido}</strong> e-mail(s)/ofício(s) do jurídico ainda sem tratamento</>}
         {c.vencidos ? <> — <strong>{c.vencidos} com prazo vencido</strong></> : null}
         {c.novosHoje ? <> · {c.novosHoje} hoje</> : null}.</span>
       <Button label="Ver a fila" size="small" text onClick={() => navigate('/emails-juridico')} />
@@ -117,7 +140,8 @@ export function EmailsJuridicoPage() {
 
       {contagem && (
         <div className="flex gap-3 flex-wrap mb-3">
-          <Tag value={`${contagem.novos} NOVO(S) desde 21/09`} severity={contagem.novos ? 'danger' : 'secondary'} icon="pi pi-bell" />
+          <Tag value={`${contagem.novosSemRuido} NOVO(S) desde 01/09`} severity={contagem.novosSemRuido ? 'danger' : 'secondary'} icon="pi pi-bell"
+            title="Corte definido pelo @R em 21/09: chegou a partir de 01/09/2026 e ainda não foi tratado. O que chegou antes foi marcado como visto." />
           <Tag value={`${contagem.abertos} aberto(s)`} severity={contagem.abertos ? 'warning' : 'success'} />
           <Tag value={`${contagem.vencidos} vencido(s)`} severity={contagem.vencidos ? 'danger' : 'secondary'} />
           <Tag value={`${contagem.novosHoje} hoje`} severity="info" />
@@ -142,6 +166,9 @@ export function EmailsJuridicoPage() {
         <Column field="chegouEm" header="Chegou" sortable style={{ width: '10rem' }} body={(r: EmailJuridicoItem) => (
           <span>{r.novo && <Tag value="NOVO" severity="danger" className="mr-1" />}{fmt(r.dataEmail || r.chegouEm)}</span>
         )} />
+        <Column field="chegouEm" header="Idade" sortable style={{ width: '7rem' }}
+          headerTooltip="Dias desde a chegada até hoje (horário de Brasília)"
+          body={(r: EmailJuridicoItem) => <Idade iso={r.dataEmail || r.chegouEm} />} />
         <Column field="classe" header="Classe" sortable style={{ width: '10rem' }} body={(r: EmailJuridicoItem) => (
           <Dropdown value={r.classe} options={CLASSES} onChange={(e) => aplicar(r.id, { classe: e.value })} className="p-inputtext-sm" />
         )} />

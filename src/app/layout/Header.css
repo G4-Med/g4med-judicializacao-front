@@ -216,3 +216,14 @@ button.mc-versao:hover .mc-versao__num { text-decoration: underline; }
 .mc-notas__lista li { margin-bottom: .55rem; }
 .mc-notas__telas { margin: -.2rem 0 .5rem; font-size: .85em; opacity: .8; }
 .mc-notas__telas-rot { font-weight: 600; opacity: .9; }
+
+/* Data e hora de agora (@R 21/09/2026) — mesma altura e peso visual do selo de versão ao lado. */
+.mc-relogio {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: 10px;
+  padding: 2px 10px; border-radius: 999px; border: 1px solid var(--mc-border, #e2e8f0);
+  font-size: 12px; color: #334155; background: #f8fafc; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.mc-relogio .pi { font-size: 11px; color: #64748b; }
+.mc-relogio__hora { font-weight: 700; color: #0f172a; }
+@media (max-width: 700px) { .mc-relogio__dia { display: none; } }

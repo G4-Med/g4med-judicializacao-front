@@ -469,5 +469,16 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
 .home-hero__fases b { font-family: var(--mc-font-heading); font-size: 16px; color: #fff; }
 
 /* 1.2 E-mails e ofícios do jurídico — linha vira alerta quando há NOVO ou prazo vencido (@R 21/09). */
-.home-hero__fases li.home-hero__fase--alerta { background: #fde8e8; border-radius: 6px; }
-.home-hero__fases li.home-hero__fase--alerta b { color: #b42318; }
+.home-hero__fases li.home-hero__fase--alerta {
+  /* @R 21/09 15:18: o fundo branco com vermelho ficou ilegível no hero azul-escuro.
+     Âmbar translúcido mantém o texto branco legível e ainda chama o olho. */
+  background: rgba(251, 191, 36, 0.16); box-shadow: inset 3px 0 0 #fbbf24;
+  border-radius: 6px; padding: 3px 6px 3px 0; margin: 2px 0;
+}
+.home-hero__fases li.home-hero__fase--alerta b { color: #fcd34d; }
+.home-hero__selo {
+  display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; line-height: 18px; white-space: nowrap;
+  background: #fbbf24; color: #3b2a00;
+}
+.home-hero__selo--vencido { background: #f87171; color: #3f0a0a; }

@@ -36,6 +36,10 @@ export interface ContagemEmailsJuridico {
   comPrazo: number;
   novosHoje: number;
   novos: number;
+  /** novos sem RUIDO — é o que acende o alerta da Home e das fases */
+  novosSemRuido: number;
+  /** data de corte do selo NOVO (@R 21/09 15:18: a partir de 01/09/2026) */
+  corteNovos: string;
   abertosSemRuido: number;
   porClasse: Record<ClasseEmailJuridico, number>;
 }
