@@ -12,7 +12,7 @@ import { Calendar } from 'primereact/calendar';
 import { Tag } from 'primereact/tag';
 import { ConfiguracoesEmailsPage } from '../configuracoesEmails/ConfiguracoesEmailsPage';
 import { getCentralSaude, getCentralEmails, getCentralCaixa, postCentralReprocessar, getCentralRespostas } from '../../services/api/integracoes';
-import { enviarEmailPendente, enviarEmailsPendentesLote, cancelarEmailPendente } from '../../services/api/orders';
+import { enviarEmailPendente, enviarEmailsPendentesLote, cancelarEmailPendente, editarEmailPendente } from '../../services/api/orders';
 import { cabecalhoComHint } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import './CentralEmailsPage.css';
 
@@ -360,6 +360,52 @@ const ROTULO_ENVIO: Record<string, string> = { PENDENTE: 'Na fila', ENVIADO: 'En
 /** Respostas por pessoa (@R 28/08 21:07: "como eu sei as mensagens que eu mandei para cada pessoa
  *  que mandou pedido? estamos mandando?"). Cada e-mail que o sistema montou para quem pediu, com
  *  o que aconteceu com ele — e o botão de enviar aqui mesmo, porque o envio é manual. */
+/** O e-mail por dentro: o que FOI enviado, ou o que VAI ser — e, enquanto não saiu, editável (@R 21/09). */
+function ConteudoDoEmail({ r, aoSalvar }: { r: any; aoSalvar: () => void }) {
+  const editavel = r.status === 'PENDENTE' || r.status === 'ERRO';
+  const [editando, setEditando] = useState(false);
+  const [assunto, setAssunto] = useState<string>(r.assunto ?? '');
+  const [corpo, setCorpo] = useState<string>(r.corpo ?? '');
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
+  const salvar = async () => {
+    setSalvando(true); setErro('');
+    try { await editarEmailPendente(r.id, assunto.trim(), corpo.trim()); setEditando(false); aoSalvar(); }
+    catch (e: unknown) { setErro((e as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Não consegui salvar a edição.'); }
+    finally { setSalvando(false); }
+  };
+  return (
+    <div className="ce-expansor"><div className="ce-bloco">
+      <p className="ce-sub" style={{ marginTop: 0 }}>
+        {editavel ? 'Este e-mail AINDA NÃO SAIU — é isto que será enviado.' : 'Este é o texto que foi enviado (não se edita o que já saiu).'}
+      </p>
+      {editando ? (
+        <>
+          <label htmlFor={`ce-assunto-${r.id}`} className="ce-sub">Assunto</label>
+          <InputText id={`ce-assunto-${r.id}`} value={assunto} onChange={(e) => setAssunto(e.target.value)} style={{ width: '100%', marginBottom: '.5rem' }} maxLength={255} />
+          <label htmlFor={`ce-corpo-${r.id}`} className="ce-sub">Corpo</label>
+          <textarea id={`ce-corpo-${r.id}`} value={corpo} onChange={(e) => setCorpo(e.target.value)} rows={10}
+            style={{ width: '100%', fontFamily: 'inherit', fontSize: '.9rem', padding: '.5rem', border: '1px solid #d1d5db', borderRadius: 6 }} />
+          {erro && <p role="alert" className="ce-sub ruim">{erro}</p>}
+          <div style={{ display: 'flex', gap: '.5rem', marginTop: '.5rem' }}>
+            <Button label="Salvar edição" icon="pi pi-check" size="small" loading={salvando} onClick={salvar} />
+            <Button label="Descartar" size="small" outlined disabled={salvando} onClick={() => { setAssunto(r.assunto ?? ''); setCorpo(r.corpo ?? ''); setErro(''); setEditando(false); }} />
+            <span className="ce-sub" style={{ alignSelf: 'center' }}>Salvar NÃO envia — depois use o botão Enviar da linha.</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <h4><i className="pi pi-envelope" /> {r.assunto}</h4>
+          <pre className="ce-corpo">{r.corpo}</pre>
+          {editavel && <Button label="Editar antes de enviar" icon="pi pi-pencil" size="small" outlined onClick={() => setEditando(true)} />}
+        </>
+      )}
+      {r.erroEnvio && <p className="ce-sub ruim">Erro de envio: {r.erroEnvio} ({r.tentativas} tentativa(s))</p>}
+      {r.motivoRejeicao && <p className="ce-sub ruim">Devolvida: {r.motivoRejeicao}</p>}
+    </div></div>
+  );
+}
+
 function Respostas({ statusInicial }: { statusInicial: string | null }) {
   const ficha = useFichaPedido();   // @R 21/09: da linha do e-mail direto para a Ficha (histórico do pedido)
   const [q, setQ] = useState('');
@@ -447,15 +493,19 @@ function Respostas({ statusInicial }: { statusInicial: string | null }) {
       <p className="ce-sub">{dados.total} resposta(s) nos últimos {dados.dias ?? 60} dias · {Object.entries(dados.porStatus || {}).map(([k, v]) => `${ROTULO_ENVIO[k] ?? k}: ${v}`).join(' · ')}</p>
       <DataTable value={dados.itens} loading={loading} dataKey="id" paginator rows={25} rowsPerPageOptions={[25, 50, 100]}
         expandedRows={expandidas} onRowToggle={(e) => setExpandidas(e.data)}
-        rowExpansionTemplate={(r: any) => (
-          <div className="ce-expansor"><div className="ce-bloco">
-            <h4><i className="pi pi-envelope" /> {r.assunto}</h4>
-            <pre className="ce-corpo">{r.corpo}</pre>
-            {r.erroEnvio && <p className="ce-sub ruim">Erro de envio: {r.erroEnvio} ({r.tentativas} tentativa(s))</p>}
-            {r.motivoRejeicao && <p className="ce-sub ruim">Devolvida: {r.motivoRejeicao}</p>}
-          </div></div>)}
+        rowExpansionTemplate={(r: any) => <ConteudoDoEmail r={r} aoSalvar={carregar} />}
         emptyMessage="Nenhuma resposta neste filtro." aria-label="Respostas por destinatário">
         <Column expander style={{ width: '3rem' }} />
+        <Column header="Conteúdo" style={{ width: '8.5rem' }}
+          body={(r) => {
+            const aberta = !!(expandidas && expandidas[r.id]);
+            return (
+              <button type="button" className="p-button p-button-outlined p-button-sm" style={{ padding: '.2rem .5rem' }}
+                aria-expanded={aberta} onClick={() => setExpandidas((x: any) => { const n = { ...(x || {}) }; if (n[r.id]) delete n[r.id]; else n[r.id] = true; return n; })}>
+                <i className={aberta ? 'pi pi-eye-slash' : 'pi pi-eye'} /><span style={{ marginLeft: '.3rem' }}>{aberta ? 'Fechar' : 'Ver e-mail'}</span>
+              </button>
+            );
+          }} />
         <Column field="destinatario" header="Para" sortable style={{ minWidth: '15rem' }} />
         <Column field="paciente" header="Paciente / pedido" sortable style={{ minWidth: '14rem' }}
           body={(r) => (

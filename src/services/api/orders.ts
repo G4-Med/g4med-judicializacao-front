@@ -451,6 +451,10 @@ export const unificarOrcamento = (orderId: number, arquivos: File[]) => {
   return api.post(`/orders/${orderId}/orcamento/unificar/`, form, { responseType: 'blob' });
 };
 
+/** Edita assunto e corpo de um e-mail que ainda NÃO saiu (PENDENTE/ERRO). Não envia. */
+export const editarEmailPendente = (id: number, assunto: string, corpo: string) =>
+  api.post(`/orders/emails/${id}/editar/`, { assunto, corpo });
+
 export const getPreferencia = (chave: string) =>
   api.get(`/preferencias/${chave}/`);
 
