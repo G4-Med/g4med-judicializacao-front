@@ -40,6 +40,10 @@ export interface ContagemEmailsJuridico {
   novosSemRuido: number;
   /** data de corte do selo NOVO (@R 21/09 15:18: a partir de 01/09/2026) */
   corteNovos: string;
+  /** @R 21/09 16:15: o ALERTA é só da Justiça (Home, fases, menu) */
+  abertosJustica: number;
+  novosJustica: number;
+  vencidosJustica: number;
   abertosSemRuido: number;
   porClasse: Record<ClasseEmailJuridico, number>;
 }

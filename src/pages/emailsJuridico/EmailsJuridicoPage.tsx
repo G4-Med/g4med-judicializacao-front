@@ -68,18 +68,21 @@ export function useEmailsJuridicoContagem(): ContagemEmailsJuridico | null {
 
 /** Aviso curto para o topo das fases Análise Jurídica / Pendências (ordem @R: "aviso nas fases"). */
 export function AvisoEmailsJuridico() {
+  // @R 21/09 16:15: "o aviso para Valéria é para questão Justiça, para ela saber se tem avisos novos da
+  // Justiça" — o aviso nas fases conta SÓ a classe Justiça. O resto continua na fila, sem gritar.
   const c = useEmailsJuridicoContagem();
   const navigate = useNavigate();
-  if (!c || !c.abertosSemRuido) return null;
-  const alerta = c.vencidos > 0 || c.novosSemRuido > 0;   // @R 21/09: "caso algo NOVO chegue... tem que ter um alerta"
+  if (!c || !(c.novosJustica || c.vencidosJustica)) return null;
   return (
-    <div className={`mc-aviso-emails ${alerta ? 'mc-aviso-emails--alerta' : ''}`} role={alerta ? 'alert' : 'status'}
-      style={{ margin: '0 0 .75rem', padding: '.5rem .75rem', borderRadius: 6, background: alerta ? '#fde8e8' : '#fff4d6', border: '1px solid ' + (alerta ? '#f5b5b5' : '#f2d28a'), display: 'flex', gap: '.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-      <i className={alerta ? 'pi pi-bell' : 'pi pi-envelope'} />
-      <span>{c.novosSemRuido ? <><strong>{c.novosSemRuido} NOVO(S)</strong> e-mail(s)/ofício(s) chegaram ao jurídico desde 01/09 e ainda não foram tratados</> : <><strong>{c.abertosSemRuido}</strong> e-mail(s)/ofício(s) do jurídico ainda sem tratamento</>}
-        {c.vencidos ? <> — <strong>{c.vencidos} com prazo vencido</strong></> : null}
-        {c.novosHoje ? <> · {c.novosHoje} hoje</> : null}.</span>
-      <Button label="Ver a fila" size="small" text onClick={() => navigate('/emails-juridico')} />
+    <div className="mc-aviso-emails mc-aviso-emails--alerta" role="alert"
+      style={{ margin: '0 0 .75rem', padding: '.5rem .75rem', borderRadius: 6, background: '#fde8e8', border: '1px solid #f5b5b5', display: 'flex', gap: '.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <i className="pi pi-bell" />
+      <span>
+        {c.novosJustica ? <><strong>{c.novosJustica} aviso(s) NOVO(S) da Justiça</strong> desde 01/09, ainda não tratado(s)</> : null}
+        {c.novosJustica && c.vencidosJustica ? ' — ' : null}
+        {c.vencidosJustica ? <strong>{c.vencidosJustica} da Justiça com prazo vencido</strong> : null}.
+      </span>
+      <Button label="Ver os da Justiça" size="small" text onClick={() => navigate('/emails-juridico?classe=JUSTICA')} />
     </div>
   );
 }
@@ -95,7 +98,11 @@ export function EmailsJuridicoPage() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
-  const [classeFiltro, setClasseFiltro] = useState<ClasseEmailJuridico | null>(null);
+  // ?classe=JUSTICA vem do alerta da Home/fases: abre já filtrado no que o alerta contou.
+  const [classeFiltro, setClasseFiltro] = useState<ClasseEmailJuridico | null>(() => {
+    const q = new URLSearchParams(window.location.search).get('classe');
+    return q && q in CLASSE_LABEL ? (q as ClasseEmailJuridico) : null;
+  });
   const [aberto, setAberto] = useState<EmailJuridicoItem | null>(null);
   const ordenacao = useOrdenacao('chegouEm', -1);   // @R: mais recente primeiro, sempre
   const ficha = useFichaPedido();

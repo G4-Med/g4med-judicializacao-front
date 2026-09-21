@@ -60,7 +60,7 @@ export function Menu({ visible, onHide }: Props) {
   const pendenciasAbertas = usePendenciasAbertas()
   const agir = usePendenciasParaAgir()
   const emailsJur = useEmailsJuridicoContagem()   // ofícios/e-mails do jurídico ainda não tratados (@R 21/09)   // retornos esperando o "Li" de quem pediu (+ os antigos, para Admin/Gerente)
-  const items = buildMenuItems({ navigate, currentPath: location.pathname + (location.pathname === '/juridico' && location.search === '?aba=pendencias' ? location.search : ''), canView, contadores: { '/juridico?aba=pendencias': agir.paradas ? `${pendenciasAbertas} · ${agir.paradas} parada(s)` : pendenciasAbertas, '/emails-juridico': emailsJur?.vencidos ? `${emailsJur.abertos} · ${emailsJur.vencidos} vencido(s)` : (emailsJur?.abertos ?? 0), '/orcamento-medico': (agir.meusRetornos + agir.semLerAntigas) ? `${agir.meusRetornos + agir.semLerAntigas} retorno(s) do jurídico` : 0 } })
+  const items = buildMenuItems({ navigate, currentPath: location.pathname + (location.pathname === '/juridico' && location.search === '?aba=pendencias' ? location.search : ''), canView, contadores: { '/juridico?aba=pendencias': agir.paradas ? `${pendenciasAbertas} · ${agir.paradas} parada(s)` : pendenciasAbertas, '/emails-juridico': emailsJur?.novosJustica ? `${emailsJur.novosJustica} da Justiça` : (emailsJur?.vencidosJustica ? `${emailsJur.vencidosJustica} vencido(s)` : 0), '/orcamento-medico': (agir.meusRetornos + agir.semLerAntigas) ? `${agir.meusRetornos + agir.semLerAntigas} retorno(s) do jurídico` : 0 } })
   const sections = agruparPorSecao(items)
 
   // estado: quais itens com filhos estão abertos
