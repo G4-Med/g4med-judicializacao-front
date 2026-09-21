@@ -4,7 +4,7 @@ import { useAccess } from '../../access/AccessContext'
 import { buildMenuItems } from '../navigation/menuConfigClean'
 import { DONOS } from '../../pages/processoOperacional/conteudo'
 import type { MenuItem } from 'primereact/menuitem'
-import { usePendenciasAbertas } from '../../components/PendenciaJuridica/PendenciaJuridica'
+import { usePendenciasAbertas, usePendenciasParaAgir } from '../../components/PendenciaJuridica/PendenciaJuridica'
 import './Menu.css'
 
 interface MenuItemComDono extends MenuItem {
@@ -57,7 +57,8 @@ export function Menu({ visible, onHide }: Props) {
   const { canView } = useAccess()
 
   const pendenciasAbertas = usePendenciasAbertas()
-  const items = buildMenuItems({ navigate, currentPath: location.pathname, canView, contadores: { '/juridico': pendenciasAbertas } })
+  const agir = usePendenciasParaAgir()   // retornos esperando o "Li" de quem pediu (+ os antigos, para Admin/Gerente)
+  const items = buildMenuItems({ navigate, currentPath: location.pathname, canView, contadores: { '/juridico': pendenciasAbertas, '/orcamento-medico': (agir.meusRetornos + agir.semLerAntigas) ? `${agir.meusRetornos + agir.semLerAntigas} retorno(s) do jurídico` : 0 } })
   const sections = agruparPorSecao(items)
 
   // estado: quais itens com filhos estão abertos

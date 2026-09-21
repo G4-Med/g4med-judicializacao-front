@@ -129,7 +129,7 @@ export function buildMenuItems({
   canView: (screen: ScreenKey) => boolean;
   onNavigate?: () => void;
   /** número ao lado do item (ex.: pendências 1.1 abertas em Análise Jurídica) — só aparece se > 0 */
-  contadores?: Record<string, number>;
+  contadores?: Record<string, number | string>;   // número puro, ou texto quando o número sozinho enganaria ("2 retornos")
 }): MenuItem[] {
   const comContador = (rotulo: string, path: string) => (contadores?.[path] ? `${rotulo} (${contadores[path]})` : rotulo);
   const go = (path: string) => {

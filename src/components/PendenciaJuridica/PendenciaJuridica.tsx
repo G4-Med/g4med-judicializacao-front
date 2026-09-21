@@ -30,6 +30,7 @@ let cache: Record<string, PendenciaJuridica> | null = null;
 let carregadoEm = 0;
 const VALIDADE_MS = 60_000;   // o selo e o contador se renovam sozinhos: quem pediu vê o ↩ sem recarregar a página
 let totais = { ABERTA: 0, RESPONDIDA: 0, LIDA: 0 };
+let paraAgir = { meusRetornos: 0, paradas: 0, semLerAntigas: 0 };
 let carregando: Promise<void> | null = null;
 const ouvintes = new Set<() => void>();
 
@@ -41,7 +42,7 @@ async function carregar(): Promise<void> {
         const novo: Record<string, PendenciaJuridica> = {};
         // a lista vem da mais nova para a mais velha: a 1ª de cada pedido é a que vale
         for (const p of r.data?.itens ?? []) if (!novo[String(p.orderId)]) novo[String(p.orderId)] = p;
-        cache = novo; carregadoEm = Date.now(); totais = r.data?.total ?? totais;
+        cache = novo; carregadoEm = Date.now(); totais = r.data?.total ?? totais; paraAgir = r.data?.paraAgir ?? paraAgir;
       })
       // erro NÃO vira "sem pendências": o cache fica nulo e a próxima tela tenta de novo (antes {} congelava em 0)
       .catch(() => { cache = null; carregadoEm = 0; })
@@ -73,6 +74,20 @@ export function usePendenciasAbertas(): number {
     return () => { vivo = false; ouvintes.delete(atualizar); window.clearInterval(t); };
   }, []);
   return n;
+}
+
+/** Quem precisa agir VÊ que precisa (furo do juiz virgem: a etapa LER tinha dono e não tinha gatilho).
+ *  meusRetornos = respostas esperando o "Li" de quem pediu · paradas = bilhetes abertos há dias ·
+ *  semLerAntigas = respostas que ninguém leu (só Admin/Gerente recebem número). */
+export function usePendenciasParaAgir() {
+  const [v, setV] = useState(paraAgir);
+  useEffect(() => {
+    let vivo = true;
+    const atualizar = () => { if (vivo) setV({ ...paraAgir }); };
+    carregar().then(atualizar); ouvintes.add(atualizar);
+    return () => { vivo = false; ouvintes.delete(atualizar); };
+  }, []);
+  return v;
 }
 
 /** Selo na frente do nome do paciente, em todas as filas (ponto único: nomeComCopiar).
@@ -220,6 +235,7 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
   const [opcoesMedico, setOpcoesMedico] = useState<{ label: string; value: number }[]>([]);
   const [salvando, setSalvando] = useState<number | null>(null);
   const [semPeca, setSemPeca] = useState<Record<number, boolean>>({});
+  const [semMedico, setSemMedico] = useState<Record<number, boolean>>({});
   const [falhou, setFalhou] = useState(false);
   const [anexando, setAnexando] = useState<number | null>(null);
   const [anexadas, setAnexadas] = useState<Record<number, string>>({});
@@ -238,7 +254,7 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
   const responder = async (p: PendenciaJuridica) => {
     setSalvando(p.id);
     try {
-      const r = await responderPendenciaJuridica(p.orderId, p.id, (respostas[p.id] || '').trim(), medicos[p.id] ?? null, !!semPeca[p.id]);
+      const r = await responderPendenciaJuridica(p.orderId, p.id, (respostas[p.id] || '').trim(), medicos[p.id] ?? null, !!semPeca[p.id], !!semMedico[p.id]);
       if (r.data?.faseRestaurada === false) alert('Resposta registrada. Atenção: o pedido já tinha sido movido por outra pessoa e NÃO voltou para a fase de origem — confira na Ficha.');
       else if (r.data?.medicoMudouNoMeio) alert('Resposta registrada e pedido devolvido. Atenção: o médico do pedido mudou enquanto ele estava aqui (troca ou recusa) — vale o médico atual, não o de quando o pedido chegou.');
       else if ((r.data?.pecasNaFilaDeLeitura ?? 0) > 0) alert(`Resposta registrada e pedido devolvido. ${r.data.pecasNaFilaDeLeitura} peça(s) entraram na fila de leitura: o médico vai receber o pedido com laudo, exames e orçamentos extraídos.`);
@@ -264,7 +280,7 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
         <article key={p.id} className="mc-pend-card">
           <header>
             <span><span className="tipo">{p.tipoRotulo}</span> · pedido #{p.orderId} · <span className="col-paciente-upper">{p.paciente}</span></span>
-            <small>há {p.dias ?? 0} dia(s) · pedido por {p.abertaPor || '—'} em {quando(p.abertaEm)}</small>
+            <small>{p.parada ? <strong style={{ color: '#b91c1c' }}>PARADA há {p.dias ?? 0} dia(s) — o pedido está fora da fila de orçamento enquanto isso</strong> : <>há {p.dias ?? 0} dia(s)</>} · pedido por {p.abertaPor || '—'} em {quando(p.abertaEm)}</small>
           </header>
           <div><small>{p.procedimento}{p.nprocesso ? ` · ${p.nprocesso}` : ''} · volta para “{p.faseOrigem}”</small></div>
           {p.foraDoJuridico && <p role="note" style={{ margin: '.4rem 0' }}><strong>Atenção:</strong> este pedido foi tirado do jurídico por outra tela e hoje está em “{p.faseAtual}”. Responder aqui <strong>registra a resposta e encerra a pendência</strong>, sem mover o pedido.</p>}
@@ -291,7 +307,13 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
                   onChange={(e) => setRespostas((s) => ({ ...s, [p.id]: e.target.value }))} />
               </div>
               {p.tipo === 'ACHAR_MEDICO' && (
-                <Dropdown value={medicos[p.id] ?? null} options={opcoesMedico} filter showClear placeholder="Médico indicado (opcional)"
+                <label style={{ flexBasis: '100%' }}>
+                  <input type="checkbox" checked={!!semMedico[p.id]} onChange={(e) => setSemMedico((s) => ({ ...s, [p.id]: e.target.checked }))} />{' '}
+                  Não encontrei médico (explique na resposta) — o pedido volta para Selecionar Médico
+                </label>
+              )}
+              {p.tipo === 'ACHAR_MEDICO' && !semMedico[p.id] && (
+                <Dropdown value={medicos[p.id] ?? null} options={opcoesMedico} filter showClear placeholder="Médico encontrado"
                   onChange={(e) => setMedicos((s) => ({ ...s, [p.id]: e.value ?? null }))} style={{ minWidth: '16rem' }} />
               )}
               {onAbrirFicha && <Button label="Ficha" icon="pi pi-folder-open" outlined severity="secondary" onClick={() => onAbrirFicha(p.orderId)} />}
