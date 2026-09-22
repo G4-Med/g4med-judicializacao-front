@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
+import { FichaPrestadorDialog } from '../../components/FichaPrestador/FichaPrestadorDialog';
 import { adicionarEspecialidadeDestino, previaLinkDocumentos, gerarLinkDocumentos, gerarRelatorioMedico, registrarCotacaoPedida } from '../../services/api/orders';
 
 /* ═══ COPIAR O PEDIDO COM O LINK SEGURO (@R 21/09 18:27 → 18:45) ═══
@@ -156,6 +157,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   // Nasce DESLIGADO: a mensagem é colada à mão e o sistema não sabe se vai para um grupo com outros médicos —
   // quem cola sabe para onde mandou.
   const [enviarHist, setEnviarHist] = useState(false);
+  const [fichaAberta, setFichaAberta] = useState(false);   // central do médico, fase A
   const geracao = useRef<{ chave: string; p: Promise<any> } | null>(null);
   const [gerandoRel, setGerandoRel] = useState(false);
   const [erroRel, setErroRel] = useState<string | null>(null);
@@ -266,6 +268,15 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
       {!erro && !previa && <div>Montando a prévia…</div>}
       {previa && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontSize: 14 }}>
+          {!!pedido?.idMedico && Number(pedido.idMedico) > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f5f8ff', border: '1px solid #d1e0ff', borderRadius: 8, padding: '8px 10px' }}>
+              <i className="pi pi-id-card" style={{ color: '#1d4ed8' }} />
+              <span style={{ flex: 1 }}>Antes de mandar: o que <b>{pedido.medico || 'este prestador'}</b> já cotou conosco e quanto costuma demorar.</span>
+              <Button label="Ficha do prestador" size="small" outlined onClick={() => setFichaAberta(true)} />
+            </div>
+          )}
+          <FichaPrestadorDialog medicoId={fichaAberta && pedido?.idMedico ? Number(pedido.idMedico) : null}
+            pedido={pedido?.id} onClose={() => setFichaAberta(false)} />
           {previa.especialidadeDestino && !previa.especialidadeDestino.consta && addEsp !== 'feito' && (
             <section style={{ background: '#fff7e6', border: '1px solid #f5d38a', borderRadius: 8, padding: 10 }}>
               <div>
