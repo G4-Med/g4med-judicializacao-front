@@ -263,23 +263,29 @@ export function LinkDocumentosPage() {
 
             {dados.referencias.length > 0 && (
               <section>
-                <h2 style={tituloSecao}>Orçamentos encontrados no processo</h2>
+                <h2 style={tituloSecao}>Referência de preço por procedimento</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {dados.referencias.map((r, i) => (
                     <div key={i} style={{ background: cor.cartao, borderRadius: 12, border: `1px solid ${cor.linha}`,
                       padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-                        <b style={{ fontSize: 16 }}>{r.local || 'Local não identificado no documento'}</b>
-                        <b style={{ fontSize: 17, fontVariantNumeric: 'tabular-nums' }}>{brl(r.valorReferencia)}</b>
+                        <b style={{ fontSize: 15, lineHeight: 1.4, flex: '1 1 16rem' }}>
+                          {r.descricao || (r.categoria !== 'Procedimento' ? r.categoria : 'Procedimento do pedido')}
+                        </b>
+                        <span style={{ textAlign: 'right' }}>
+                          <b style={{ fontSize: 17, fontVariantNumeric: 'tabular-nums', display: 'block' }}>{brl(r.valorReferencia)}</b>
+                          <span style={{ fontSize: 12, color: cor.suave }}>referência total</span>
+                        </span>
                       </div>
-                      {r.descricao && <div style={{ fontSize: 14, lineHeight: 1.45 }}>{r.descricao}</div>}
-                      <div style={{ fontSize: 12, color: cor.suave }}>
-                        {r.categoria}{r.data ? ` · orçamento de ${dataBR(r.data)}` : ''}{r.pagina ? ` · página ${r.pagina} do processo` : ''}
+                      <div style={{ fontSize: 13, color: cor.suave }}>
+                        {r.local || 'Local não identificado no documento'}
+                        {r.categoria !== 'Procedimento' && r.descricao ? ` · ${r.categoria}` : ''}
+                        {r.data ? ` · orçamento de ${dataBR(r.data)}` : ''}{r.pagina ? ` · página ${r.pagina} do processo` : ''}
                       </div>
                     </div>
                   ))}
                 </div>
-                <div style={{ fontSize: 13, color: cor.suave, margin: '6px 4px 0' }}>{dados.referenciasNota} Valor total de cada orçamento, como consta no processo.</div>
+                <div style={{ fontSize: 13, color: cor.suave, margin: '6px 4px 0' }}>{dados.referenciasNota}</div>
               </section>
             )}
 

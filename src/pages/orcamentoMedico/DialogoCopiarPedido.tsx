@@ -59,7 +59,7 @@ export function montarTextoPedido(p: PedidoParaCopiar, url: string, porTipo: Rec
   const oQueTem = total > 0
     ? `No link abaixo estão ${descreverDocumentos(porTipo)}, extraídos do processo e em ordem de leitura clínica.`
     : 'Os documentos clínicos deste processo ainda estão sendo reunidos; o link abaixo mostra o que já temos.';
-  const valores = comValores ? '\nTambém estão lá os valores de referência encontrados no processo.' : '';
+  const valores = comValores ? '\nTambém está lá a referência de preço total por procedimento.' : '';
   const hoje = new Date();
   const data = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
   return `*G4MED · SOLICITAÇÃO DE ORÇAMENTO*
