@@ -582,6 +582,9 @@ export const gerarLinkDocumentos = (orderId: number, dados: {
   api.post(`/orders/${orderId}/link-documentos/`, dados);
 /* Relatório médico da IA (@R 22/09): gerado no clique, a partir dos documentos MARCADOS, com citação
    por documento e página. ~30 s. */
+/* @R 22/09 12:03: a especialidade do pedido não consta no cadastro do destino → adicionar com 1 clique. */
+export const adicionarEspecialidadeDestino = (orderId: number, medicoId: number) =>
+  api.post(`/orders/${orderId}/link-documentos/especialidade-destino/`, { medicoId });
 export const gerarRelatorioMedico = (orderId: number, anexosExcluidos: number[]) =>
   api.post(`/orders/${orderId}/link-documentos/relatorio/`, { anexosExcluidos }, { timeout: 120000 });
 export const rastroLinksDocumentos = (orderId: number) =>

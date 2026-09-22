@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
-import { previaLinkDocumentos, gerarLinkDocumentos, gerarRelatorioMedico, registrarCotacaoPedida } from '../../services/api/orders';
+import { adicionarEspecialidadeDestino, previaLinkDocumentos, gerarLinkDocumentos, gerarRelatorioMedico, registrarCotacaoPedida } from '../../services/api/orders';
 
 /* ═══ COPIAR O PEDIDO COM O LINK SEGURO (@R 21/09 18:27 → 18:45) ═══
    ⟦"registrar quem abriu, e o momento que o item foi aberto ... o link ali não pode ser baixado"⟧
@@ -155,6 +155,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   const geracao = useRef<{ chave: string; p: Promise<any> } | null>(null);
   const [gerandoRel, setGerandoRel] = useState(false);
   const [erroRel, setErroRel] = useState<string | null>(null);
+  const [addEsp, setAddEsp] = useState<'nao' | 'enviando' | 'feito' | string>('nao');
   const alternar = (set: Set<number>, id: number, fn: (s: Set<number>) => void) => {
     const n = new Set(set); if (n.has(id)) n.delete(id); else n.add(id); fn(n);
   };
@@ -166,7 +167,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
     setDocsFora(new Set());
     setRefsFora(new Set());
     setEnviarPag(false); setPagFora(new Set());
-    setRelatorio(null); setEnviarRel(true); setErroRel(null); geracao.current = null;
+    setRelatorio(null); setEnviarRel(true); setErroRel(null); geracao.current = null; setAddEsp('nao');
     if (!pedido) return;
     previaLinkDocumentos(pedido.id)
       .then((r) => { setPrevia(r.data); setRelatorio(r.data?.relatorio ?? null); })
@@ -258,6 +259,31 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
       {!erro && !previa && <div>Montando a prévia…</div>}
       {previa && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontSize: 14 }}>
+          {previa.especialidadeDestino && !previa.especialidadeDestino.consta && addEsp !== 'feito' && (
+            <section style={{ background: '#fff7e6', border: '1px solid #f5d38a', borderRadius: 8, padding: 10 }}>
+              <div>
+                <i className="pi pi-exclamation-triangle" style={{ color: '#b54708' }} />{' '}
+                <b>{previa.especialidadeDestino.destinoNome}</b> não tem <b>{previa.especialidadeDestino.area}</b> entre as
+                especialidades cadastradas.
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6, flexWrap: 'wrap' }}>
+                {previa.especialidadeDestino.especialidadeId ? (
+                  <Button size="small" label={`Adicionar ${previa.especialidadeDestino.especialidadeNome} a ${previa.especialidadeDestino.destinoNome}`}
+                    icon="pi pi-plus" loading={addEsp === 'enviando'}
+                    onClick={async () => {
+                      setAddEsp('enviando');
+                      try { await adicionarEspecialidadeDestino(pedido!.id, previa.especialidadeDestino.destinoId); setAddEsp('feito'); }
+                      catch (e: any) { setAddEsp(e?.response?.data?.error || 'Não foi possível adicionar.'); }
+                    }} />
+                ) : <span style={{ fontSize: 12 }}>Essa especialidade não existe no cadastro de especialidades — crie em Clientes antes.</span>}
+                <span style={{ fontSize: 12, color: '#6b7280' }}>Só um aviso: dá para copiar mesmo assim.</span>
+              </div>
+              {addEsp !== 'nao' && addEsp !== 'enviando' ? <div style={{ color: '#b91c1c', fontSize: 12, marginTop: 4 }}>{addEsp}</div> : null}
+            </section>
+          )}
+          {addEsp === 'feito' && previa.especialidadeDestino && (
+            <div style={{ color: '#067647' }}><i className="pi pi-check" /> {previa.especialidadeDestino.especialidadeNome} adicionada ao cadastro de {previa.especialidadeDestino.destinoNome}.</div>
+          )}
           <section>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>
               O que vai no link ({docsVao} de {docs.length}) <span style={{ fontWeight: 400, color: '#6b7280', fontSize: 12 }}>— desmarque o que não quer mandar</span>
