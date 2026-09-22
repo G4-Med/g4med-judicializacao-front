@@ -21,8 +21,9 @@ interface Dados {
   referencias: { categoria: string; valorReferencia: number; local?: string | null; descricao?: string | null;
                  data?: string | null; pagina?: number | null }[];
   referenciasNota: string;
-  pagoPeloEstado?: { n: number; media: number; mediana: number; de: string; ate: string; aviso: string;
-                    lista?: { valor: number; mes: string; procedimento: string }[] } | null;
+  // @R 22/09 12:42: os ÚLTIMOS pagamentos um a um + o MENOR como norte ("baixo é vitória") — sem média
+  pagoPeloEstado?: { n: number; menor: number; menorMes: string; maior: number; maiorMes: string; de: string; ate: string; aviso: string;
+                    lista?: { valor: number; mes: string; procedimento: string; menor?: boolean }[] } | null;
   // @R 22/09: relatório médico da IA para leitura rápida, cada ponto com documento + página citados
   resumoClinico?: { geradoEm: string; aviso: string;
                     campos: { campo: string; rotulo: string; valor: string;
@@ -160,9 +161,9 @@ function ResumoCaso({ r, docs, abrir }: { r: Resumo; docs: Documento[]; abrir: (
 }
 
 /** Régua de preço (@R 22/09): pagos pelo Estado (●) e orçamentos do processo (◆) na MESMA escala,
- *  com a mediana paga (│). O médico vê em 1 olhar onde as referências estão frente ao que se paga. */
-function ReguaPrecos({ pagos, refs, mediana }: { pagos: number[]; refs: number[]; mediana?: number }) {
-  const todos = [...pagos, ...refs, ...(mediana ? [mediana] : [])];
+ *  com o MENOR pago marcado (│) — o norte para vencer. O médico vê em 1 olhar onde está cada valor. */
+function ReguaPrecos({ pagos, refs, menor }: { pagos: number[]; refs: number[]; menor?: number }) {
+  const todos = [...pagos, ...refs];
   if (todos.length < 2) return null;
   const min = Math.min(...todos), max = Math.max(...todos);
   const pos = (v: number) => (max === min ? 50 : 4 + ((v - min) / (max - min)) * 92);
@@ -172,7 +173,7 @@ function ReguaPrecos({ pagos, refs, mediana }: { pagos: number[]; refs: number[]
       <div style={{ position: 'relative', height: 44 }} role="img"
         aria-label={`Faixa de preços de ${brl(min)} a ${brl(max)}`}>
         <div style={{ position: 'absolute', left: '4%', right: '4%', top: 20, height: 6, borderRadius: 3, background: '#e7ebe4' }} />
-        {mediana ? <div title={`Mediana paga ${brl(mediana)}`} style={{ position: 'absolute', left: `${pos(mediana)}%`, top: 10, width: 2, height: 26,
+        {menor ? <div title={`Menor pago ${brl(menor)}`} style={{ position: 'absolute', left: `${pos(menor)}%`, top: 10, width: 2, height: 26,
           background: cor.destaque, transform: 'translateX(-1px)' }} /> : null}
         {pagos.map((v, i) => <div key={`p${i}`} title={`Pago pelo Estado ${brl(v)}`} style={{ position: 'absolute', left: `${pos(v)}%`, top: 17,
           width: 12, height: 12, borderRadius: '50%', background: cor.destaque, border: '2px solid #fff', transform: 'translateX(-6px)' }} />)}
@@ -185,7 +186,7 @@ function ReguaPrecos({ pagos, refs, mediana }: { pagos: number[]; refs: number[]
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, color: cor.suave, marginTop: 6 }}>
         {pagos.length > 0 && <span><span style={{ color: cor.destaque }}>●</span> pago pelo Estado</span>}
         {refs.length > 0 && <span><span style={{ color: '#0A3D62' }}>◆</span> orçamento neste processo</span>}
-        {mediana ? <span><span style={{ color: cor.destaque, fontWeight: 700 }}>│</span> mediana paga</span> : null}
+        {menor ? <span><span style={{ color: cor.destaque, fontWeight: 700 }}>│</span> menor pago</span> : null}
       </div>
     </div>
   );
@@ -364,29 +365,31 @@ export function LinkDocumentosPage() {
                 <div style={{ background: cor.cartao, borderRadius: 14, border: `1px solid ${cor.linha}`, padding: '14px 16px',
                   display: 'flex', flexDirection: 'column', gap: 10, fontVariantNumeric: 'tabular-nums' }}>
                   <ReguaPrecos pagos={(dados.pagoPeloEstado?.lista ?? []).map((x) => x.valor)}
-                    refs={dados.referencias.map((r) => r.valorReferencia)} mediana={dados.pagoPeloEstado?.mediana} />
+                    refs={dados.referencias.map((r) => r.valorReferencia)} menor={dados.pagoPeloEstado?.menor} />
                   {dados.pagoPeloEstado && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                      <div style={{ background: '#f3f8f4', borderRadius: 10, padding: '10px 12px' }}>
-                        <div style={{ fontSize: 12, color: cor.suave }}>Mediana paga pelo Estado</div>
-                        <div style={{ fontSize: 17, fontWeight: 800, whiteSpace: 'nowrap' }}>{brl(dados.pagoPeloEstado.mediana)}</div>
+                    <div style={{ background: '#f3f8f4', borderRadius: 10, padding: '10px 12px', borderLeft: `4px solid ${cor.destaque}` }}>
+                      {/* FAIXA, ¬só o menor (olhar comercial 22/09): mostra que dá para vencer baixo e que
+                          houve quem venceu mais alto — o médico cota o que consegue cumprir */}
+                      <div style={{ fontSize: 12, color: cor.suave }}>
+                        {dados.pagoPeloEstado.n === 1 ? 'Valor pago pelo Estado no último caso parecido'
+                          : `Faixa paga pelo Estado nos últimos ${dados.pagoPeloEstado.n} casos parecidos`}
                       </div>
-                      <div style={{ background: '#f3f8f4', borderRadius: 10, padding: '10px 12px' }}>
-                        <div style={{ fontSize: 12, color: cor.suave }}>Média paga</div>
-                        <div style={{ fontSize: 17, fontWeight: 800, whiteSpace: 'nowrap' }}>{brl(dados.pagoPeloEstado.media)}</div>
+                      <div style={{ fontSize: 19, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
+                        {dados.pagoPeloEstado.menor === dados.pagoPeloEstado.maior ? brl(dados.pagoPeloEstado.menor)
+                          : <>{brl(dados.pagoPeloEstado.menor)} <span style={{ fontWeight: 400, color: cor.suave }}>a</span> {brl(dados.pagoPeloEstado.maior)}</>}
                       </div>
                     </div>
                   )}
                   {dados.pagoPeloEstado && (
                     <div style={{ fontSize: 13, color: cor.suave, lineHeight: 1.45 }}>
-                      {dados.pagoPeloEstado.n} pagamento{dados.pagoPeloEstado.n === 1 ? '' : 's'} do Estado por procedimento parecido,
-                      entre {dataBR(dados.pagoPeloEstado.de)} e {dataBR(dados.pagoPeloEstado.ate)}. {dados.pagoPeloEstado.aviso}
+                      Pagamentos de {dataBR(dados.pagoPeloEstado.de)} a {dataBR(dados.pagoPeloEstado.ate)}, do mais recente ao mais antigo. {dados.pagoPeloEstado.aviso}
                     </div>
                   )}
                   {(dados.pagoPeloEstado?.lista ?? []).map((x, i) => (
                     <div key={i} style={{ display: 'flex', gap: 12, justifyContent: 'space-between', borderTop: `1px solid ${cor.linha}`, paddingTop: 8 }}>
                       <span style={{ fontSize: 13, color: cor.suave, flex: 1 }}>
                         <span style={{ color: cor.destaque }}>●</span> {x.mes.split('-').reverse().join('/')} · {x.procedimento}
+                        {x.menor && (dados.pagoPeloEstado?.n ?? 0) > 1 && <b style={{ color: cor.destaque }}> · menor</b>}
                       </span>
                       <b>{brl(x.valor)}</b>
                     </div>

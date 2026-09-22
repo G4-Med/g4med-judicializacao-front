@@ -133,8 +133,10 @@ export function OrcamentoMedicoPage() {
   const [processos, setProcessos] = useState<ProcessoOrcamento[]>([]);
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(50);
-  const [sortField, setSortField] = useState<string | undefined>('dias');
-  const [sortOrder, setSortOrder] = useState<1 | 0 | -1 | null | undefined>(1);
+  // @R 22/09 12:41: abre em ORDEM DE INCLUSÃO, do mais recente para o mais antigo. O nº do pedido
+  // cresce na ordem em que ele entrou no sistema; clicar em outra coluna continua reordenando.
+  const [sortField, setSortField] = useState<string | undefined>('id');
+  const [sortOrder, setSortOrder] = useState<1 | 0 | -1 | null | undefined>(-1);
   const [anexos, setAnexos] = useState<Anexo[]>([])
   const [loadingAnexos, setLoadingAnexos] = useState(false)
   const [anexosEmail, setAnexosEmail] = useState<Anexo[]>([])
@@ -682,7 +684,7 @@ ${blocos}
         >{colunasCfg.filtrar(<>
 
           <Column expander style={{ width: '3rem' }} frozen alignFrozen="left" />
-          <Column field="id" header="#" headerTooltip="Número do pedido (o mesmo da Ficha, dos e-mails e da API)" style={{ minWidth: '4rem' }}  frozen alignFrozen="left" />
+          <Column field="id" header="#" sortable headerTooltip="Número do pedido (o mesmo da Ficha, dos e-mails e da API) — cresce na ordem de inclusão" style={{ minWidth: '4rem' }}  frozen alignFrozen="left" />
           {/* Ações da fase ao lado do paciente (@R 29/08) — mesmos botões, agora fixos à esquerda. */}
 {colunaAcoesFase({ corpo: (r: any) => <>{(((rowData: any) => (
               <Button label="Abrir" icon="pi pi-folder-open" outlined severity="secondary"
