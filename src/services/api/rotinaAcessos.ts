@@ -1,7 +1,13 @@
 import api from './../api';
 
 /** @R 22/09 18:18 — histórico de login e quem está ativo. Back: backend/rotina_acessos.py (só Admin/Gerente; 403 aos demais). */
-export interface LoginDia { usuario: string; nome: string; grupo: string | null; em: string; ip: string | null; aparelho: string | null }
+export interface LoginDia {
+  usuario: string; nome: string; grupo: string | null; em: string; ip: string | null; aparelho: string | null;
+  /** #634: lidos do user-agent no login (o que o navegador declara) */
+  navegador?: string | null; navegadorVersao?: string | null; sistema?: string | null; dispositivo?: string | null;
+  /** localização do navegador: PENDENTE (ainda não respondeu) | CONCEDIDA | NEGADA | INDISPONIVEL */
+  localizacaoStatus?: string; latitude?: number | null; longitude?: number | null; precisaoM?: number | null;
+}
 export interface PessoaAgora {
   usuario: string; nome: string; grupo: string | null;
   ultimoLogin: string | null; ultimaAtividade: string | null; logado: boolean; ativo: boolean;

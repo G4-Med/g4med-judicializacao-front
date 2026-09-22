@@ -585,3 +585,8 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
 .home-hero__fases li { grid-template-columns: 30px minmax(0, 1fr) auto; }
 .home-hero__fase-nome { white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 1200px) { .home-hero { grid-template-columns: 1fr; } }
+
+/* #634 origem do login: aparelho · navegador · sistema · IP · mapa */
+.acessos-bloco__origem { flex-basis: 100%; font-size: 0.78rem; color: #475467; padding-left: 52px; }
+.acessos-bloco__origem a { color: #00A651; font-weight: 600; }
+.acessos-bloco__origem-sem { color: #98a2b3; }
