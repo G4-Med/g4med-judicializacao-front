@@ -1,13 +1,12 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+﻿import { Fragment, useEffect, useMemo, useState } from 'react';
 import { getOrders, getPerdas, getResultados, getSaudeDados, type SaudeDados } from '../../services/api/orders';
 import { estaEmAberto } from '../../services/reguaFases';
 import { ComoEstamos } from './ComoEstamos';
 import { Button } from 'primereact/button'
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { useHomeOnboarding } from '../../app/onboarding/useHomeOnboarding';
 import { useEmailsJuridicoContagem } from '../emailsJuridico/EmailsJuridicoPage';
 import { useNavigate } from 'react-router-dom';
+import { listarBaterValores, type ItemBaterValores } from '../../services/api/baterValores';
 import './HomePage.css';
 
 interface OrderResumo {
@@ -235,10 +234,15 @@ function formatCurrency(value: number): string {
 
 export function HomePage() {
   const emailsJur = useEmailsJuridicoContagem();   // linha 1.2 do painel (@R 21/09)
+  /* Linha 3.1 do painel (@R 22/09: "criar uma fase bater preços na parte de baixo para ela").
+     Vem da PRÓPRIA fila da 3,1 (a mesma régua da tela). null = não carregou → mostra '--', nunca 0. */
+  const [fila31, setFila31] = useState<ItemBaterValores[] | null>(null);
+  useEffect(() => {
+    listarBaterValores('todos').then((r) => setFila31(r.data.itens)).catch(() => setFila31(null));
+  }, []);
   const navigate = useNavigate();
   useHomeOnboarding();
   const [loading, setLoading] = useState(false);
-  const [exportando, setExportando] = useState(false);
   const [orders, setOrders] = useState<OrderResumo[]>([]);
   const [resultados, setResultados] = useState<ResultadoResumo[]>([]);
   const [perdas, setPerdas] = useState<PerdaResumo[]>([]);
@@ -560,53 +564,6 @@ export function HomePage() {
 
 
 
-  const handleExportarRelatorio = async () => {
-    const elemento = document.getElementById('home-report-export');
-    if (!elemento || exportando) return;
-
-    try {
-      setExportando(true);
-
-      const canvas = await html2canvas(elemento, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#f7fafc',
-        logging: false,
-        windowWidth: elemento.scrollWidth,
-        windowHeight: elemento.scrollHeight,
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 8;
-      const usableWidth = pageWidth - margin * 2;
-      const imageHeight = (canvas.height * usableWidth) / canvas.width;
-
-      let remainingHeight = imageHeight;
-      let position = margin;
-
-      pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imageHeight);
-      remainingHeight -= pageHeight - margin * 2;
-
-      while (remainingHeight > 0) {
-        pdf.addPage();
-        position = margin - (imageHeight - remainingHeight);
-        pdf.addImage(imgData, 'PNG', margin, position, usableWidth, imageHeight);
-        remainingHeight -= pageHeight - margin * 2;
-      }
-
-      const dataArquivo = new Date().toISOString().slice(0, 10);
-      pdf.save(`home-relatorio-${dataArquivo}.pdf`);
-    } catch (error) {
-      console.error('Erro ao exportar relatório da Home:', error);
-      alert('Não foi possível exportar o relatório em PDF.');
-    } finally {
-      setExportando(false);
-    }
-  };
-
   return (
     <div className="home-page" id="home-report-export">
       <section className="home-hero">
@@ -618,16 +575,6 @@ export function HomePage() {
             Visualize valores em aberto, conversão financeira e a performance dos procedimentos
             com a precisão que a MEDCHECK entrega à saúde de Minas Gerais.
           </p>
-          <div className="home-hero__actions">
-            <Button
-              label={exportando ? 'Exportando...' : 'Exportar relatório'}
-              icon="pi pi-download"
-              outlined
-              disabled={loading || exportando}
-              onClick={handleExportarRelatorio}
-              className="home-hero__export-button"
-            />
-          </div>
         </div>
 
         <div className="home-hero__panel">
@@ -641,13 +588,37 @@ export function HomePage() {
             title="Pedidos que esperam ação, por fase do funil. NÃO inclui ganho, perda, nem os registros de carga histórica — esses não são trabalho em aberto.">
             <strong>Aguardando ação <small>({loading ? '--' : indicadores.pedidosAbertosQtd} pedidos)</small></strong>
             <ul className="home-hero__fases" aria-label="Pedidos aguardando ação por fase">
-              {indicadores.porFase.map((f) => (
-                <li key={f.fase}>
-                  <em>{f.fase}</em>
-                  <span className="home-hero__fase-nome">{f.nome}</span>
-                  <b>{loading ? '--' : f.qtd}</b>
-                </li>
-              ))}
+              {indicadores.porFase.map((f) => {
+                /* A 3,1 automática é pedido da fase 3 parado antes da SES: sai da 3 e entra na 3.1, para a
+                   soma continuar igual ao total. A MANUAL (Valéria) fica na fase em que está — só aparece no selo. */
+                const auto31 = new Set((fila31 ?? []).filter((i) => i.origem !== 'MANUAL').map((i) => i.pedido));
+                const manuais31 = (fila31 ?? []).filter((i) => i.origem === 'MANUAL').length;
+                const qtd = f.fase === '3' && fila31
+                  ? (orders as any[]).filter((o) => estaEmAberto(o) && o.statusProcesso === 'Aguardando Orçamento'
+                      && o.idMedico && Number(o.idMedico) !== 1 && !auto31.has(o.id)).length
+                  : f.qtd;
+                return (
+                  <Fragment key={f.fase}>
+                    <li>
+                      <em>{f.fase}</em>
+                      <span className="home-hero__fase-nome">{f.nome}</span>
+                      <b>{loading ? '--' : qtd}</b>
+                    </li>
+                    {f.fase === '3' && (
+                      <li className={auto31.size || manuais31 ? 'home-hero__fase--alerta' : ''}
+                        title={fila31 ? `Orçamentos parados antes de ir à SES para conferir o valor: ${auto31.size} entraram sozinhos (há orçamento de outro prestador no processo) · ${manuais31} colocado(s) à mão (ajuste do juiz, mudança do pedido…), que continuam na fase em que estão.` : 'Não foi possível carregar a fila da 3,1'}
+                        style={{ cursor: 'pointer' }} onClick={() => navigate('/bater-valores')}>
+                        <em>3.1</em>
+                        <span className="home-hero__fase-nome">
+                          Bater valores
+                          {manuais31 ? <span className="home-hero__selo">+{manuais31} manual(is)</span> : null}
+                        </span>
+                        <b>{fila31 ? auto31.size : '--'}</b>
+                      </li>
+                    )}
+                  </Fragment>
+                );
+              })}
               {/* @R 21/09/2026 (verbatim): "área no próprio sistema em /home para ver todos [os ofícios]
                   que chegam". Não é pedido, é e-mail/ofício sem tratamento — por isso fora da soma acima. */}
               <li key="1.2" className={(emailsJur?.novosJustica || emailsJur?.vencidosJustica) ? 'home-hero__fase--alerta' : ''}
