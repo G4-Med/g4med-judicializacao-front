@@ -497,3 +497,10 @@ body.dark-theme .email-anexo-empty {
   color: #94a3b8;
 }
 body.dark-theme .email-dialog-actions { border-top-color: #1e2d42; }
+
+/* @R 22/09 18:25: fase do pedido na Central e contradição e-mail × fase em destaque */
+.email-fase { display: flex; flex-direction: column; gap: 1px; font-size: 12px; }
+.email-fase small { color: #64748b; }
+.email-fase--contradicao strong { color: #b91c1c; }
+.email-fase__alerta { color: #b91c1c; font-weight: 600; font-size: 11px; }
+.p-datatable .p-datatable-tbody > tr.linha-email-contradicao > td { background: #fef2f2; }

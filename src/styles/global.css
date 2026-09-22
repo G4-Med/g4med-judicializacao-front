@@ -416,3 +416,7 @@ body.dark-theme .linha-negado-sem-medico > td { background: rgba(220, 38, 38, 0.
 .selo-recusa { display: inline-block; margin-left: .4rem; padding: 0 .4rem; border-radius: 4px; font-size: .72rem;
   font-weight: 600; background: #fef3c7; color: #92400e; white-space: nowrap; text-transform: none; }
 .selo-recusa--sem { background: #dc2626; color: #fff; }
+/* @R 22/09: marcador "está na 3,1" na fase 3, clicável */
+.selo-31 { display: inline-block; margin-left: .4rem; padding: 0 .4rem; border-radius: 4px; font-size: .72rem;
+  font-weight: 700; background: #1d4ed8; color: #fff !important; white-space: nowrap; text-decoration: none; text-transform: none; }
+.selo-31:hover { background: #1e40af; }

@@ -62,6 +62,9 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
   // Processos porque responde sobre os MESMOS documentos, do outro ângulo: lá se vê o pedido,
   // aqui se vê se o que está dentro dele já foi lido.
   { label: 'Processamento', icon: 'pi pi-server', path: '/processamento', screen: 'processos' },
+  // @R 22/09 18:19/18:34: a rotina dos dados do Estado (portal → coleta no PC → carga → pagamentos),
+  // etapa por etapa, para saber se está rodando, se concluiu e se a base está atualizada.
+  { label: 'Rotina dos dados do Estado', icon: 'pi pi-sync', path: '/rotina-dados-estado', screen: 'processos' },
   { label: 'Acervo de preços', icon: 'pi pi-dollar', path: '/orcamentos-terceiros', screen: 'orcamentosTerceiros' },
   { label: 'Central de E-mails', icon: 'pi pi-inbox', path: '/central-emails', screen: 'centralEmails' },
   { label: 'Lixeira', icon: 'pi pi-trash', path: '/lixeira', screen: 'lixeira' },

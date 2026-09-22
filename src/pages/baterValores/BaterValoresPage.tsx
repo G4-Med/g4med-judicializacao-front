@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
@@ -62,6 +63,16 @@ export function BaterValoresPage() {
   }, [filtro]);
 
   useEffect(() => { carregar(); }, [carregar]);
+
+  // @R 22/09: o marcador "3,1" da fase 3 abre direto o painel do pedido (?pedido=ID). Abre 1 vez só.
+  const [params] = useSearchParams();
+  const abriuDoLink = useRef(false);
+  useEffect(() => {
+    const alvo = Number(params.get('pedido'));
+    if (!alvo || abriuDoLink.current || !dados) return;
+    abriuDoLink.current = true;
+    painelBaterValores(alvo).then((r) => setAberto(r.data)).catch(() => alert(`Não foi possível abrir o pedido #${alvo} na 3,1.`));
+  }, [params, dados]);
 
   const abrir = async (item: ItemBaterValores) => {
     try {

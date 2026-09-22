@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgencia';
 import { CelulaMedico } from '../../components/TrocarMedico/CelulaMedico';
@@ -22,6 +23,7 @@ import { FilterMatchMode } from 'primereact/api';
 import html2canvas from 'html2canvas';
 import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { listarBaterValores } from '../../services/api/baterValores';
 import { atualizarOrder, getOrcamentoMedico, salvarOrcamentoMedico, getAnexosOrder, uploadAnexoOrder, getMedicosCompleto, aplicarStatusOrcamentoManual, trocarMedicoOrcamento } from '../../services/api/orders';
 import { getBaseOrcamento, getStatusOrcamentoPersonalizado, criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { getStatusTagStyle } from '../../utils/statusTag';
@@ -114,6 +116,7 @@ function calcularIdade(dataNascimento: string | null): number {
 
 
 export function OrcamentoMedicoPage() {
+  const navigate = useNavigate();
   // @R 19/09: lápis na coluna Status → modal com o leque da FASE (ver, trocar, criar)
   const [pedidoStatus, setPedidoStatus] = useState<{ id: number; status: string } | null>(null);
   // A tabela recarrega quando a FICHA muda a situação de um pedido (@R 17/09:
@@ -137,6 +140,8 @@ export function OrcamentoMedicoPage() {
   const [processos, setProcessos] = useState<ProcessoOrcamento[]>([]);
   // @R 22/09: "os dois botões na fase 3 — os que médico negou e os que ficaram sem médico".
   const [filtroRapido, setFiltroRapido] = useState<'negou' | 'sem' | null>(null);
+  // @R 22/09 18:22: "um indicador no pedido na fase 3 para dizer que ele está lá [na 3,1], no nome, e poder clicar"
+  const [na31, setNa31] = useState<Map<number, { origem?: string; estado: string | null; acimaPct: number | null }>>(new Map());
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(50);
   // @R 22/09 12:41: abre em ORDEM DE INCLUSÃO, do mais recente para o mais antigo. O nº do pedido
@@ -229,6 +234,10 @@ export function OrcamentoMedicoPage() {
   // já reflete a troca — sem isso o "await" de quem chama retorna antes do dado chegar.
   const carregarDados = () => {
     setLoading(true);
+    // a fila 3,1 vem à parte e NÃO bloqueia a tela: se falhar, só o marcador some (a lista continua certa)
+    listarBaterValores('todos')
+      .then((r) => setNa31(new Map(r.data.itens.map((i) => [i.pedido, { origem: i.origem, estado: i.estado, acimaPct: i.acimaPct }]))))
+      .catch(() => setNa31(new Map()));
     return Promise.all([getOrcamentoMedico(), getMedicosCompleto()])
       .then(([orcamentoResponse, medicosResponse]) => {
         setMedicos(medicosResponse.data);
@@ -731,6 +740,21 @@ ${blocos}
             body={(r: ProcessoOrcamentoRow) => (
               <span className="orcamento-paciente-cel col-paciente-upper">
                 {nomeComCopiar(r.paciente, r.id)}
+                {na31.has(r.id) && (
+                  <a className="selo-31" href={`/bater-valores?pedido=${r.id}`}
+                    onClick={(e) => { e.preventDefault(); navigate(`/bater-valores?pedido=${r.id}`); }}
+                    title={`Este pedido está na 3,1 Bater valores${na31.get(r.id)?.origem === 'MANUAL' ? ' (colocado à mão)' : ''}. Clique para abrir a comparação dele.`}>
+                    {/* urgência 22/09 (medido): % acima do menor terceiro comparável; sem comparável, a ausência
+                        é DITA ("sem comparação possível"), nunca um selo vazio. O MOTIVO (honorário/OPME…) não
+                        aparece aqui enquanto não houver decisão registrada — seria palpite com cara de dado. */}
+                    {(() => {
+                      const a = na31.get(r.id)?.acimaPct;
+                      return a == null
+                        ? '3,1 · sem comparação possível'
+                        : `3,1 · ${a > 0 ? '+' : ''}${a.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}% vs menor terceiro`;
+                    })()}
+                  </a>
+                )}
                 {r.negadoPorMedico && (() => {
                   const u = r.recusas?.[r.recusas.length - 1];
                   const dia = u?.em ? new Date(u.em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';

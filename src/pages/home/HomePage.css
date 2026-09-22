@@ -492,3 +492,51 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
 /* nome da fase clicável (@R 22/09) */
 .home-hero__fase-link { text-decoration: underline dotted; text-underline-offset: 3px; }
 .home-hero__fases li[role="link"]:hover .home-hero__fase-link { text-decoration-style: solid; }
+
+/* @R 22/09: acessos à plataforma */
+.acessos-bloco { background: #fff; border-radius: 12px; padding: 16px; margin-top: 16px; border: 1px solid #e5e7eb; }
+.acessos-bloco__cab { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.acessos-bloco__cab h2 { font-size: 18px; margin: 0; }
+.acessos-bloco__agora { color: #334155; }
+.acessos-bloco__dia { margin-left: auto; font-size: 14px; }
+.acessos-bloco__grade { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: .75rem; }
+@media (max-width: 800px) { .acessos-bloco__grade { grid-template-columns: 1fr; } }
+.acessos-bloco h3 { font-size: 14px; margin: 0 0 .35rem; color: #475569; }
+.acessos-bloco ul { margin: 0; padding-left: 1rem; font-size: 14px; max-height: 260px; overflow: auto; }
+.acessos-bloco__mes { display: flex; flex-wrap: wrap; gap: .35rem; }
+.acessos-bloco__mes button { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 6px; padding: 2px 8px; font-size: 13px; cursor: pointer; }
+.acessos-bloco__mes button.ativo { background: #0A3D62; color: #fff; border-color: #0A3D62; }
+.acessos-bloco__ponto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #cbd5e1; margin-right: 6px; }
+.acessos-bloco__ponto.logado { background: #f59e0b; }
+.acessos-bloco__ponto.ativo { background: #16a34a; }
+.acessos-bloco__vazio, .acessos-bloco__regra { color: #64748b; font-size: 13px; }
+.acessos-bloco__erro { color: #b42318; margin-top: .5rem; }
+
+/* @R 22/09: o quadro "Dados do Estado" abre a área da rotina */
+.home-hero__metric--link { cursor: pointer; border-radius: 8px; }
+.home-hero__metric--link:hover, .home-hero__metric--link:focus-visible { background: rgba(255, 255, 255, 0.08); outline: none; }
+.home-hero__metric--link strong::after { content: ' ›'; }
+
+/* @R 22/09 18:27: a pílula "N com valor idêntico" saía com letra BRANCA sobre amarelo (a cor do <span>
+   `.home-hero__metric span` (0,1,1) vencia `.home-hero__selo` (0,1,0) — branco e 18px). Seletor mais específico + âmbar claro com texto escuro. */
+.home-hero span.home-hero__selo,
+.home-hero li span.home-hero__selo { background: #fde68a; color: #78350f; font-size: 11px; font-weight: 700; }
+.home-hero span.home-hero__selo--vencido,
+.home-hero li span.home-hero__selo--vencido { background: #fecaca; color: #7f1d1d; }
+
+/* @R 22/09 18:21/18:30: R$ nos cartões mensais, variação colorida pelo sentido bom e comparação mês a mês */
+.home-card__sla-delta.delta-bom, .delta-bom { color: #15803d; font-weight: 600; }
+.home-card__sla-delta.delta-ruim, .delta-ruim { color: #b91c1c; font-weight: 600; }
+.home-card__reais { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; margin-top: .5rem; font-size: .78rem; color: #475569; }
+.home-card__reais strong { color: #0f172a; text-align: right; }
+.home-card__reais small { grid-column: 1 / -1; color: #667085; }
+.home-comparar { margin-top: 14px; }
+.home-comparar__botao { border: 1px solid #0A3D62; background: #fff; color: #0A3D62; border-radius: 8px; padding: 6px 14px; cursor: pointer; font-weight: 600; }
+.home-comparar__botao:hover { background: #0A3D62; color: #fff; }
+.home-comparar__tabela { margin-top: 10px; overflow-x: auto; }
+.home-comparar__tabela p { font-size: 13px; color: #475569; margin: 0 0 6px; }
+.home-comparar__tabela table { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
+.home-comparar__tabela th, .home-comparar__tabela td { border-bottom: 1px solid #e5e7eb; padding: 5px 8px; text-align: right; white-space: nowrap; }
+.home-comparar__tabela th:first-child, .home-comparar__tabela td:first-child { text-align: left; }
+.home-comparar__tabela td small { color: inherit; opacity: .8; }
+.home-comparar__legenda { margin-top: 6px !important; }

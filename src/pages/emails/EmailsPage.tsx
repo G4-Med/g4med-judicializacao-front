@@ -42,6 +42,12 @@ interface EmailPendente {
   destinatario: string;
   corpo?: string;
   examesSolicit?: string;
+  /* @R 22/09 18:25: onde o PEDIDO está (¬o status do e-mail) + contradição afirmada pelo servidor. */
+  faseExibida?: string | null;
+  statusOrcamento?: string | null;
+  statusPerda?: string | null;
+  grupoEtario?: string | null;
+  contradicao?: string | null;
 }
 
 interface EmailPendenteTableRow extends EmailPendente {
@@ -444,7 +450,10 @@ export function EmailsPage() {
     let sucesso = 0;
     let falha = 0;
 
+    let contraditos = 0;
     for (const row of selectedEmails) {
+      // @R 22/09: e-mail que contradiz a fase do pedido NUNCA sai em massa — só um a um, confirmando.
+      if (row.contradicao) { contraditos += 1; continue; }
       try {
         const payload = await construirPayloadEmail(row);
         if (!payload.destinatario.trim() || !payload.assunto.trim() || !payload.corpo.trim()) {
@@ -461,7 +470,8 @@ export function EmailsPage() {
 
     setEnviandoMassa(false);
     setSelectedEmails([]);
-    alert(`Envio concluído. Sucesso: ${sucesso}. Falha: ${falha}.`);
+    alert(`Envio concluído. Sucesso: ${sucesso}. Falha: ${falha}.`
+      + (contraditos ? `\n${contraditos} não enviado(s) porque contradizem a fase do pedido — abra um a um.` : ''));
     await carregarDados();
   };
 
@@ -471,6 +481,9 @@ export function EmailsPage() {
       alert('Preencha destinatário, assunto e corpo do email.');
       return;
     }
+
+    if (emailSelecionado.contradicao
+      && !confirm(`ATENÇÃO — ${emailSelecionado.contradicao}\n\nEnviar mesmo assim?`)) return;
 
     try {
       setEnviandoId(emailSelecionado.id);
@@ -484,6 +497,7 @@ export function EmailsPage() {
         assunto: assuntoFinal,
         corpo: corpoFinal,
         ...(anexoUrl ? { anexoUrl } : {}),
+        ...(emailSelecionado.contradicao ? { confirmarContradicao: true } : {}),
       };
 
       console.log('[EmailsPage] payload envio email', payload);
@@ -515,6 +529,15 @@ export function EmailsPage() {
       style={tipoEmailStyle[rowData.tipoEmail] ?? tipoEmailStyle.DAR_PERDA}
       className="status-tag-custom"
     />
+  );
+
+  const faseBodyTemplate = (rowData: EmailPendenteTableRow) => (
+    <div className={`email-fase ${rowData.contradicao ? 'email-fase--contradicao' : ''}`} title={rowData.contradicao ?? undefined}>
+      <strong>{rowData.faseExibida ?? '—'}</strong>
+      {rowData.statusOrcamento && <small>{rowData.statusOrcamento}</small>}
+      {rowData.statusPerda && <small>perda: {rowData.statusPerda}</small>}
+      {rowData.contradicao && <span className="email-fase__alerta">⚠ não bate com o tipo do e-mail</span>}
+    </div>
   );
 
   const diasBodyTemplate = (rowData: EmailPendenteTableRow) => (
@@ -622,6 +645,7 @@ export function EmailsPage() {
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />E-mails pendentes de envio</h2>
         <DataTable
           aria-label="E-mails pendentes de envio"
+          rowClassName={(r: EmailPendenteTableRow) => (r.contradicao ? 'linha-email-contradicao' : '')}
           value={dataComSequencial}
           dataKey="id"
           paginator
@@ -694,7 +718,7 @@ export function EmailsPage() {
 
           <Column
             field="tipoEmail"
-            header={cabecalhoComHint('Grupo etário', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')}
+            header={cabecalhoComHint('Tipo de e-mail', 'O que este e-mail faz: enviar orçamento, pedir exames ou avisar perda. (Esta coluna se chamava "Grupo etário" por engano — @R 22/09.)')}
             sortable
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}
@@ -703,8 +727,28 @@ export function EmailsPage() {
           />
 
           <Column
+            field="faseExibida"
+            header={cabecalhoComHint('Fase do pedido', 'Onde o PEDIDO está hoje. Em vermelho quando contradiz o tipo do e-mail (ex.: aviso de perda com o pedido de volta na fase 3) — confira antes de enviar.')}
+            sortable
+            filter
+            filterElement={(options) => filterElement(options, 'Buscar')}
+            body={faseBodyTemplate}
+            style={{ minWidth: '13rem' }}
+          />
+
+          <Column
+            field="grupoEtario"
+            header={cabecalhoComHint('Grupo etário', 'Recém-nascido · Pediátrico (<18) · Adulto · Idoso (60+), pela data de nascimento. Vazio = sem data de nascimento.')}
+            sortable
+            filter
+            filterElement={(options) => filterElement(options, 'Buscar')}
+            body={(r: EmailPendenteTableRow) => r.grupoEtario ?? <span style={{ color: '#94a3b8' }}>sem data de nascimento</span>}
+            style={{ minWidth: '9rem' }}
+          />
+
+          <Column
             field="status"
-            header={cabecalhoComHint('Status', 'Onde o pedido está no funil (statusProcesso).')}
+            header={cabecalhoComHint('Status do e-mail', 'Situação do E-MAIL: pendente, erro, enviado ou cancelado — não é a fase do pedido.')}
             sortable
             filter
             filterElement={(options) => filterElement(options, 'Buscar')}

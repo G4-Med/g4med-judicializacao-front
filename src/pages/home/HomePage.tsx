@@ -2,6 +2,7 @@
 import { getOrders, getPerdas, getResultados, getSaudeDados, type SaudeDados } from '../../services/api/orders';
 import { estaEmAberto } from '../../services/reguaFases';
 import { ComoEstamos } from './ComoEstamos';
+import { AcessosBloco } from './AcessosBloco';
 import { Button } from 'primereact/button'
 import { useHomeOnboarding } from '../../app/onboarding/useHomeOnboarding';
 import { useEmailsJuridicoContagem } from '../emailsJuridico/EmailsJuridicoPage';
@@ -97,6 +98,25 @@ interface CardMesVida {
   pctMes: number | null;
   pctMesPassado: number | null;
   qtdMesPassado: number;
+  /** @R 22/09 18:30: subir é bom (enviados) ou ruim (aguardando, recusados)? Pinta o p.p. de verde/vermelho. */
+  bomSeSobe: boolean | null;
+  /** @R 22/09 18:21: R$ do mês. Projetado = soma da referência de preço (refPreco); realizado = soma do
+      orçamento que mandamos (valorOrcamento) — só existe onde houve orçamento. */
+  projetado: number;
+  realizado: number | null;
+  semReferencia: number;
+}
+
+/** Uma linha da comparação mês a mês (coorte: pedidos que ENTRARAM no mês, onde estão hoje). */
+interface LinhaComparacaoMes {
+  chave: string;
+  rotulo: string;
+  total: number;
+  enviados: number;
+  aguardando: number;
+  recusados: number;
+  projetado: number;
+  realizadoEnviados: number;
 }
 
 interface CardBaseValorQuantidade {
@@ -223,6 +243,12 @@ function toNumber(value?: number | null): number {
   return typeof value === 'number' && !Number.isNaN(value) ? value : 0;
 }
 
+/** Verde quando a variação vai no sentido bom do indicador; vermelho no ruim (@R 22/09 18:30). */
+function classeDelta(delta: number, bomSeSobe: boolean | null): string {
+  if (bomSeSobe === null || Math.abs(delta) < 0.05) return '';
+  return (delta > 0) === bomSeSobe ? 'delta-bom' : 'delta-ruim';
+}
+
 function formatCurrency(value: number): string {
   return value.toLocaleString('pt-BR', {
     style: 'currency',
@@ -261,6 +287,7 @@ export function HomePage() {
     listarBaterValores('todos').then((r) => setFila31(r.data.itens)).catch(() => setFila31(null));
   }, []);
   const navigate = useNavigate();
+  const [compararAberto, setCompararAberto] = useState(false);
   useHomeOnboarding();
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState<OrderResumo[]>([]);
@@ -398,6 +425,19 @@ export function HomePage() {
     const slaRecusados = slaPar((item) => item.statusProcesso === 'Perda');
     const slaPedidos = { pctMes: coorteMes.length ? 100 : null, pctMesPassado: coortePassado.length ? 100 : null, qtdMesPassado: coortePassado.length };
 
+    const ehEnviado = (item: OrderResumo) => item.statusOrcamento === STATUS_ORCAMENTO_ENVIADO;
+    const ehAguardando = (item: OrderResumo) => item.statusProcesso === STATUS_AGUARDANDO_ORCAMENTO;
+    const ehRecusado = (item: OrderResumo) => item.statusProcesso === 'Perda';
+    // R$ da coorte do mês (@R 22/09 18:21). Mesmos pedidos do número grande.
+    const reais = (filtro: (item: OrderResumo) => boolean, comRealizado: boolean) => {
+      const grupo = coorteMes.filter(filtro);
+      return {
+        projetado: grupo.reduce((acc, item) => acc + toNumber(item.refPreco), 0),
+        realizado: comRealizado ? grupo.reduce((acc, item) => acc + toNumber(item.valorOrcamento), 0) : null,
+        semReferencia: grupo.filter((item) => !(toNumber(item.refPreco) > 0)).length,
+      };
+    };
+
     const cardsMesVida: CardMesVida[] = [
       {
         titulo: 'QTDE de Pedidos',
@@ -405,6 +445,8 @@ export function HomePage() {
         valorMes: pedidosMes,
         valorVida: pedidosVida,
         ...slaPedidos,
+        bomSeSobe: null,
+        ...reais(() => true, false),
       },
       {
         titulo: 'QTDE Orçamentos Enviados',
@@ -412,6 +454,8 @@ export function HomePage() {
         valorMes: orcamentosEnviadosMes,
         valorVida: orcamentosEnviadosVida,
         ...slaEnviados,
+        bomSeSobe: true,
+        ...reais(ehEnviado, true),
       },
       {
         titulo: 'QTDE Aguardando Orçamento',
@@ -419,6 +463,8 @@ export function HomePage() {
         valorMes: aguardandoOrcamentoMes,
         valorVida: aguardandoOrcamentoVida,
         ...slaAguardando,
+        bomSeSobe: false,
+        ...reais(ehAguardando, false),
       },
       {
         titulo: 'QTDE Pedidos Recusados',
@@ -426,8 +472,31 @@ export function HomePage() {
         valorMes: pedidosRecusadosMes,
         valorVida: pedidosRecusadosVida,
         ...slaRecusados,
+        bomSeSobe: false,
+        ...reais(ehRecusado, false),
       },
     ];
+
+    /* @R 22/09 18:30: "um botão para abrir todos os meses e fazermos uma comparação — ver a evolução
+       do SLA". Mesma régua dos cartões (coorte por dataPedido, situação de HOJE), um mês por linha. */
+    const porMes = new Map<string, LinhaComparacaoMes>();
+    for (const item of orders) {
+      if (!item.dataPedido) continue;
+      const chave = String(item.dataPedido).slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(chave)) continue;
+      let linha = porMes.get(chave);
+      if (!linha) {
+        const [a, m] = chave.split('-');
+        linha = { chave, rotulo: `${m}/${a}`, total: 0, enviados: 0, aguardando: 0, recusados: 0, projetado: 0, realizadoEnviados: 0 };
+        porMes.set(chave, linha);
+      }
+      linha.total += 1;
+      linha.projetado += toNumber(item.refPreco);
+      if (ehEnviado(item)) { linha.enviados += 1; linha.realizadoEnviados += toNumber(item.valorOrcamento); }
+      if (ehAguardando(item)) linha.aguardando += 1;
+      if (ehRecusado(item)) linha.recusados += 1;
+    }
+    const comparacaoMeses = [...porMes.values()].sort((x, y) => (x.chave < y.chave ? 1 : -1));
 
     // Taxa de Segredo de Justiça (task #194, 26/08) — classifica o banco inteiro (¬só
     // o mês) contra o "Segredo de Justiça" já gravado em statusJuridico (censo 26/08:
@@ -590,6 +659,7 @@ export function HomePage() {
     return {
       aVerificar,
       cardsMesVida,
+      comparacaoMeses,
       cardsValorQuantidade,
       graficoProcedimentos,
       maiorValorGrafico,
@@ -698,8 +768,13 @@ export function HomePage() {
               Verde = empenhos tocados há <30h E régua há <3h. Vermelho diz QUAL elo parou.
               O dado é medido no banco, não em log — dado velho aqui é elo parado, sem exceção. */}
           <div
-            className="home-hero__metric"
-            title={saudeDados ? textoSaudeDados(saudeDados) : 'Não foi possível medir o frescor dos dados do Estado'}
+            className="home-hero__metric home-hero__metric--link"
+            role="link"
+            tabIndex={0}
+            onClick={() => navigate('/rotina-dados-estado')}
+            onKeyDown={(e) => { if (e.key === 'Enter') navigate('/rotina-dados-estado'); }}
+            title={(saudeDados ? textoSaudeDados(saudeDados) : 'Não foi possível medir o frescor dos dados do Estado')
+              + '\n\nClique para ver a rotina inteira, etapa por etapa.'}
           >
             <strong>Dados do Estado</strong>
             <span style={saudeDados && !(saudeDados.resumo?.ok ?? (saudeDados.empenhos.ok && saudeDados.regua.ok)) ? { color: '#fcd34d' } : undefined}>
@@ -718,6 +793,9 @@ export function HomePage() {
       </section>
 
       <ComoEstamos linhas={orders as any[]} />
+
+      {/* @R 22/09 18:18: quem entrou, quando, e quem está ativo agora. Só aparece para Admin/Gerente (o servidor recusa os demais). */}
+      <AcessosBloco />
 
       <PainelColapsavel
         titulo="Visão mensal x histórico"
@@ -745,7 +823,7 @@ export function HomePage() {
                   title={`Mês passado: ${card.qtdMesPassado} pedido(s) da coorte do mês passado estão hoje nesta situação. Atenção: eles tiveram mais tempo para andar — compare sabendo disso.`}>
                   Mês passado: <strong>{card.pctMesPassado === null ? '—' : `${card.pctMesPassado.toLocaleString('pt-BR')}%`}</strong>
                   {card.pctMes !== null && card.pctMesPassado !== null && (
-                    <span className="home-card__sla-delta">
+                    <span className={`home-card__sla-delta ${classeDelta(card.pctMes - card.pctMesPassado, card.bomSeSobe)}`}>
                       {` (${card.pctMes - card.pctMesPassado >= 0 ? '+' : ''}${(Math.round((card.pctMes - card.pctMesPassado) * 10) / 10).toLocaleString('pt-BR')} p.p.)`}
                     </span>
                   )}
@@ -756,12 +834,67 @@ export function HomePage() {
                   Mês passado: <strong>{card.qtdMesPassado}</strong>
                 </div>
               )}
+              {!loading && (
+                <div className="home-card__reais"
+                  title={`Projetado = soma da referência de preço dos pedidos deste cartão (${card.semReferencia} sem referência entram como R$ 0).${card.realizado !== null ? ' Realizado = soma do orçamento que enviamos.' : ''}`}>
+                  <span>{index === 0 ? 'Valor total do mês (projetado)' : 'Projetado'}</span>
+                  <strong>{formatCurrency(card.projetado)}</strong>
+                  {card.realizado !== null && (
+                    <>
+                      <span>Realizado (orçado)</span>
+                      <strong>{formatCurrency(card.realizado)}</strong>
+                    </>
+                  )}
+                  {index > 0 && indicadores.cardsMesVida[0].projetado > 0 && (
+                    <small>{(Math.round((card.projetado / indicadores.cardsMesVida[0].projetado) * 1000) / 10).toLocaleString('pt-BR')}% do valor do mês</small>
+                  )}
+                </div>
+              )}
               <div className="home-card__meta">
                 <span>Vida toda:</span>
                 <strong>{loading ? '--' : card.valorVida}</strong>
               </div>
             </article>
           ))}
+        </div>
+        <div className="home-comparar">
+          <button type="button" className="home-comparar__botao" onClick={() => setCompararAberto((v) => !v)}>
+            <i className={compararAberto ? 'pi pi-chevron-up' : 'pi pi-chart-line'} /> {compararAberto ? 'Fechar comparação' : 'Comparar todos os meses'}
+          </button>
+          {compararAberto && (
+            <div className="home-comparar__tabela">
+              <p>Cada linha = os pedidos que <b>entraram</b> naquele mês e onde estão <b>hoje</b>. Meses antigos tiveram mais tempo para andar — por isso "aguardando" costuma ser menor neles.</p>
+              <table>
+                <thead>
+                  <tr><th>Mês</th><th>Entraram</th><th>Enviados</th><th>Aguardando</th><th>Recusados</th><th>R$ projetado</th><th>R$ orçado (enviados)</th></tr>
+                </thead>
+                <tbody>
+                  {indicadores.comparacaoMeses.map((l, i) => {
+                    const ant = indicadores.comparacaoMeses[i + 1];
+                    const p = (n: number, t: number) => (t > 0 ? Math.round((n / t) * 1000) / 10 : null);
+                    const cel = (n: number, bomSeSobe: boolean, antN?: number) => {
+                      const v = p(n, l.total);
+                      const va = ant ? p(antN ?? 0, ant.total) : null;
+                      const cls = v !== null && va !== null ? classeDelta(v - va, bomSeSobe) : '';
+                      return <td className={cls}>{n} <small>{v === null ? '' : `(${v.toLocaleString('pt-BR')}%)`}</small></td>;
+                    };
+                    return (
+                      <tr key={l.chave}>
+                        <td>{l.rotulo}</td>
+                        <td>{l.total}</td>
+                        {cel(l.enviados, true, ant?.enviados)}
+                        {cel(l.aguardando, false, ant?.aguardando)}
+                        {cel(l.recusados, false, ant?.recusados)}
+                        <td>{formatCurrency(l.projetado)}</td>
+                        <td>{formatCurrency(l.realizadoEnviados)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="home-comparar__legenda"><span className="delta-bom">verde</span> = melhorou em relação ao mês anterior · <span className="delta-ruim">vermelho</span> = piorou.</p>
+            </div>
+          )}
         </div>
       </PainelColapsavel>
 
