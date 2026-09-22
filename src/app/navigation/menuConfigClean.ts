@@ -77,6 +77,9 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
       // @R 21/09/2026 (verbatim): "os ofícios com prazos e demais questões precisamos ter uma área no próprio
       // sistema... para a pessoa ver na íntegra o que chegou". Mesma permissão da Análise Jurídica.
       { label: '1,2 E-mails e ofícios', icon: 'pi pi-envelope', path: '/emails-juridico', screen: 'juridico' },
+      // @R 22/09/2026 "encolher primeiro, pode seguir com a camada de conferência": o médico só vê orçamento
+      // VALIDADO; aqui o jurídico valida/descarta o que o leitor de peças achou (back conferencia_orcamento.py).
+      { label: '1,3 Conferência de orçamentos', icon: 'pi pi-check-square', path: '/conferencia-orcamentos', screen: 'juridico' },
       { label: 'Selecionar Médico', icon: 'pi pi-angle-right', path: '/selecionar-medico', screen: 'selecionarMedico' },
       { label: 'Orçamento Médico', icon: 'pi pi-angle-right', path: '/orcamento-medico', screen: 'orcamentoMedico' },
       { label: 'Protocolar', icon: 'pi pi-angle-right', path: '/para-protocolar', screen: 'paraProtocolar' },
