@@ -482,3 +482,9 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
   background: #fbbf24; color: #3b2a00;
 }
 .home-hero__selo--vencido { background: #f87171; color: #3f0a0a; }
+
+/* SLA do mês (@R 22/09): % do total que entrou no mês + o mesmo % do mês passado. */
+.home-card__pct { font-size: 1.1rem; font-weight: 600; color: #46576d; margin-left: .5rem; }
+.home-card__sla { font-size: .78rem; color: #667085; margin-top: .25rem; }
+.home-card__sla strong { color: #344054; }
+.home-card__sla-delta { color: #667085; }

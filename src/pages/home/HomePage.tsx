@@ -93,6 +93,10 @@ interface CardMesVida {
   icone: string;
   valorMes: number;
   valorVida: number;
+  /** % do total que entrou no mês (@R 22/09: "o SLA que precisamos saber") e o mesmo % do mês passado. */
+  pctMes: number | null;
+  pctMesPassado: number | null;
+  qtdMesPassado: number;
 }
 
 interface CardBaseValorQuantidade {
@@ -360,30 +364,52 @@ export function HomePage() {
     const conversaoQuantidade =
       conversaoQuantidadeBase > 0 ? Math.round((ganhosQuantidade / conversaoQuantidadeBase) * 100) : 0;
 
+    /* SLA DO MÊS (@R 22/09 15:55: "o percentual do Total de cada um do mês para sabermos nosso
+       aproveitamento... e compararmos com o mês passado... isso para mim é o sla"). Mesmo corte de
+       coorte dos números: denominador = pedidos que ENTRARAM no mês; numerador = quantos deles estão
+       hoje em cada situação. ⚠ O mês passado é a foto de HOJE da coorte dele — ela teve mais tempo
+       para andar, então "enviados" tende a ser maior e "aguardando" menor lá. Está dito na dica. */
+    const mesPassadoRef = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
+    const coortePassado = orders.filter((item) => isSameMonth(mesPassadoRef, item.dataPedido));
+    const pct = (n: number, total: number) => (total > 0 ? Math.round((n / total) * 1000) / 10 : null);
+    const slaPar = (filtro: (item: OrderResumo) => boolean) => {
+      const mes = coorteMes.filter(filtro).length;
+      const passado = coortePassado.filter(filtro).length;
+      return { pctMes: pct(mes, coorteMes.length), pctMesPassado: pct(passado, coortePassado.length), qtdMesPassado: passado };
+    };
+    const slaEnviados = slaPar((item) => item.statusOrcamento === STATUS_ORCAMENTO_ENVIADO);
+    const slaAguardando = slaPar((item) => item.statusProcesso === STATUS_AGUARDANDO_ORCAMENTO);
+    const slaRecusados = slaPar((item) => item.statusProcesso === 'Perda');
+    const slaPedidos = { pctMes: coorteMes.length ? 100 : null, pctMesPassado: coortePassado.length ? 100 : null, qtdMesPassado: coortePassado.length };
+
     const cardsMesVida: CardMesVida[] = [
       {
         titulo: 'QTDE de Pedidos',
         icone: 'pi pi-inbox',
         valorMes: pedidosMes,
         valorVida: pedidosVida,
+        ...slaPedidos,
       },
       {
         titulo: 'QTDE Orçamentos Enviados',
         icone: 'pi pi-send',
         valorMes: orcamentosEnviadosMes,
         valorVida: orcamentosEnviadosVida,
+        ...slaEnviados,
       },
       {
         titulo: 'QTDE Aguardando Orçamento',
         icone: 'pi pi-clock',
         valorMes: aguardandoOrcamentoMes,
         valorVida: aguardandoOrcamentoVida,
+        ...slaAguardando,
       },
       {
         titulo: 'QTDE Pedidos Recusados',
         icone: 'pi pi-ban',
         valorMes: pedidosRecusadosMes,
         valorVida: pedidosRecusadosVida,
+        ...slaRecusados,
       },
     ];
 
@@ -691,7 +717,28 @@ export function HomePage() {
                 </div>
               </div>
               <span className="home-card__period" title="Só os pedidos que entraram neste mês — onde cada um está hoje">Entraram no mês</span>
-              <div className="home-card__metric">{loading ? '--' : card.valorMes}</div>
+              <div className="home-card__metric">
+                {loading ? '--' : card.valorMes}
+                {!loading && card.pctMes !== null && index > 0 && (
+                  <small className="home-card__pct" title="Percentual do total de pedidos que entraram neste mês">{card.pctMes.toLocaleString('pt-BR')}%</small>
+                )}
+              </div>
+              {!loading && index > 0 && (
+                <div className="home-card__sla"
+                  title={`Mês passado: ${card.qtdMesPassado} pedido(s) da coorte do mês passado estão hoje nesta situação. Atenção: eles tiveram mais tempo para andar — compare sabendo disso.`}>
+                  Mês passado: <strong>{card.pctMesPassado === null ? '—' : `${card.pctMesPassado.toLocaleString('pt-BR')}%`}</strong>
+                  {card.pctMes !== null && card.pctMesPassado !== null && (
+                    <span className="home-card__sla-delta">
+                      {` (${card.pctMes - card.pctMesPassado >= 0 ? '+' : ''}${(Math.round((card.pctMes - card.pctMesPassado) * 10) / 10).toLocaleString('pt-BR')} p.p.)`}
+                    </span>
+                  )}
+                </div>
+              )}
+              {!loading && index === 0 && (
+                <div className="home-card__sla" title="Pedidos que entraram no mês passado inteiro">
+                  Mês passado: <strong>{card.qtdMesPassado}</strong>
+                </div>
+              )}
               <div className="home-card__meta">
                 <span>Vida toda:</span>
                 <strong>{loading ? '--' : card.valorVida}</strong>
