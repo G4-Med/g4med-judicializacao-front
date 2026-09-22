@@ -12,7 +12,11 @@ import { useParams } from 'react-router-dom';
 
 const API = import.meta.env.VITE_API_URL as string;
 
-interface Documento { id: number; tipo: string; rotulo: string; nome: string | null }
+interface Documento { id: number; tipo: string; rotulo: string; nome: string | null;
+  /** #611: o orçamento anterior do próprio prestador abre por outra rota (d/<t>/cotacao/<id>/…) */
+  via?: 'doc' | 'cotacao' }
+interface CotacaoAnterior { id: number; procedimento: string; data: string | null; valor: number;
+  desfecho: 'GANHOU' | 'NAO_SEGUIU' | 'EM_ANDAMENTO'; desfechoRotulo: string; temArquivo: boolean }
 interface Dados {
   pedido: number;
   procedimento: string | null;
@@ -29,6 +33,8 @@ interface Dados {
                     campos: { campo: string; rotulo: string; valor: string;
                               citacoes: { anexoId: number; documento: string; nome: string | null; pagina: number; trecho: string }[] }[] } | null;
   expiraEm?: string | null;
+  // #611 (@R 22/09): só as cotações DELE (prestador deste link), com o desfecho ao lado
+  cotacoesAnteriores?: CotacaoAnterior[];
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -47,7 +53,7 @@ function Visualizador({ token, codigo, doc, onVoltar, irPara }: { token: string;
   const [fim, setFim] = useState(false);
   const [erro, setErro] = useState(false);
   // o código vai em CADA página: sem ele, quem soubesse o endereço da imagem pularia a tela de código
-  const url = (n: number) => `${API}/d/${token}/doc/${doc.id}/pagina/${n}/${codigo ? `?codigo=${encodeURIComponent(codigo)}` : ''}`;
+  const url = (n: number) => `${API}/d/${token}/${doc.via ?? 'doc'}/${doc.id}/pagina/${n}/${codigo ? `?codigo=${encodeURIComponent(codigo)}` : ''}`;
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -358,6 +364,36 @@ export function LinkDocumentosPage() {
                 </div>
               </section>
             ))}
+
+            {(dados.cotacoesAnteriores?.length ?? 0) > 0 && (
+              <section>
+                <h2 style={tituloSecao}>Suas cotações anteriores</h2>
+                <div style={{ fontSize: 13, color: cor.suave, margin: '0 4px 8px', lineHeight: 1.45 }}>
+                  Orçamentos que você mesmo nos enviou para procedimento parecido, do mais recente ao mais antigo, com o que aconteceu em cada um. É informação sua — não é comparação com outros prestadores.
+                </div>
+                <div style={{ background: cor.cartao, borderRadius: 12, overflow: 'hidden', border: `1px solid ${cor.linha}` }}>
+                  {dados.cotacoesAnteriores!.map((c, i) => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
+                      borderTop: i ? `1px solid ${cor.linha}` : 'none', fontSize: 15 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{brl(c.valor)}
+                          <span style={{ fontWeight: 400, color: cor.suave }}> · {dataBR(c.data)}</span></div>
+                        <div style={{ fontSize: 13, color: cor.suave }}>{c.procedimento}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600,
+                          color: c.desfecho === 'GANHOU' ? cor.destaque : c.desfecho === 'NAO_SEGUIU' ? cor.aviso : cor.suave }}>
+                          {c.desfechoRotulo}</div>
+                      </div>
+                      {c.temArquivo && (
+                        <button onClick={() => { setIrPara(undefined); setAberto({ id: c.id, tipo: 'COTACAO', rotulo: 'Seu orçamento',
+                          nome: `${c.procedimento} · ${dataBR(c.data)}`, via: 'cotacao' }); }}
+                          style={{ background: 'transparent', border: 'none', color: cor.destaque, fontWeight: 700,
+                            fontSize: 15, cursor: 'pointer', padding: 8 }}>Abrir ›</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             {(dados.pagoPeloEstado || dados.referencias.length > 0) && (
               <section>

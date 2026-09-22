@@ -152,6 +152,10 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   // @R 22/09 11:30: "já vir marcado... quando clicarmos para gerar o link o relatório será colocado dentro
   // do link". Vem marcado; a IA começa a ler assim que o diálogo abre (fica pronto até o clique).
   const [enviarRel, setEnviarRel] = useState(true);
+  // #611 (@R 22/09 via comercial): as cotações que ESTE prestador já nos mandou para procedimento parecido.
+  // Nasce DESLIGADO: a mensagem é colada à mão e o sistema não sabe se vai para um grupo com outros médicos —
+  // quem cola sabe para onde mandou.
+  const [enviarHist, setEnviarHist] = useState(false);
   const geracao = useRef<{ chave: string; p: Promise<any> } | null>(null);
   const [gerandoRel, setGerandoRel] = useState(false);
   const [erroRel, setErroRel] = useState<string | null>(null);
@@ -168,6 +172,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
     setRefsFora(new Set());
     setEnviarPag(false); setPagFora(new Set());
     setRelatorio(null); setEnviarRel(true); setErroRel(null); geracao.current = null; setAddEsp('nao');
+    setEnviarHist(false);
     if (!pedido) return;
     previaLinkDocumentos(pedido.id)
       .then((r) => { setPrevia(r.data); setRelatorio(r.data?.relatorio ?? null); })
@@ -182,6 +187,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   const hist = previa?.historicoPago;
   const pagamentos: any[] = hist?.pagamentos || [];
   const pagVao = pagamentos.filter((p) => !pagFora.has(p.id));
+  const cotacoesAnt: any[] = previa?.cotacoesAnteriores || [];
   // o relatório "serve" se leu exatamente os documentos marcados agora
   const marcadosChave = docs.filter((d) => !docsFora.has(d.id)).map((d) => d.id).sort((a, b) => a - b).join(',');
   const relServe = (r: any) => !!r && (r.meta?.documentos || []).map((d: any) => d.anexoId).sort((a: number, b: number) => a - b).join(',') === marcadosChave;
@@ -220,6 +226,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
           anexosExcluidos: [...docsFora], referenciasExcluidas: comValores ? [...refsFora] : [],
           pagamentosIncluidos: enviarPag ? pagVao.map((p) => p.id) : [],
           resumoId: enviarRel && rel ? rel.id : null,
+          historicoIncluido: enviarHist && cotacoesAnt.length > 0,
         });
       } catch (e: any) {
         alert(`${e?.response?.data?.error || 'Não foi possível gerar o link seguro.'}\n\nNada foi copiado.`);
@@ -409,6 +416,27 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
               <div style={{ color: '#6b7280' }}>{hist?.motivo || 'Sem base para comparar.'}</div>
             )}
           </section>
+
+          {cotacoesAnt.length > 0 && (
+            <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <Checkbox inputId="enviarHist" checked={enviarHist} onChange={(e) => setEnviarHist(!!e.checked)} />
+                <span><b>Mostrar ao prestador as cotações anteriores DELE</b> ({cotacoesAnt.length})<br />
+                  <span style={{ color: '#6b7280' }}>Só as que ele mesmo nos mandou para procedimento parecido, com o desfecho ao lado, e ele pode abrir o orçamento dele. <b>Não marque se o link vai para um grupo com outros médicos</b> — ele veria preços de outro.</span>
+                </span>
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 6, marginLeft: 28, color: enviarHist ? undefined : '#9ca3af' }}>
+                {cotacoesAnt.map((c) => (
+                  <div key={c.id} style={{ display: 'flex', gap: 8, fontVariantNumeric: 'tabular-nums', fontSize: 13 }}>
+                    <span style={{ width: 110, textAlign: 'right', fontWeight: 600 }}>{brl(c.valor)}</span>
+                    <span style={{ width: 80 }}>{c.data ? dataBR(c.data) : ''}</span>
+                    <span style={{ width: 170 }}>{c.desfechoRotulo}</span>
+                    <span style={{ flex: 1, fontSize: 12 }}>{c.procedimento}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
             <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
