@@ -212,7 +212,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
                 <b>Incluir os valores de referência no link</b> (com deflator de {deflatorPct})<br />
                 <span style={{ color: '#6b7280' }}>
                   {refs.length
-                    ? 'O médico vê só o valor com deflator — nunca o valor original nem o prestador.'
+                    ? 'O médico vê a referência total por procedimento e o local — nunca o valor original nem que existe deflator.'
                     : 'Nenhum orçamento foi encontrado no processo deste pedido.'}
                 </span>
               </span>
