@@ -55,7 +55,7 @@ export function descreverDocumentos(porTipo: Record<string, number>): string {
 }
 
 export function montarTextoPedido(p: PedidoParaCopiar, url: string, porTipo: Record<string, number>,
-                                  total: number, comValores: boolean): string {
+                                  total: number, comValores: boolean, codigo?: string | null): string {
   const oQueTem = total > 0
     ? `No link abaixo estão ${descreverDocumentos(porTipo)}, extraídos do processo e em ordem de leitura clínica.`
     : 'Os documentos clínicos deste processo ainda estão sendo reunidos; o link abaixo mostra o que já temos.';
@@ -75,11 +75,14 @@ do seu orçamento para dar seguimento.
 *DOCUMENTOS DO PROCESSO*${total ? ` (${total})` : ''}
 ${oQueTem}${valores}
 
-🔒 ${url}
+🔒 ${url}${codigo ? `\n*Código de acesso:* ${codigo}` : ''}
+*Validade:* 72 horas a partir deste envio.
 
-Ambiente seguro da G4MED para visualização dos documentos, de acordo com a LGPD: os
-arquivos abrem só para leitura (sem download), cada acesso é registrado e o link pode
-ser encerrado a qualquer momento. Por favor, não repasse.
+Ambiente seguro da G4MED, conforme a LGPD e a política de informação: os arquivos abrem
+só para leitura (sem download) e cada acesso é registrado (data, hora, IP, localização e
+aparelho) — a G4MED e a entidade responsável guardam o registro de todos os acessos a
+estes documentos. Uso restrito ao médico para cotação; proibida a reprodução. Não repasse:
+o código é exclusivo deste envio.
 
 *O QUE PRECISAMOS*
 Valor do procedimento, com a composição (equipe, hospitalar e OPME quando houver). Se
@@ -162,7 +165,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
         return;
       }
       const d = r.data;
-      const texto = montarTextoPedido(pedido, d.url, d.documentosPorTipo || {}, d.documentos || 0, !!d.mostrarValores);
+      const texto = montarTextoPedido(pedido, d.url, d.documentosPorTipo || {}, d.documentos || 0, !!d.mostrarValores, d.codigoAcesso);
       const copiou = await copiarTexto(texto);
       if (!copiou) {
         // FALLBACK MANUAL — o link JÁ foi gerado (custou uma escrita no banco); perder o texto

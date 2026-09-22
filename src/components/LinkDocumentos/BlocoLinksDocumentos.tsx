@@ -22,7 +22,7 @@ const aparelho = (ua: string) => {
   if (/WhatsApp/i.test(u)) return 'prévia do WhatsApp';
   return u ? u.slice(0, 30) : 'desconhecido';
 };
-const ROTULO: Record<string, string> = { PAGINA: 'abriu a lista', DOCUMENTO: 'abriu', NEGADO: 'tentou abrir (link encerrado)' };
+const ROTULO: Record<string, string> = { PAGINA: 'abriu a lista', DOCUMENTO: 'abriu', NEGADO: 'tentou abrir (link encerrado)', CODIGO_INVALIDO: 'digitou código errado' };
 
 export function BlocoLinksDocumentos({ orderId }: { orderId: number }) {
   const [links, setLinks] = useState<any[] | null>(null);
@@ -59,6 +59,7 @@ export function BlocoLinksDocumentos({ orderId }: { orderId: number }) {
                 <b>{lk.destino || (lk.medicoId ? `médico ${lk.medicoId}` : 'sem destino')}</b>
                 {' · '}criado {fmt(lk.criadoEm)}{lk.criadoPor ? ` por ${lk.criadoPor}` : ''}
                 {lk.mostrarValores ? ' · com valores' : ' · sem valores'}
+                {lk.codigoAcesso ? ` · código do último envio: ${lk.codigoAcesso}` : ' · sem código (enviado antes de 22/09)'}
                 {' · '}{docs.length ? `${docs.length} documento(s) aberto(s)` : 'nenhum documento aberto ainda'}
               </span>
               {lk.revogadoEm
@@ -69,7 +70,7 @@ export function BlocoLinksDocumentos({ orderId }: { orderId: number }) {
               <ul style={{ margin: '.25rem 0 0', paddingLeft: '1.1rem', fontSize: '.85rem' }}>
                 {lk.acessos.slice(0, 20).map((a: any, i: number) => (
                   <li key={i}>
-                    {fmt(a.momento)} · {ROTULO[a.tipo] || a.tipo}{a.documento ? ` ${a.documento}` : ''} · {aparelho(a.aparelho)}
+                    {fmt(a.momento)} · {ROTULO[a.tipo] || a.tipo}{a.documento ? ` ${a.documento}` : ''} · {aparelho(a.aparelho)}{a.localidade ? ` · ${a.localidade}` : ''}{a.ip ? ` · IP ${a.ip}` : ''}
                   </li>
                 ))}
                 {lk.acessos.length > 20 && <li>… e mais {lk.acessos.length - 20}</li>}

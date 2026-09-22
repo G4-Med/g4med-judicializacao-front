@@ -20,6 +20,7 @@ interface Dados {
   documentos: Documento[];
   referencias: { categoria: string; valorReferencia: number }[];
   referenciasNota: string;
+  expiraEm?: string | null;
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -29,13 +30,14 @@ const cor = {
   marca: '#0d0d0f', destaque: '#009739', aviso: '#8a5a00',
 };
 
-function Visualizador({ token, doc, onVoltar }: { token: string; doc: Documento; onVoltar: () => void }) {
+function Visualizador({ token, codigo, doc, onVoltar }: { token: string; codigo: string; doc: Documento; onVoltar: () => void }) {
   // Carrega página a página: mostra a 1ª; ao terminar de carregar, pede a próxima. A que responder
   // 404 marca o fim. Assim não é preciso saber o total antes, e um documento longo não baixa tudo de uma vez.
   const [paginas, setPaginas] = useState<number[]>([1]);
   const [fim, setFim] = useState(false);
   const [erro, setErro] = useState(false);
-  const url = (n: number) => `${API}/d/${token}/doc/${doc.id}/pagina/${n}/`;
+  // o código vai em CADA página: sem ele, quem soubesse o endereço da imagem pularia a tela de código
+  const url = (n: number) => `${API}/d/${token}/doc/${doc.id}/pagina/${n}/${codigo ? `?codigo=${encodeURIComponent(codigo)}` : ''}`;
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -76,18 +78,50 @@ function Visualizador({ token, doc, onVoltar }: { token: string; doc: Documento;
 export function LinkDocumentosPage() {
   const { token = '' } = useParams();
   const [dados, setDados] = useState<Dados | null>(null);
-  const [falha, setFalha] = useState<'encerrado' | 'invalido' | 'rede' | null>(null);
+  const [falha, setFalha] = useState<'encerrado' | 'expirado' | 'invalido' | 'rede' | 'bloqueado' | null>(null);
   const [aberto, setAberto] = useState<Documento | null>(null);
+  // @R 22/09: código de 4 dígitos que chega SÓ na mensagem. Guardado na aba (sessionStorage) para
+  // recarregar a página não pedir de novo; nunca vai na URL (senão quem visse o link veria o código).
+  const chave = `g4med_codigo_${token}`;
+  const [codigo, setCodigo] = useState<string>(() => { try { return sessionStorage.getItem(chave) || ''; } catch { return ''; } });
+  const [pedeCodigo, setPedeCodigo] = useState(false);
+  const [digitado, setDigitado] = useState('');
+  const [erroCodigo, setErroCodigo] = useState<string | null>(null);
+  const [conferindo, setConferindo] = useState(false);
+
+  const carregar = (cod: string, veioDoFormulario = false) => {
+    setConferindo(true);
+    fetch(`${API}/d/${encodeURIComponent(token)}/${cod ? `?codigo=${encodeURIComponent(cod)}` : ''}`)
+      .then(async (r) => {
+        if (r.status === 410) {
+          const j = await r.json().catch(() => ({}));
+          return setFalha(j?.codigo === 'expirado' ? 'expirado' : 'encerrado');
+        }
+        if (r.status === 429) return setFalha('bloqueado');
+        if (r.status === 401) {
+          setPedeCodigo(true);
+          try { sessionStorage.removeItem(chave); } catch { /* sem armazenamento: só pede de novo */ }
+          if (veioDoFormulario) {
+            const j = await r.json().catch(() => ({}));
+            const resta = typeof j?.tentativasRestantes === 'number' ? j.tentativasRestantes : null;
+            setErroCodigo(`Código incorreto.${resta !== null && resta >= 0 ? ` ${resta} tentativa(s) antes do bloqueio de 15 minutos.` : ''}`);
+          }
+          return;
+        }
+        if (!r.ok) return setFalha('invalido');
+        setCodigo(cod);
+        try { if (cod) sessionStorage.setItem(chave, cod); } catch { /* ok */ }
+        setPedeCodigo(false);
+        setDados(await r.json());
+      })
+      .catch(() => setFalha('rede'))
+      .finally(() => setConferindo(false));
+  };
 
   useEffect(() => {
     document.title = 'Documentos · G4MED';
-    fetch(`${API}/d/${encodeURIComponent(token)}/`)
-      .then(async (r) => {
-        if (r.status === 410) return setFalha('encerrado');
-        if (!r.ok) return setFalha('invalido');
-        setDados(await r.json());
-      })
-      .catch(() => setFalha('rede'));
+    carregar(codigo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const pagina: React.CSSProperties = {
@@ -96,7 +130,7 @@ export function LinkDocumentosPage() {
   };
 
   if (aberto) {
-    return <div style={pagina}><Visualizador token={token} doc={aberto} onVoltar={() => setAberto(null)} /></div>;
+    return <div style={pagina}><Visualizador token={token} codigo={codigo} doc={aberto} onVoltar={() => setAberto(null)} /></div>;
   }
 
   const agrupado = new Map<string, Documento[]>();
@@ -116,7 +150,42 @@ export function LinkDocumentosPage() {
       </header>
 
       <main style={{ padding: '16px 16px 40px', maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {!dados && !falha && <div style={{ color: cor.suave }}>Carregando…</div>}
+        {!dados && !falha && !pedeCodigo && <div style={{ color: cor.suave }}>Carregando…</div>}
+        {pedeCodigo && !falha && (
+          <form onSubmit={(e) => { e.preventDefault(); if (digitado.length === 4) { setErroCodigo(null); carregar(digitado, true); } }}
+            style={{ background: cor.cartao, borderRadius: 12, padding: 20, border: `1px solid ${cor.linha}`,
+              display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label htmlFor="codigo-acesso" style={{ fontWeight: 600, fontSize: 17 }}>🔒 Código de acesso</label>
+            <div style={{ fontSize: 14, color: cor.suave, lineHeight: 1.45 }}>
+              Digite o código de 4 números que veio junto com a mensagem em que você recebeu este link.
+              Conforme a LGPD, cada acesso é registrado (data, hora, IP, localização e aparelho) e a G4MED e a
+              entidade responsável guardam o registro de todos os acessos a estes documentos.
+            </div>
+            <input id="codigo-acesso" inputMode="numeric" autoComplete="one-time-code" maxLength={4} autoFocus
+              value={digitado} onChange={(e) => setDigitado(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              aria-invalid={!!erroCodigo} aria-describedby={erroCodigo ? 'codigo-erro' : undefined}
+              style={{ fontSize: 28, letterSpacing: '0.5em', textAlign: 'center', padding: '10px 12px',
+                borderRadius: 10, border: `1px solid ${erroCodigo ? cor.aviso : cor.linha}`, fontVariantNumeric: 'tabular-nums' }} />
+            {erroCodigo && <div id="codigo-erro" role="alert" style={{ color: cor.aviso, fontSize: 14 }}>{erroCodigo}</div>}
+            <button type="submit" disabled={digitado.length !== 4 || conferindo}
+              style={{ background: cor.destaque, color: '#fff', border: 'none', borderRadius: 10, padding: '14px 16px',
+                fontSize: 16, fontWeight: 700, opacity: digitado.length !== 4 || conferindo ? 0.5 : 1 }}>
+              {conferindo ? 'Conferindo…' : 'Abrir documentos'}
+            </button>
+          </form>
+        )}
+        {falha === 'expirado' && (
+          <div style={{ background: cor.cartao, borderRadius: 12, padding: 16 }}>
+            Este link expirou — a validade é de 72 horas a partir do envio. Se você ainda precisa dos documentos,
+            responda a mensagem em que recebeu o link e pediremos um novo.
+          </div>
+        )}
+        {falha === 'bloqueado' && (
+          <div style={{ background: cor.cartao, borderRadius: 12, padding: 16 }}>
+            Muitas tentativas com código errado. Por segurança, este link ficou bloqueado por 15 minutos.
+            Se você não tem o código, responda a mensagem em que recebeu o link.
+          </div>
+        )}
         {falha === 'encerrado' && (
           <div style={{ background: cor.cartao, borderRadius: 12, padding: 16 }}>
             Este link foi encerrado pela G4MED. Se você ainda precisa dos documentos, responda a mensagem em que recebeu o link.
@@ -138,8 +207,8 @@ export function LinkDocumentosPage() {
             <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', background: '#eaf5ee', border: `1px solid #bfe3cb`,
               borderRadius: 12, padding: 12, fontSize: 14, lineHeight: 1.45 }}>
               <span aria-hidden style={{ fontSize: 18 }}>🔒</span>
-              <span>Ambiente seguro da G4MED, de acordo com a LGPD. Os documentos abrem só para leitura, sem download,
-                e cada abertura é registrada (data, hora e aparelho). Não repasse este link.</span>
+              <span>{dados.aviso}
+                {dados.expiraEm && <><br /><b>Disponível até {new Date(dados.expiraEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.</b></>}</span>
             </div>
 
             {dados.documentos.length === 0 && (

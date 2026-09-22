@@ -38,6 +38,7 @@ import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExp
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
 import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
+import { BlocoLinksDocumentos } from '../../components/LinkDocumentos/BlocoLinksDocumentos';
 import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, colunaBaixarOrcamento } from '../../components/ColunasEmpenho/colunasEmpenho';
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
@@ -122,6 +123,8 @@ export function OrcamentoMedicoPage() {
   // Suspense) a chamada virava `null?.(...)` — SEM erro, SEM aviso, SEM nada. "Clico em Copiar
   // e não acontece nada" é exatamente essa assinatura: nem confirm(), nem rede, nem modal.
   const [copiaComLink, setCopiaComLink] = useState<{ p: PedidoParaCopiar; recarregar?: () => void } | null>(null);
+  // @R 22/09 00:16: modal do rastro de acessos do link (só equipe)
+  const [rastroDe, setRastroDe] = useState<number | null>(null);
   // @R 28/08 03:37: painel do pedido abre ABAIXO da linha, em toda fase.
   const [expandidas, setExpandidas] = useState<any>(undefined);
   const { isReadOnly } = useAccess();
@@ -581,6 +584,10 @@ ${blocos}
 
   return (
     <div className="orcamento-medico-page">
+      <Dialog header={rastroDe ? `Link e acessos — pedido #${rastroDe}` : ''} visible={!!rastroDe}
+        onHide={() => setRastroDe(null)} style={{ width: 'min(760px, 96vw)' }}>
+        {rastroDe && <BlocoLinksDocumentos orderId={rastroDe} />}
+      </Dialog>
       <DialogoCopiarPedido pedido={copiaComLink?.p ?? null} onClose={() => setCopiaComLink(null)}
         onCopiado={() => copiaComLink?.recarregar?.()} />
       <PrimeiraVisitaInfo etapaId="orcamento-medico" />
@@ -697,6 +704,22 @@ ${blocos}
               </span>
             )}  frozen alignFrozen="left" />
           {colunaOrigem(dataComMedico)}
+          {/* @R 22/09 00:16: "coluna do link e acessos... só para nós, com modal". Dado interno:
+              nunca aparece na página que o médico abre. */}
+          <Column header={cabecalhoComHint('Link e acessos', 'Links seguros enviados deste pedido: quantos acessos houve e até quando valem (72 h a cada envio). Clique para ver cada acesso com data, IP, localização e aparelho.')}
+            style={{ minWidth: '9rem' }}
+            body={(r: any) => {
+              const l = r.linkDocumentos;
+              if (!l) return <span style={{ color: 'var(--mc-text-muted, #888)' }}>—</span>;
+              const exp = l.expiraEm ? new Date(l.expiraEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : null;
+              return (
+                <Button text size="small" onClick={() => setRastroDe(r.id)}
+                  aria-label={`Ver acessos ao link do pedido ${r.id}`}
+                  label={`${l.acessos} acesso${l.acessos === 1 ? '' : 's'}`}
+                  tooltip={exp ? (l.expirado ? `Expirado em ${exp}` : `Vale até ${exp}`) : 'Enviado antes de 22/09 (sem validade)'}
+                  severity={l.expirado ? 'secondary' : undefined} />
+              );
+            }} />
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
           {colunaSegredo(undefined, dataComMedico)}
