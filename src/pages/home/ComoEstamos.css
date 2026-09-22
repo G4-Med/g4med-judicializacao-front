@@ -100,3 +100,10 @@ body.dark-theme .ce-serie__semvalor td { background: #0d1b2a; color: #94a3b8; bo
 body.dark-theme .ce-hint__dl dt, body.dark-theme .ce-hint__legenda { color: #aec0b5; }
 body.dark-theme .ce-hint__dl code { background: #1c2722; }
 body.dark-theme .ce-hint__legenda { border-top-color: #2b3932; }
+
+/* @R 22/09 19:14: "Como estamos" abre/fecha como os outros painéis, com hover */
+.ce__toggle { display: inline-flex; align-items: center; gap: 10px; border: 0; background: transparent; padding: 6px 8px; margin: -6px -8px; border-radius: 8px; cursor: pointer; font: inherit; color: #64748b; transition: background-color .15s ease, color .15s ease; }
+.ce__toggle:hover { background: rgba(15, 23, 42, 0.05); color: var(--mc-navy-700, #0a3d62); }
+.ce__toggle:hover h2 { text-decoration: underline; }
+.ce--fechada > :not(.ce__topo) { display: none; }
+.ce--fechada .ce__topo { margin-bottom: 0; }

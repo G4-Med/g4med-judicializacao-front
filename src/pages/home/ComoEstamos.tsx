@@ -630,20 +630,25 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
   }, [linhas, hoje.getDate(), hoje.getMonth(), hoje.getFullYear()]);
 
   const nomeMes = hoje.toLocaleDateString('pt-BR', { month: 'long' });
+  const [aberto, setAberto] = useState(false);
   const foco = lente === 'mes' ? dados.mesAtual : lente === 'ano' ? dados.anoAtual : dados.vida;
 
   return (
-    <section className="ce">
+    <section className={`ce ${aberto ? '' : 'ce--fechada'}`}>
       <header className="ce__topo">
-        <h2>Como estamos</h2>
-        <div className="ce__lentes" role="tablist">
+        {/* @R 22/09 19:14: vinha sempre aberto; agora abre/fecha como os outros painéis da Início */}
+        <button type="button" className="ce__toggle" onClick={() => setAberto((v) => !v)} aria-expanded={aberto}>
+          <i className={`pi ${aberto ? 'pi-chevron-down' : 'pi-chevron-right'}`} />
+          <h2>Como estamos</h2>
+        </button>
+        {aberto && <div className="ce__lentes" role="tablist">
           {([['mes', `${nomeMes} (até dia ${dados.dia})`], ['ano', `${dados.ano}`], ['vida', 'Vida toda'], ['serie', 'Mês a mês']] as const)
             .map(([chave, rotulo]) => (
               <button key={chave} type="button" role="tab" aria-selected={lente === chave}
                 className={`ce__lente ${lente === chave ? 'is-ativa' : ''}`}
                 onClick={() => setLente(chave as Lente)}>{rotulo}</button>
             ))}
-        </div>
+        </div>}
       </header>
 
       {lente === 'serie' ? <SerieMensal linhas={linhas} moeda={moeda} /> : (

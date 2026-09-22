@@ -563,3 +563,13 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
 .acessos-log__lista b { color: #0A3D62; font-variant-numeric: tabular-nums; font-weight: 600; }
 .acessos-log__lista a { color: #0A3D62; font-weight: 600; }
 .acessos-log__mudanca { grid-column: 2; color: #475569; }
+
+/* @R 22/09 19:14: banner mais baixo — Dados do Estado na coluna da esquerda e fases em 2 colunas */
+.home-hero { grid-template-columns: minmax(0, 1fr) minmax(460px, 1.2fr); align-items: start; }
+.home-hero__fases { display: block; columns: 2; column-gap: 22px; }
+.home-hero__fases li { break-inside: avoid; margin-bottom: 3px; }
+.home-hero__estado { margin-top: 4px; max-width: 58ch; padding: 10px 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px; background: rgba(255,255,255,.05); border-bottom: 1px solid rgba(255,255,255,.14); }
+.home-hero__estado:last-child { padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,.14); }
+.home-hero__estado span { font-size: 14px; }
+@media (max-width: 1100px) { .home-hero { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .home-hero__fases { columns: 1; } }

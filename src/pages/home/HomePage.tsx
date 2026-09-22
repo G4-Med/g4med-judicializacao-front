@@ -690,6 +690,32 @@ export function HomePage() {
             Visualize valores em aberto, conversão financeira e a performance dos procedimentos
             com a precisão que a MEDCHECK entrega à saúde de Minas Gerais.
           </p>
+          {/* @R 22/09 19:14: Dados do Estado saiu do painel para o lado — o banner cresce menos na vertical */}
+          {/* A cadeia do dinheiro do Estado (portal MG → 331 → 548 → aqui) chegou hoje?
+              Verde = empenhos tocados há <30h E régua há <3h. Vermelho diz QUAL elo parou.
+              O dado é medido no banco, não em log — dado velho aqui é elo parado, sem exceção. */}
+          <div
+            className="home-hero__metric home-hero__metric--link home-hero__estado"
+            role="link"
+            tabIndex={0}
+            onClick={() => navigate('/rotina-dados-estado')}
+            onKeyDown={(e) => { if (e.key === 'Enter') navigate('/rotina-dados-estado'); }}
+            title={(saudeDados ? textoSaudeDados(saudeDados) : 'Não foi possível medir o frescor dos dados do Estado')
+              + '\n\nClique para ver a rotina inteira, etapa por etapa.'}
+          >
+            <strong>Dados do Estado</strong>
+            <span style={saudeDados && !(saudeDados.resumo?.ok ?? (saudeDados.empenhos.ok && saudeDados.regua.ok)) ? { color: '#fcd34d' } : undefined}>
+              {!saudeDados
+                ? '—'
+                : saudeDados.resumo
+                  ? (saudeDados.resumo.ok
+                    ? `✓ pagos até ${dataCurta(saudeDados.empenhos.maxPagamento)}`
+                    : `⚠ ${saudeDados.resumo.texto} · pagos até ${dataCurta(saudeDados.empenhos.maxPagamento)}`)
+                  : saudeDados.empenhos.ok && saudeDados.regua.ok
+                    ? `✓ atualizados · pagos até ${saudeDados.empenhos.maxPagamento ?? '?'}`
+                    : `⚠ dados parados · pagos até ${saudeDados.empenhos.maxPagamento ?? '?'}`}
+            </span>
+          </div>
         </div>
 
         <div className="home-hero__panel">
@@ -766,31 +792,6 @@ export function HomePage() {
                 <b>{loading ? '--' : indicadores.aVerificar.qtd}</b>
               </li>
             </ul>
-          </div>
-          {/* A cadeia do dinheiro do Estado (portal MG → 331 → 548 → aqui) chegou hoje?
-              Verde = empenhos tocados há <30h E régua há <3h. Vermelho diz QUAL elo parou.
-              O dado é medido no banco, não em log — dado velho aqui é elo parado, sem exceção. */}
-          <div
-            className="home-hero__metric home-hero__metric--link"
-            role="link"
-            tabIndex={0}
-            onClick={() => navigate('/rotina-dados-estado')}
-            onKeyDown={(e) => { if (e.key === 'Enter') navigate('/rotina-dados-estado'); }}
-            title={(saudeDados ? textoSaudeDados(saudeDados) : 'Não foi possível medir o frescor dos dados do Estado')
-              + '\n\nClique para ver a rotina inteira, etapa por etapa.'}
-          >
-            <strong>Dados do Estado</strong>
-            <span style={saudeDados && !(saudeDados.resumo?.ok ?? (saudeDados.empenhos.ok && saudeDados.regua.ok)) ? { color: '#fcd34d' } : undefined}>
-              {!saudeDados
-                ? '—'
-                : saudeDados.resumo
-                  ? (saudeDados.resumo.ok
-                    ? `✓ pagos até ${dataCurta(saudeDados.empenhos.maxPagamento)}`
-                    : `⚠ ${saudeDados.resumo.texto} · pagos até ${dataCurta(saudeDados.empenhos.maxPagamento)}`)
-                  : saudeDados.empenhos.ok && saudeDados.regua.ok
-                    ? `✓ atualizados · pagos até ${saudeDados.empenhos.maxPagamento ?? '?'}`
-                    : `⚠ dados parados · pagos até ${saudeDados.empenhos.maxPagamento ?? '?'}`}
-            </span>
           </div>
         </div>
       </section>
