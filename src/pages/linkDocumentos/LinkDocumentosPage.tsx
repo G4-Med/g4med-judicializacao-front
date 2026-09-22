@@ -88,6 +88,109 @@ function Visualizador({ token, codigo, doc, onVoltar, irPara }: { token: string;
   );
 }
 
+type Resumo = NonNullable<Dados['resumoClinico']>;
+type Campo = Resumo['campos'][number];
+const NAO_CONSTA = (v?: string) => !v || /^n[ãa]o consta/i.test(v.trim());
+
+/** Chips de citação: cada um abre o documento na página de onde a frase saiu. */
+function Citacoes({ campo, docs, abrir }: { campo?: Campo; docs: Documento[]; abrir: (d: Documento, p: number) => void }) {
+  if (!campo?.citacoes?.length) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+      {campo.citacoes.map((x, i) => {
+        const doc = docs.find((d) => d.id === x.anexoId);
+        return doc ? (
+          <button key={i} title={`${x.nome ? `${x.nome}\n` : ''}"${x.trecho}"`} onClick={() => abrir(doc, x.pagina)}
+            style={{ background: '#eef6f1', border: '1px solid #cfe7d8', borderRadius: 999, padding: '5px 10px',
+              fontSize: 13, color: '#0b5a2e', cursor: 'pointer', display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+            <span aria-hidden>📄</span>{x.documento} · p. {x.pagina}
+          </button>
+        ) : null;
+      })}
+    </div>
+  );
+}
+
+/** Resumo do caso (@R 22/09: "inteligência de dados em saúde para o médico, didático, fácil"):
+ *  o que se cota em 1 olhar, depois o que já existe, depois o que falta — sempre com a fonte. */
+function ResumoCaso({ r, docs, abrir }: { r: Resumo; docs: Documento[]; abrir: (d: Documento, p: number) => void }) {
+  const c = Object.fromEntries(r.campos.map((x) => [x.campo, x])) as Record<string, Campo>;
+  const urg = c.urgenciaDeclarada;
+  const temUrg = urg && !NAO_CONSTA(urg.valor);
+  const falta = c.examesFaltando;
+  const semFalta = !falta || NAO_CONSTA(falta.valor) || /nenhum exame/i.test(falta.valor);
+  const linha = (rot: string, campo?: Campo, grande = false) => campo && (
+    <div>
+      <div style={{ fontSize: 12, color: cor.suave, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{rot}</div>
+      <div style={{ fontSize: grande ? 18 : 15, fontWeight: grande ? 700 : 400, lineHeight: 1.4,
+        color: NAO_CONSTA(campo.valor) ? cor.suave : cor.texto }}>{NAO_CONSTA(campo.valor) ? 'Não consta nos documentos' : campo.valor}</div>
+      <Citacoes campo={campo} docs={docs} abrir={abrir} />
+    </div>
+  );
+  return (
+    <section>
+      <h2 style={tituloSecao}>Resumo do caso</h2>
+      <div style={{ background: cor.cartao, borderRadius: 14, border: `1px solid ${cor.linha}`, overflow: 'hidden' }}>
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <span style={{ borderRadius: 999, padding: '4px 10px', fontSize: 13, fontWeight: 600,
+              background: temUrg ? '#fde7e7' : '#eef0ec', color: temUrg ? '#9b1c1c' : cor.suave }}>
+              {temUrg ? '⚠ Urgência declarada' : 'Sem urgência declarada'}
+            </span>
+            <span style={{ borderRadius: 999, padding: '4px 10px', fontSize: 13, background: '#eef0ec', color: cor.suave }}>
+              lido por IA em {docs.length} documento{docs.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          {linha('Procedimento pedido', c.procedimentoPedido, true)}
+          {linha('Diagnóstico', c.diagnostico)}
+          {temUrg && linha('Por que é urgente', urg)}
+          {linha('Laudos e exames já feitos', c.laudosExames)}
+        </div>
+        {!semFalta && (
+          <div style={{ background: '#fff7e6', borderTop: '1px solid #f5dfb0', padding: '14px 16px' }}>
+            <div style={{ fontWeight: 700, color: '#7a4b00', fontSize: 14 }}>O que pode faltar para fechar o valor</div>
+            <div style={{ fontSize: 15, lineHeight: 1.45, marginTop: 4 }}>{falta.valor}</div>
+            <div style={{ fontSize: 13, color: '#7a4b00', marginTop: 6 }}>Se precisar de algum destes, responda a mensagem — nós buscamos.</div>
+          </div>
+        )}
+        <div style={{ fontSize: 12, color: cor.suave, padding: '10px 16px', borderTop: `1px solid ${cor.linha}` }}>{r.aviso}</div>
+      </div>
+    </section>
+  );
+}
+
+/** Régua de preço (@R 22/09): pagos pelo Estado (●) e orçamentos do processo (◆) na MESMA escala,
+ *  com a mediana paga (│). O médico vê em 1 olhar onde as referências estão frente ao que se paga. */
+function ReguaPrecos({ pagos, refs, mediana }: { pagos: number[]; refs: number[]; mediana?: number }) {
+  const todos = [...pagos, ...refs, ...(mediana ? [mediana] : [])];
+  if (todos.length < 2) return null;
+  const min = Math.min(...todos), max = Math.max(...todos);
+  const pos = (v: number) => (max === min ? 50 : 4 + ((v - min) / (max - min)) * 92);
+  const curto = (v: number) => (v >= 1e6 ? `R$ ${(v / 1e6).toFixed(1).replace('.', ',')} mi` : `R$ ${Math.round(v / 1000)} mil`);
+  return (
+    <div style={{ padding: '6px 0 2px' }}>
+      <div style={{ position: 'relative', height: 44 }} role="img"
+        aria-label={`Faixa de preços de ${brl(min)} a ${brl(max)}`}>
+        <div style={{ position: 'absolute', left: '4%', right: '4%', top: 20, height: 6, borderRadius: 3, background: '#e7ebe4' }} />
+        {mediana ? <div title={`Mediana paga ${brl(mediana)}`} style={{ position: 'absolute', left: `${pos(mediana)}%`, top: 10, width: 2, height: 26,
+          background: cor.destaque, transform: 'translateX(-1px)' }} /> : null}
+        {pagos.map((v, i) => <div key={`p${i}`} title={`Pago pelo Estado ${brl(v)}`} style={{ position: 'absolute', left: `${pos(v)}%`, top: 17,
+          width: 12, height: 12, borderRadius: '50%', background: cor.destaque, border: '2px solid #fff', transform: 'translateX(-6px)' }} />)}
+        {refs.map((v, i) => <div key={`r${i}`} title={`Orçamento no processo ${brl(v)}`} style={{ position: 'absolute', left: `${pos(v)}%`, top: 17,
+          width: 11, height: 11, background: '#0A3D62', border: '2px solid #fff', transform: 'translateX(-6px) rotate(45deg)' }} />)}
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: cor.suave, fontVariantNumeric: 'tabular-nums' }}>
+        <span>{curto(min)}</span><span>{curto(max)}</span>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 12, color: cor.suave, marginTop: 6 }}>
+        {pagos.length > 0 && <span><span style={{ color: cor.destaque }}>●</span> pago pelo Estado</span>}
+        {refs.length > 0 && <span><span style={{ color: '#0A3D62' }}>◆</span> orçamento neste processo</span>}
+        {mediana ? <span><span style={{ color: cor.destaque, fontWeight: 700 }}>│</span> mediana paga</span> : null}
+      </div>
+    </div>
+  );
+}
+
 export function LinkDocumentosPage() {
   const { token = '' } = useParams();
   const [dados, setDados] = useState<Dados | null>(null);
@@ -226,33 +329,8 @@ export function LinkDocumentosPage() {
             </div>
 
             {dados.resumoClinico && (
-              <section>
-                <h2 style={tituloSecao}>Resumo médico para leitura rápida</h2>
-                <div style={{ background: cor.cartao, borderRadius: 12, border: `1px solid ${cor.linha}`, padding: '14px 16px',
-                  display: 'flex', flexDirection: 'column', gap: 12, fontSize: 15, lineHeight: 1.45 }}>
-                  {dados.resumoClinico.campos.map((c) => (
-                    <div key={c.campo}>
-                      <div style={{ fontSize: 12, color: cor.suave, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{c.rotulo}</div>
-                      <div>{c.valor}</div>
-                      {c.citacoes.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                          {c.citacoes.map((x, i) => {
-                            const doc = dados.documentos.find((d) => d.id === x.anexoId);
-                            return doc ? (
-                              <button key={i} title={x.trecho} onClick={() => { setIrPara(x.pagina); setAberto(doc); }}
-                                style={{ background: '#eaf5ee', border: '1px solid #bfe3cb', borderRadius: 999, padding: '4px 10px',
-                                  fontSize: 13, color: cor.texto, cursor: 'pointer' }}>
-                                {x.documento}{x.nome ? ` · ${x.nome}` : ''}, p. {x.pagina} ›
-                              </button>
-                            ) : null;
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  <div style={{ fontSize: 12, color: cor.aviso }}>{dados.resumoClinico.aviso}</div>
-                </div>
-              </section>
+              <ResumoCaso r={dados.resumoClinico} docs={dados.documentos}
+                abrir={(d, p) => { setIrPara(p); setAberto(d); }} />
             )}
 
             {dados.documentos.length === 0 && (
@@ -280,26 +358,36 @@ export function LinkDocumentosPage() {
               </section>
             ))}
 
-            {/* @R 22/09 00:36: estimativa pelo que o Estado já pagou + cada orçamento do processo com
-                local, descrição e valor total. Só aparece se quem copiou escolheu mandar valores. */}
-            {dados.pagoPeloEstado && (
+            {(dados.pagoPeloEstado || dados.referencias.length > 0) && (
               <section>
-                <h2 style={tituloSecao}>Estimativa · o que o Estado já pagou</h2>
-                <div style={{ background: cor.cartao, borderRadius: 12, border: `1px solid ${cor.linha}`, padding: '14px 16px',
-                  display: 'flex', flexDirection: 'column', gap: 6, fontVariantNumeric: 'tabular-nums' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                    <span>Média paga</span><b>{brl(dados.pagoPeloEstado.media)}</b>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                    <span>Mediana</span><b>{brl(dados.pagoPeloEstado.mediana)}</b>
-                  </div>
-                  <div style={{ fontSize: 13, color: cor.suave, lineHeight: 1.45 }}>
-                    {dados.pagoPeloEstado.n} processo{dados.pagoPeloEstado.n === 1 ? '' : 's'} com procedimento parecido,
-                    pagos entre {dataBR(dados.pagoPeloEstado.de)} e {dataBR(dados.pagoPeloEstado.ate)}. {dados.pagoPeloEstado.aviso}
-                  </div>
-                  {(dados.pagoPeloEstado.lista ?? []).map((x, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, justifyContent: 'space-between', borderTop: `1px solid ${cor.linha}`, paddingTop: 6 }}>
-                      <span style={{ fontSize: 13, color: cor.suave, flex: 1 }}>{x.mes.split('-').reverse().join('/')} · {x.procedimento}</span>
+                <h2 style={tituloSecao}>Inteligência de preço</h2>
+                <div style={{ background: cor.cartao, borderRadius: 14, border: `1px solid ${cor.linha}`, padding: '14px 16px',
+                  display: 'flex', flexDirection: 'column', gap: 10, fontVariantNumeric: 'tabular-nums' }}>
+                  <ReguaPrecos pagos={(dados.pagoPeloEstado?.lista ?? []).map((x) => x.valor)}
+                    refs={dados.referencias.map((r) => r.valorReferencia)} mediana={dados.pagoPeloEstado?.mediana} />
+                  {dados.pagoPeloEstado && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div style={{ background: '#f3f8f4', borderRadius: 10, padding: '10px 12px' }}>
+                        <div style={{ fontSize: 12, color: cor.suave }}>Mediana paga pelo Estado</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, whiteSpace: 'nowrap' }}>{brl(dados.pagoPeloEstado.mediana)}</div>
+                      </div>
+                      <div style={{ background: '#f3f8f4', borderRadius: 10, padding: '10px 12px' }}>
+                        <div style={{ fontSize: 12, color: cor.suave }}>Média paga</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, whiteSpace: 'nowrap' }}>{brl(dados.pagoPeloEstado.media)}</div>
+                      </div>
+                    </div>
+                  )}
+                  {dados.pagoPeloEstado && (
+                    <div style={{ fontSize: 13, color: cor.suave, lineHeight: 1.45 }}>
+                      {dados.pagoPeloEstado.n} pagamento{dados.pagoPeloEstado.n === 1 ? '' : 's'} do Estado por procedimento parecido,
+                      entre {dataBR(dados.pagoPeloEstado.de)} e {dataBR(dados.pagoPeloEstado.ate)}. {dados.pagoPeloEstado.aviso}
+                    </div>
+                  )}
+                  {(dados.pagoPeloEstado?.lista ?? []).map((x, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 12, justifyContent: 'space-between', borderTop: `1px solid ${cor.linha}`, paddingTop: 8 }}>
+                      <span style={{ fontSize: 13, color: cor.suave, flex: 1 }}>
+                        <span style={{ color: cor.destaque }}>●</span> {x.mes.split('-').reverse().join('/')} · {x.procedimento}
+                      </span>
                       <b>{brl(x.valor)}</b>
                     </div>
                   ))}
@@ -309,7 +397,7 @@ export function LinkDocumentosPage() {
 
             {dados.referencias.length > 0 && (
               <section>
-                <h2 style={tituloSecao}>Referência de preço por procedimento</h2>
+                <h2 style={tituloSecao}>◆ Orçamentos deste processo (referência)</h2>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {dados.referencias.map((r, i) => (
                     <div key={i} style={{ background: cor.cartao, borderRadius: 12, border: `1px solid ${cor.linha}`,

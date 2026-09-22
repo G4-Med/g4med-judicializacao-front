@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
@@ -149,7 +149,10 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   const [pagFora, setPagFora] = useState<Set<number>>(new Set());
   // @R 22/09 ~11:10: "enviar o relatório feito por IA da parte médica para leitura rápida do médico".
   const [relatorio, setRelatorio] = useState<any>(null);
-  const [enviarRel, setEnviarRel] = useState(false);
+  // @R 22/09 11:30: "já vir marcado... quando clicarmos para gerar o link o relatório será colocado dentro
+  // do link". Vem marcado; a IA começa a ler assim que o diálogo abre (fica pronto até o clique).
+  const [enviarRel, setEnviarRel] = useState(true);
+  const geracao = useRef<{ chave: string; p: Promise<any> } | null>(null);
   const [gerandoRel, setGerandoRel] = useState(false);
   const [erroRel, setErroRel] = useState<string | null>(null);
   const alternar = (set: Set<number>, id: number, fn: (s: Set<number>) => void) => {
@@ -163,7 +166,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
     setDocsFora(new Set());
     setRefsFora(new Set());
     setEnviarPag(false); setPagFora(new Set());
-    setRelatorio(null); setEnviarRel(false); setErroRel(null);
+    setRelatorio(null); setEnviarRel(true); setErroRel(null); geracao.current = null;
     if (!pedido) return;
     previaLinkDocumentos(pedido.id)
       .then((r) => { setPrevia(r.data); setRelatorio(r.data?.relatorio ?? null); })
@@ -178,31 +181,44 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   const hist = previa?.historicoPago;
   const pagamentos: any[] = hist?.pagamentos || [];
   const pagVao = pagamentos.filter((p) => !pagFora.has(p.id));
-  // relatório gerado com um documento que depois foi DESMARCADO: a citação a ele não vai ao médico
-  const citaDesmarcado = !!relatorio && (relatorio.meta?.documentos || []).some((d: any) => docsFora.has(d.anexoId));
-  const gerarRelatorio = async () => {
-    if (!pedido) return;
+  // o relatório "serve" se leu exatamente os documentos marcados agora
+  const marcadosChave = docs.filter((d) => !docsFora.has(d.id)).map((d) => d.id).sort((a, b) => a - b).join(',');
+  const relServe = (r: any) => !!r && (r.meta?.documentos || []).map((d: any) => d.anexoId).sort((a: number, b: number) => a - b).join(',') === marcadosChave;
+  /** Gera (ou reaproveita a geração em curso para a MESMA seleção). Devolve o relatório ou null. */
+  const garantirRelatorio = (): Promise<any> => {
+    if (!pedido || !marcadosChave) return Promise.resolve(null);
+    if (relServe(relatorio)) return Promise.resolve(relatorio);
+    if (geracao.current?.chave === marcadosChave) return geracao.current.p;
     setGerandoRel(true); setErroRel(null);
-    try {
-      const r = await gerarRelatorioMedico(pedido.id, [...docsFora]);
-      setRelatorio(r.data); setEnviarRel(true);
-    } catch (e: any) {
-      setErroRel(e?.response?.data?.error || 'Não foi possível gerar o relatório agora.');
-    } finally { setGerandoRel(false); }
+    const p = gerarRelatorioMedico(pedido.id, [...docsFora])
+      .then((r) => { setRelatorio(r.data); return r.data; })
+      .catch((e: any) => { setErroRel(e?.response?.data?.error || 'Não foi possível gerar o relatório agora.'); return null; })
+      .finally(() => { if (geracao.current?.p === p) { geracao.current = null; setGerandoRel(false); } });
+    geracao.current = { chave: marcadosChave, p };
+    return p;
   };
+  const gerarRelatorio = () => { void garantirRelatorio(); };
+  // começa a ler logo que a prévia chega (e a caixa está marcada): quando clicar, já está pronto
+  useEffect(() => {
+    if (previa && enviarRel && docs.length && !relServe(relatorio)) void garantirRelatorio();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previa]);
   const deflatorPct = previa ? `${(previa.deflator * 100).toFixed(2).replace('.', ',')}%` : '';
 
   const gerarECopiar = async () => {
     if (!pedido) return;
     setCopiando(true);
     try {
+      // relatório marcado: garante o que corresponde aos documentos marcados AGORA (espera se está gerando)
+      const rel = enviarRel ? await garantirRelatorio() : null;
+      if (enviarRel && !rel && !window.confirm('O relatório da IA não ficou pronto. Gerar o link sem ele?')) return;
       let r: any;
       try {
         r = await gerarLinkDocumentos(pedido.id, {
           medicoId: pedido.idMedico ?? null, destino: pedido.medico || undefined, mostrarValores: comValores,
           anexosExcluidos: [...docsFora], referenciasExcluidas: comValores ? [...refsFora] : [],
           pagamentosIncluidos: enviarPag ? pagVao.map((p) => p.id) : [],
-          resumoId: enviarRel && relatorio ? relatorio.id : null,
+          resumoId: enviarRel && rel ? rel.id : null,
         });
       } catch (e: any) {
         alert(`${e?.response?.data?.error || 'Não foi possível gerar o link seguro.'}\n\nNada foi copiado.`);
@@ -210,7 +226,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
       }
       const d = r.data;
       const texto = montarTextoPedido(pedido, d.url, d.documentosPorTipo || {}, d.documentos || 0, !!d.mostrarValores, d.codigoAcesso,
-        { pagamentos: enviarPag && pagVao.length > 0, relatorio: enviarRel && !!relatorio });
+        { pagamentos: enviarPag && pagVao.length > 0, relatorio: enviarRel && !!rel });
       const copiou = await copiarTexto(texto);
       if (!copiou) {
         // FALLBACK MANUAL — o link JÁ foi gerado (custou uma escrita no banco); perder o texto
@@ -234,7 +250,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
       footer={(
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <Button label="Cancelar" text onClick={onClose} disabled={copiando} />
-          <Button label={copiando ? 'Gerando…' : 'Gerar link e copiar'} icon="pi pi-lock"
+          <Button label={copiando ? (gerandoRel ? 'IA lendo os documentos…' : 'Gerando…') : 'Gerar link e copiar'} icon="pi pi-lock"
             onClick={gerarECopiar} disabled={!previa || copiando} />
         </div>
       )}>
@@ -369,40 +385,38 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
           </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <div style={{ fontWeight: 600 }}>Relatório médico da IA</div>
-              <Button size="small" outlined icon="pi pi-bolt" loading={gerandoRel} disabled={!docsVao}
-                label={relatorio ? 'Gerar de novo com os marcados' : 'Gerar com os documentos marcados'} onClick={gerarRelatorio} />
-            </div>
-            <div style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>
-              Resumo de leitura rápida (diagnóstico, procedimento, exames, urgência e o que falta), cada ponto com o documento e a página de onde saiu. Leva uns 30 segundos.
-            </div>
-            {erroRel && <div style={{ color: '#b91c1c', marginTop: 6 }}>{erroRel}</div>}
-            {relatorio && (
-              <>
-                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {relatorio.campos.map((c: any) => (
-                    <div key={c.campo}>
-                      <b>{c.rotulo}:</b> {c.valor}
-                      {c.citacoes?.length ? (
-                        <span style={{ color: '#6b7280', fontSize: 12 }}>
-                          {' '}({c.citacoes.map((x: any) => `${x.documento}${x.nome ? ` ${x.nome}` : ''}, p. ${x.pagina}`).join('; ')})
-                        </span>
-                      ) : null}
-                    </div>
-                  ))}
-                </div>
-                <div style={{ color: '#6b7280', fontSize: 12, marginTop: 6 }}>
-                  Gerado em {dataBR(relatorio.criadoEm)} · {relatorio.meta?.paginasLidas} página(s) lida(s)
-                  {relatorio.meta?.paginasSemTexto ? ` · ${relatorio.meta.paginasSemTexto} página(s) são imagem e não foram lidas` : ''}.
-                </div>
-                {citaDesmarcado && <div style={{ color: '#92400e', fontSize: 12, marginTop: 4 }}>
-                  Este relatório leu um documento que você desmarcou: as citações a ele não vão ao médico. Gere de novo para considerar só os marcados.</div>}
-                <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', marginTop: 8 }}>
-                  <Checkbox inputId="enviarRel" checked={enviarRel} onChange={(e) => setEnviarRel(!!e.checked)} />
-                  <b>Enviar o relatório ao médico</b>
-                </label>
-              </>
+            <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+              <Checkbox inputId="enviarRel" checked={enviarRel} onChange={(e) => { setEnviarRel(!!e.checked); if (e.checked) gerarRelatorio(); }}
+                disabled={!docsVao} />
+              <span><b>Enviar o relatório médico da IA no link</b><br />
+                <span style={{ color: '#6b7280' }}>Resumo de leitura rápida para o médico (diagnóstico, procedimento, exames, urgência e o que pode faltar), cada ponto com o documento e a página de onde saiu — feito com os documentos marcados acima.</span>
+              </span>
+            </label>
+            {enviarRel && (
+              <div style={{ marginTop: 8, marginLeft: 28 }}>
+                {gerandoRel && <div style={{ color: '#1d4ed8' }}><i className="pi pi-spin pi-spinner" style={{ fontSize: 12 }} /> A IA está lendo os documentos marcados (uns 30 segundos)…</div>}
+                {erroRel && <div style={{ color: '#b91c1c' }}>{erroRel} <Button size="small" text label="Tentar de novo" onClick={gerarRelatorio} /></div>}
+                {relatorio && !gerandoRel && (
+                  <>
+                    {!relServe(relatorio) && <div style={{ color: '#92400e', fontSize: 12 }}>
+                      Você mudou os documentos marcados: o relatório será refeito com eles ao gerar o link.</div>}
+                    <details>
+                      <summary style={{ cursor: 'pointer', color: '#374151' }}>
+                        Ver o relatório ({relatorio.meta?.paginasLidas} página(s) lida(s){relatorio.meta?.paginasSemTexto ? ` · ${relatorio.meta.paginasSemTexto} são imagem, não lidas` : ''})
+                      </summary>
+                      <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {relatorio.campos.map((c: any) => (
+                          <div key={c.campo}>
+                            <b>{c.rotulo}:</b> {c.valor}
+                            {c.citacoes?.length ? <span style={{ color: '#6b7280', fontSize: 12 }}>
+                              {' '}({c.citacoes.map((x: any) => `${x.documento}${x.nome ? ` ${x.nome}` : ''}, p. ${x.pagina}`).join('; ')})</span> : null}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </>
+                )}
+              </div>
             )}
           </section>
 
