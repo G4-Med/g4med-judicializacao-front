@@ -1,5 +1,6 @@
 .mc-anotacao-bang { display: inline-block; min-width: 1.1rem; margin-right: .3rem; padding: 0 .3rem; border-radius: 999px;
-  background: #b91c1c; color: #fff; font-weight: 800; font-size: .75rem; line-height: 1.2rem; text-align: center; }
+  background: #b91c1c; color: #fff; font-weight: 800; font-size: .75rem; line-height: 1.2rem; text-align: center; border: 0; cursor: pointer; }
+.mc-anotacao-bang:hover, .mc-anotacao-bang:focus-visible { outline: 2px solid #7f1d1d; outline-offset: 1px; }
 .fic__anotacoes-lista { list-style: none; margin: 0 0 .5rem; padding: 0; display: grid; gap: .4rem; }
 .fic__anotacoes-lista li { border-left: 3px solid #b91c1c; padding: .3rem .6rem; background: #fff7f7; border-radius: 4px; }
 .fic__anotacoes-lista small { display: block; opacity: .7; }

@@ -11,7 +11,8 @@ export function BlocoAnotacoes({ orderId }: { orderId: number }) {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
 
-  const carregar = () => getAnotacoes(orderId).then((r) => setItens(r.data.itens ?? [])).catch(() => setItens([]));
+  const carregar = () => getAnotacoes(orderId).then((r) => { setItens(r.data.itens ?? []); setErro(''); })
+    .catch(() => { setItens([]); setErro('Não foi possível carregar as anotações — tente de novo; a lista vazia aqui não quer dizer que não há anotação.'); });
   useEffect(() => { carregar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [orderId]);
 
   const salvar = async () => {
