@@ -15,6 +15,7 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dialog } from 'primereact/dialog';
+import { PreviaEmailSes } from '../../components/PreviaEmailSes/PreviaEmailSes';
 import { Dropdown } from 'primereact/dropdown';
 import ListagemPorMedico from './ListagemPorMedico';
 import { FilterMatchMode } from 'primereact/api';
@@ -1203,6 +1204,9 @@ ${blocos}
             style={{ width: '100%', marginTop: '8px' }}
           />
         </div>
+        {processoSelecionado && naoFacoVisible && (
+          <PreviaEmailSes orderId={processoSelecionado.id} motivo={motivoNaoFaco as string | null} />
+        )}
         <div className="dialog-footer-actions" style={{ marginTop: '16px' }}>
           <Button label="Cancelar" outlined onClick={() => setNaoFacoVisible(false)} />
           <Button label="Confirmar perda" icon="pi pi-check" severity="danger"

@@ -11,6 +11,7 @@ import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Dialog } from 'primereact/dialog';
+import { PreviaEmailSes } from '../../components/PreviaEmailSes/PreviaEmailSes';
 import { FilterMatchMode } from 'primereact/api';
 import { getJuridico, salvarJuridico, getStatusOrders, getAnexosOrder, getCnjCandidatos, confirmarCnj, uploadAnexoOrder, getInteligenciaPedido, removerInteiroTeor } from '../../services/api/orders';
 import { useAccess } from '../../access/AccessContext';
@@ -1065,6 +1066,8 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
               )}
             </div>
           </div>
+          {/* #538: no "Não Cotar" o pedido gera o e-mail de negativa à SES — mostrar ANTES de salvar */}
+          {statusJuridico === 'Não Cotar' && <PreviaEmailSes orderId={processoEditando.id} />}
           </>);
         })()}
 

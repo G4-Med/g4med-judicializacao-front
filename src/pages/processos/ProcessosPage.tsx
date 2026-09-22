@@ -21,6 +21,7 @@ import { TieredMenu } from 'primereact/tieredmenu';
 import type { MenuItem } from 'primereact/menuitem';
 import { useRef } from 'react';
 import { Dialog } from 'primereact/dialog';
+import { PreviaEmailSes } from '../../components/PreviaEmailSes/PreviaEmailSes';
 import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
 import { getStatusTagStyle } from '../../utils/statusTag';
@@ -2193,6 +2194,7 @@ ${linhasAnexos}
         <label>Justificativa da perda <span style={{ color: '#ef4444' }}>*obrigatória</span></label>
         <InputTextarea value={perdaParecer} onChange={(e) => setPerdaParecer(e.target.value)} rows={4} autoResize
           placeholder="Descreva com suas palavras por que este pedido não segue..." style={{ width: '100%', marginTop: '8px' }} />
+        {perdaProcesso && <PreviaEmailSes orderId={perdaProcesso.id} motivo={perdaMotivo as string | null} />}
         <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end', marginTop: '16px' }}>
           <Button label="Cancelar" outlined onClick={() => setPerdaProcesso(null)} />
           <Button label="Confirmar perda" icon="pi pi-check" severity="danger" loading={salvandoPerda}
