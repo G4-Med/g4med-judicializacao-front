@@ -67,6 +67,11 @@ preço cotam. É essa primeira participação que revela isso — e a partir da 
 quem**. O preço que aparece no processo é referência, não regra: a Secretaria também recebe orçamentos que só
 aparecem depois.
 
+Quando houver, a página do pedido mostra também **quanto o Estado já pagou em processos parecidos** — o menor e o
+maior valor dos últimos casos. Esse valor cobre o **processo inteiro** e pode incluir mais de um prestador. É
+referência, **não piso nem teto**: cote o valor que você consegue cumprir — desistir depois de escolhido é pior do
+que não vencer.
+
 ## Prazos
 
 - **Ver os orçamentos que concorreram com o seu:** de 30 a 90 dias, em média — pode variar, e esse prazo não é

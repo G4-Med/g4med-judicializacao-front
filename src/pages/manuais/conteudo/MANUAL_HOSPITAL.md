@@ -107,6 +107,11 @@ Muitos processos trazem orçamentos de outros hospitais. Eles são **referência
 recebe orçamentos diretamente, que só aparecem depois de participar. Um processo pode trazer R$ 80 mil e
 R$ 70 mil; você cota R$ 69 mil — e a Secretaria junta um de R$ 50 mil que recebeu direto. *(Ilustração.)*
 
+Quando houver, a página do pedido mostra também **quanto o Estado já pagou em processos parecidos** — o menor e o
+maior valor dos últimos casos. Esse valor cobre o **processo inteiro** e pode incluir mais de um prestador. É
+referência, **não piso nem teto**: cote o valor que o hospital consegue cumprir — desistir depois de escolhido é
+pior do que não vencer.
+
 ## 8. A primeira cotação é aprendizagem
 
 Na primeira cotação de um tipo de cirurgia, ninguém sabe ainda quem compete e a que preço. É essa primeira
