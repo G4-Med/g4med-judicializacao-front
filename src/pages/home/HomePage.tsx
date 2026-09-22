@@ -536,13 +536,13 @@ export function HomePage() {
          1.1 = pedido que está no jurídico COM pendência (mesmo statusProcesso da fase 1; o que separa
          é statusJuridico). Aparece sempre, inclusive com 0. A fase 1 desconta a 1.1 para a soma das
          linhas continuar igual ao total de pedidos aguardando ação. */
-      { fase: '1', nome: 'Jurídico', qtd: noJuridico.filter((item) => !emPendencia(item)).length },
-      { fase: '1.1', nome: 'Pendências jurídicas', qtd: noJuridico.filter(emPendencia).length },
-      { fase: '2', nome: 'Selecionar médico', qtd: emOrcamento.filter(semMedico).length },
-      { fase: '3', nome: 'Orçamento', qtd: emOrcamento.filter((item) => !semMedico(item)).length },
-      { fase: '4', nome: 'Protocolar', qtd: contarFase('Aguardando Protocolar') },
-      { fase: '5', nome: 'Aguardando resposta', qtd: contarFase('Aguardando Resposta', 'Aguardando Resposta - Segredo de Justiça') },
-      { fase: '5b', nome: 'Enviado à SES (sem protocolo)', qtd: contarFase('Enviado à SES - Sem Protocolo') },
+      { fase: '1', nome: 'Jurídico', rota: '/juridico', qtd: noJuridico.filter((item) => !emPendencia(item)).length },
+      { fase: '1.1', nome: 'Pendências jurídicas', rota: '/juridico?aba=pendencias', qtd: noJuridico.filter(emPendencia).length },
+      { fase: '2', nome: 'Selecionar médico', rota: '/selecionar-medico', qtd: emOrcamento.filter(semMedico).length },
+      { fase: '3', nome: 'Orçamento', rota: '/orcamento-medico', qtd: emOrcamento.filter((item) => !semMedico(item)).length },
+      { fase: '4', nome: 'Protocolar', rota: '/para-protocolar', qtd: contarFase('Aguardando Protocolar') },
+      { fase: '5', nome: 'Aguardando resposta', rota: '/protocolados', qtd: contarFase('Aguardando Resposta', 'Aguardando Resposta - Segredo de Justiça') },
+      { fase: '5b', nome: 'Enviado à SES (sem protocolo)', rota: '/enviado-ses', qtd: contarFase('Enviado à SES - Sem Protocolo') },
     ];
 
     /* A VERIFICAR — o Estado pagou e o pedido continua aberto (medido 21/09/2026 em produção,
@@ -620,14 +620,17 @@ export function HomePage() {
                 const auto31 = new Set((fila31 ?? []).filter((i) => i.origem !== 'MANUAL').map((i) => i.pedido));
                 const manuais31 = (fila31 ?? []).filter((i) => i.origem === 'MANUAL').length;
                 const qtd = f.fase === '3' && fila31
-                  ? (orders as any[]).filter((o) => estaEmAberto(o) && o.statusProcesso === 'Aguardando Orçamento'
+                  ? (orders as any[]).filter((o) => estaEmAberto(o.statusProcesso) && o.statusProcesso === 'Aguardando Orçamento'
                       && o.idMedico && Number(o.idMedico) !== 1 && !auto31.has(o.id)).length
                   : f.qtd;
                 return (
                   <Fragment key={f.fase}>
-                    <li>
+                    {/* @R 22/09: clicar no nome da fase leva à tela da fase */}
+                    <li style={{ cursor: 'pointer' }} title={`Abrir a fase ${f.fase} — ${f.nome}`}
+                      onClick={() => navigate(f.rota)} role="link" tabIndex={0}
+                      onKeyDown={(e) => { if (e.key === 'Enter') navigate(f.rota); }}>
                       <em>{f.fase}</em>
-                      <span className="home-hero__fase-nome">{f.nome}</span>
+                      <span className="home-hero__fase-nome home-hero__fase-link">{f.nome}</span>
                       <b>{loading ? '--' : qtd}</b>
                     </li>
                     {f.fase === '3' && (

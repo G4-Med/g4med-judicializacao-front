@@ -488,3 +488,7 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
 .home-card__sla { font-size: .78rem; color: #667085; margin-top: .25rem; }
 .home-card__sla strong { color: #344054; }
 .home-card__sla-delta { color: #667085; }
+
+/* nome da fase clicável (@R 22/09) */
+.home-hero__fase-link { text-decoration: underline dotted; text-underline-offset: 3px; }
+.home-hero__fases li[role="link"]:hover .home-hero__fase-link { text-decoration-style: solid; }
