@@ -30,6 +30,9 @@ export interface ItemBaterValores {
   aviso: string | null;
   decisao: DecisaoValor | null;
   motivosRevisao: { valor: string; rotulo: string }[];
+  origem?: 'MANUAL' | 'AUTOMATICA';
+  jaFoiSES?: boolean;
+  entrada?: EntradaManual | null;
 }
 
 export interface PainelBaterValores extends ItemBaterValores {
@@ -55,3 +58,25 @@ export const decidirBaterValores = (pedido: number, corpo: {
   saida: Saida; motivo?: string; observacao?: string; valorNovo?: number | null;
 }) => api.post<{ id: number; saida: Saida; liberado: boolean; envio: ResultadoEnvio | null }>(
   `/orders/${pedido}/bater-valores/decidir/`, corpo);
+
+/** Entrada MANUAL (@R 22/09): qualquer pedido, qualquer fase, com motivo. A fase do pedido não muda. */
+export interface EntradaManual {
+  id: number; motivo: string; motivoRotulo: string; valorAlvo: number | null; prestador: string | null;
+  anotacao: string; por: string | null; em: string | null;
+}
+export interface ResultadoBusca {
+  pedido: number; paciente: string | null; procedimento: string | null; nprocesso: string | null;
+  fase: string | null; jaFoiSES: boolean; temCotacaoNossa: boolean; jaNa31: boolean;
+}
+export const MOTIVOS_ENTRADA = [
+  { valor: 'ORCAMENTO_MENOR', rotulo: 'Há orçamento menor no processo' },
+  { valor: 'AJUSTE_JUIZ', rotulo: 'O juiz pediu ajuste de valor' },
+  { valor: 'MUDANCA_PEDIDO', rotulo: 'O pedido mudou (procedimento/escopo)' },
+  { valor: 'OUTRO', rotulo: 'Outro' },
+];
+export const buscarParaBaterValores = (q: string) =>
+  api.get<{ itens: ResultadoBusca[] }>('/orders/bater-valores/buscar/', { params: { q } });
+export const colocarNaBaterValores = (pedido: number, corpo: {
+  motivo: string; anotacao: string; valorAlvo?: number | null; prestador?: string;
+}) => api.post<{ id: number; terceiroId: number | null; jaFoiSES: boolean }>(
+  `/orders/${pedido}/bater-valores/entrada/`, corpo);

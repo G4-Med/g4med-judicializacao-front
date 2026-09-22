@@ -11,6 +11,7 @@ import { Tag } from 'primereact/tag';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import type { EstadoGatilho, FilaBaterValores, ItemBaterValores, PainelBaterValores, Saida } from '../../services/api/baterValores';
 import { decidirBaterValores, listarBaterValores, painelBaterValores } from '../../services/api/baterValores';
+import { EntradaManualDialog } from './EntradaManualDialog';
 
 /* Fase 3.1 "bater valores" (@R 22/09/2026 14:24: "quando recebemos um orçamento e vemos que tem um valor
    menor no próprio processo, nós tentamos bater o processo").
@@ -42,6 +43,7 @@ export function BaterValoresPage() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aberto, setAberto] = useState<PainelBaterValores | null>(null);
+  const [manualAberto, setManualAberto] = useState(false);
   const ficha = useFichaPedido();
 
   const carregar = useCallback(async () => {
@@ -88,6 +90,8 @@ export function BaterValoresPage() {
           </span>
         )}
         <Button icon="pi pi-refresh" text onClick={carregar} aria-label="Atualizar" />
+        {/* @R 22/09: qualquer pedido, em qualquer fase, ou um paciente novo — a fase NÃO muda */}
+        <Button label="Colocar pedido na 3,1" icon="pi pi-plus" onClick={() => setManualAberto(true)} />
       </div>
 
       {erro && <div className="p-3 mb-3" style={{ background: '#fef3f2', color: '#b42318', borderRadius: 6 }}>{erro}</div>}
@@ -97,7 +101,18 @@ export function BaterValoresPage() {
         <Column header="#" body={(r: ItemBaterValores) => (
           <Button link className="p-0" label={String(r.pedido)} onClick={() => ficha.abrir(r.pedido)} />
         )} style={{ width: 70 }} />
-        <Column field="paciente" header="Paciente" />
+        <Column header="Paciente" body={(r: ItemBaterValores) => (
+          <div>
+            {r.paciente}
+            {r.origem === 'MANUAL' && (
+              <div style={{ fontSize: '.75rem' }} title={r.entrada?.anotacao ?? ''}>
+                <Tag severity="info" value={`incluído à mão${r.entrada?.por ? ` por ${r.entrada.por}` : ''}`} />
+                {r.entrada && <span className="text-600"> · {r.entrada.motivoRotulo}</span>}
+                {r.jaFoiSES && <span style={{ color: '#b54708' }}> · já foi à SES ({r.fase})</span>}
+              </div>
+            )}
+          </div>
+        )} />
         <Column header="Procedimento" body={(r: ItemBaterValores) => (
           <span style={{ fontSize: '.85rem' }}>{(r.procedimento ?? '').slice(0, 90)}</span>
         )} />
@@ -113,6 +128,10 @@ export function BaterValoresPage() {
           <Button label="Conferir" icon="pi pi-check-square" size="small" onClick={() => abrir(r)} />
         )} style={{ width: 130 }} />
       </DataTable>
+
+      {manualAberto && (
+        <EntradaManualDialog onFechar={() => setManualAberto(false)} onPronto={() => { setManualAberto(false); carregar(); }} />
+      )}
 
       {aberto && (
         <DialogDecisao painel={aberto} onFechar={() => setAberto(null)} onDecidido={() => { setAberto(null); carregar(); }} />
@@ -144,6 +163,7 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
         // o desfecho REAL do e-mail, nunca "sucesso" genérico — quem clica precisa saber se a SES recebeu
         if (envio?.enviado) alert(`Valor confirmado e e-mail ENVIADO à SES (${envio.para ?? 'solicitante'}).`);
         else if (envio) alert(`Valor confirmado, mas o e-mail NÃO saiu: ${envio.motivo}. Ele está na Central de E-mails.`);
+        else if (painel.jaFoiSES) alert('Valor confirmado e registrado. O pedido já tinha ido à SES e continua na fase atual.');
         else alert('Valor confirmado. Não havia e-mail de orçamento retido — envie pela tela de Orçamento Médico.');
       } else {
         alert('Revisão registrada. Agora suba a nova versão com o valor que o médico mandou (Orçamento Médico → versões) — é ela que vai à SES.');
@@ -171,6 +191,14 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
           {painel.acimaPct != null && <div className="text-600">nosso está {Math.round(painel.acimaPct)}% acima</div>}</div>
       </div>
 
+      {painel.entrada && (
+        <div className="p-2 mb-2" style={{ background: '#eff8ff', color: '#175cd3', borderRadius: 6, fontSize: '.85rem' }}>
+          <strong>Incluído à mão{painel.entrada.por ? ` por ${painel.entrada.por}` : ''}</strong> — {painel.entrada.motivoRotulo}
+          {painel.entrada.valorAlvo != null && <> · valor a bater {brl(painel.entrada.valorAlvo)}</>}
+          <div>{painel.entrada.anotacao}</div>
+          {painel.jaFoiSES && <div style={{ color: '#b54708' }}>Este pedido já foi à SES; se o médico mandar valor novo, ele sai pela refação.</div>}
+        </div>
+      )}
       {painel.aviso && <div className="p-2 mb-2" style={{ background: '#fffaeb', color: '#b54708', borderRadius: 6 }}>{painel.aviso}</div>}
 
       {painel.terceiros.length > 0 && (
