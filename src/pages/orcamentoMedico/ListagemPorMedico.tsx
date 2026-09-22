@@ -3,8 +3,9 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { Tag } from 'primereact/tag';
-import { getOrcamentoMedicoPorMedico, registrarRespostaCotacao } from '../../services/api/orders';
-import type { MedicoComCasos, CasoPorMedico, RespostaCotacao } from '../../services/api/orders';
+import { getOrcamentoMedicoPorMedico, registrarRespostaCotacao, CATEGORIAS_RECUSA } from '../../services/api/orders';
+import type { MedicoComCasos, CasoPorMedico, RespostaCotacao, CategoriaRecusa } from '../../services/api/orders';
+import { invalidarRecusas } from '../../components/Recusas/MarcadorRecusa';
 
 /* #507 (@R 20/09): "uma listagem, não a cobrança" — o que está com CADA médico na fase, com o dia em
    que foi enviado, para mandar a ele de forma fácil e esperar em 48 h a resposta: quer cotar ou não.
@@ -25,6 +26,10 @@ export default function ListagemPorMedico({ visible, onHide, onMudou }: Props) {
   const [carregando, setCarregando] = useState(false)
   const [salvando, setSalvando] = useState<number | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  /* RECUSA COM MOTIVO (@R 22/09 13:55): antes era só um confirm. Agora quem opera escolhe a
+     categoria (é o que permite contar depois "quem recusa por quê") e pode escrever o que o
+     médico disse. O texto é obrigatório só em "Outro" — senão a categoria vira lixeira. */
+  const [recusa, setRecusa] = useState<{ caso: CasoPorMedico; medico: string; categoria: CategoriaRecusa; motivo: string } | null>(null)
   // @R 20/09 16:20: "cada médico vir fechado para dar para todos e abrir outra coisa, pesquisar por
   // texto também" — com 10 médicos e 38 casos a lista não cabia na tela; agora cada médico é um
   // acordeão fechado e a busca abre só quem tem o que foi digitado.
@@ -67,8 +72,9 @@ export default function ListagemPorMedico({ visible, onHide, onMudou }: Props) {
       if (!observacao) { alert('Diga o que o médico precisa antes de cotar.'); return }
     }
     if (resposta === 'RECUSOU') {
-      // #510: recusar DEVOLVE o pedido à busca de cotador — some desta lista e volta ao topo de Selecionar Médico.
-      if (!window.confirm(`Pedido #${c.id}: ${nomeMedico || 'o médico'} NÃO quer cotar.\n\nO pedido sai deste médico e volta ao TOPO da fila "Selecionar Médico" com o aviso da recusa. Confirmar?`)) return
+      // abre o diálogo do motivo; a gravação acontece em `confirmarRecusa`.
+      setRecusa({ caso: c, medico: nomeMedico || 'o médico', categoria: 'SEM_INTERESSE', motivo: '' })
+      return
     }
     setSalvando(c.id)
     try {
@@ -77,6 +83,25 @@ export default function ListagemPorMedico({ visible, onHide, onMudou }: Props) {
       if (r.data?.devolvidoABusca) alert(`Pedido #${c.id} devolvido à busca de cotador (recusado por ${r.data.cotacaoRecusadaPor || nomeMedico || 'médico'}). Ele está no topo de "Selecionar Médico".`)
     } catch (e: any) {
       alert(e?.response?.data?.error || 'Não foi possível gravar a resposta.')
+    } finally { setSalvando(null) }
+  }
+
+  const confirmarRecusa = async () => {
+    if (!recusa) return
+    const { caso, medico, categoria, motivo } = recusa
+    if (categoria === 'OUTRO' && !motivo.trim()) { alert('Escreva o motivo — a categoria "Outro" existe para isso.'); return }
+    setSalvando(caso.id)
+    try {
+      const r = await registrarRespostaCotacao(caso.id, 'RECUSOU', motivo.trim(), categoria)
+      setRecusa(null)
+      invalidarRecusas()
+      await carregar(); onMudou?.()
+      const ficou = r.data?.ficouCom
+      alert(ficou
+        ? `Pedido #${caso.id}: recusa de ${medico} registrada. O pedido SEGUE com ${ficou.nome}, que também foi convidado.`
+        : `Pedido #${caso.id} devolvido à busca de cotador (recusado por ${r.data?.cotacaoRecusadaPor || medico}). Ele está no topo de "Selecionar Médico".`)
+    } catch (e: any) {
+      alert(e?.response?.data?.error || 'Não foi possível gravar a recusa.')
     } finally { setSalvando(null) }
   }
 
@@ -96,6 +121,31 @@ export default function ListagemPorMedico({ visible, onHide, onMudou }: Props) {
   return (
     <Dialog header="Casos por médico — fase Orçamento" visible={visible} onHide={onHide}
       style={{ width: 'min(1100px, 96vw)' }} maximizable>
+      {recusa && (
+        <Dialog header={`Por que ${recusa.medico} não vai cotar? · pedido #${recusa.caso.id}`} visible modal
+          dismissableMask style={{ width: '32rem', maxWidth: '94vw' }} onHide={() => setRecusa(null)}>
+          <p style={{ marginTop: 0 }}>
+            O pedido sai deste médico. Se houver OUTRO médico convidado para o mesmo pedido, ele
+            segue com esse; senão volta ao topo de "Selecionar Médico" com o aviso da recusa.
+          </p>
+          <div style={{ display: 'grid', gap: '.4rem', marginBottom: '.8rem' }}>
+            {CATEGORIAS_RECUSA.map((op) => (
+              <label key={op.valor} style={{ display: 'flex', gap: '.5rem', alignItems: 'center', cursor: 'pointer' }}>
+                <input type="radio" name="categoria-recusa" checked={recusa.categoria === op.valor}
+                  onChange={() => setRecusa({ ...recusa, categoria: op.valor })} />
+                {op.rotulo}
+              </label>
+            ))}
+          </div>
+          <InputText value={recusa.motivo} onChange={(e) => setRecusa({ ...recusa, motivo: e.target.value })}
+            placeholder="O que o médico disse (opcional, obrigatório em Outro)" style={{ width: '100%' }} />
+          <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+            <Button label="Cancelar" text severity="secondary" onClick={() => setRecusa(null)} />
+            <Button label="Registrar recusa" severity="danger" icon="pi pi-times"
+              disabled={salvando === recusa.caso.id} onClick={confirmarRecusa} />
+          </div>
+        </Dialog>
+      )}
       {erro && <div className="p-message p-message-error" style={{ padding: '.5rem 1rem', marginBottom: '.75rem' }}>{erro}</div>}
       {meta && (
         <p style={{ margin: '0 0 .75rem', color: 'var(--text-color-secondary)' }}>

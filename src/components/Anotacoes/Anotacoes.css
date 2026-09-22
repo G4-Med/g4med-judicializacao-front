@@ -6,3 +6,10 @@
 .fic__anotacoes-lista small { display: block; opacity: .7; }
 .fic__anotacoes-form { display: flex; gap: .5rem; align-items: flex-start; }
 .fic__anotacoes-form textarea { flex: 1 1 auto; min-height: 3.2rem; }
+
+/* Selo de RECUSA de cotação (@R 22/09): mesmo lugar e tamanho do "!", cor e símbolo diferentes —
+   o "!" é anotação interna, o "⊘" é médico que não quis cotar. Mora aqui porque os dois são
+   marcadores da MESMA célula (o nome do paciente, via nomeComCopiar). */
+.mc-recusa-selo { display: inline-block; min-width: 1.1rem; margin-right: .3rem; padding: 0 .3rem; border-radius: 999px;
+  background: #7c2d12; color: #fff; font-weight: 800; font-size: .75rem; line-height: 1.2rem; text-align: center; border: 0; cursor: pointer; }
+.mc-recusa-selo:hover, .mc-recusa-selo:focus-visible { outline: 2px solid #431407; outline-offset: 1px; }

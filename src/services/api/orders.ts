@@ -530,9 +530,34 @@ export const getOrcamentoMedicoPorMedico = () =>
   api.get<{ medicos: MedicoComCasos[]; totalPedidos: number; foraPorSegredo: number; prazoHoras: number }>(
     '/orders/orcamento-medico/por-medico/');
 /** null limpa a marcação. `origem` fica 'plataforma' aqui; a Eliza-urgência manda 'eliza'. */
-export const registrarRespostaCotacao = (orderId: number, resposta: RespostaCotacao | null, observacao?: string) =>
-  api.post<{ ok: boolean; devolvidoABusca: boolean; cotacaoRecusadaPor: string | null }>(
-    `/orders/${orderId}/resposta-cotacao/`, { resposta, origem: 'plataforma', observacao: observacao || '' });
+export const registrarRespostaCotacao = (
+  orderId: number, resposta: RespostaCotacao | null, observacao?: string, categoria?: CategoriaRecusa) =>
+  api.post<{ ok: boolean; devolvidoABusca: boolean; cotacaoRecusadaPor: string | null;
+             ficouCom: { idMedico: number; nome: string } | null; avisos: string[] }>(
+    `/orders/${orderId}/resposta-cotacao/`,
+    { resposta, origem: 'plataforma', observacao: observacao || '', ...(categoria ? { categoria } : {}) });
+
+/* RECUSA COM MOTIVO (@R 22/09 13:55): a categoria é fechada para poder CONTAR ("quem recusa mais e
+   por quê"); o texto guarda as palavras do médico. Nada sobrescreve: cada recusa é uma linha. */
+export type CategoriaRecusa = 'SEM_INTERESSE' | 'FORA_ESPECIALIDADE' | 'PRECO' | 'AGENDA' | 'FALTA_EXAME' | 'OUTRO';
+export const CATEGORIAS_RECUSA: { valor: CategoriaRecusa; rotulo: string }[] = [
+  { valor: 'SEM_INTERESSE', rotulo: 'Sem interesse' },
+  { valor: 'FORA_ESPECIALIDADE', rotulo: 'Fora da especialidade' },
+  { valor: 'PRECO', rotulo: 'Preço / valor' },
+  { valor: 'AGENDA', rotulo: 'Agenda' },
+  { valor: 'FALTA_EXAME', rotulo: 'Falta exame / documento' },
+  { valor: 'OUTRO', rotulo: 'Outro (escreva o motivo)' },
+];
+export interface RecusaCotacao {
+  id: number; idMedico: number; medico: string; categoria: string; categoriaRotulo: string;
+  motivo: string | null; origem: string; registradoPor: string | null;
+  ficouComMedico: number | null; em: string | null;
+}
+export const getRecusasDoPedido = (orderId: number) =>
+  api.get<{ orderId: number; total: number; itens: RecusaCotacao[] }>(`/orders/${orderId}/recusas-cotacao/`);
+/** ids dos pedidos com recusa → o selo nas filas (1 chamada por tela, igual ao "!" das anotações) */
+export const getRecusasIds = () =>
+  api.get<{ ids: Record<string, { n: number; medicos: string[] }> }>('/orders/recusas-cotacao/ids/');
 
 /** Anotações internas do pedido (reunião Fabrício 20/09, Fase 5). */
 export interface Anotacao { id: number; texto: string; usuario: string | null; createDate: string }
