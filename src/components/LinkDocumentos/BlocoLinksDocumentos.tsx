@@ -22,7 +22,7 @@ const aparelho = (ua: string) => {
   if (/WhatsApp/i.test(u)) return 'prévia do WhatsApp';
   return u ? u.slice(0, 30) : 'desconhecido';
 };
-const ROTULO: Record<string, string> = { PAGINA: 'abriu a lista', DOCUMENTO: 'abriu', NEGADO: 'tentou abrir (link encerrado)', CODIGO_INVALIDO: 'digitou código errado' };
+const ROTULO: Record<string, string> = { PAGINA: 'abriu a lista', DOCUMENTO: 'abriu', NEGADO: 'tentou abrir (link encerrado)', CODIGO_INVALIDO: 'digitou código errado', IDENTIFICOU: 'se identificou' };
 
 export function BlocoLinksDocumentos({ orderId }: { orderId: number }) {
   const [links, setLinks] = useState<any[] | null>(null);
@@ -48,7 +48,7 @@ export function BlocoLinksDocumentos({ orderId }: { orderId: number }) {
     <section className="fic__situacao">
       <header className="fic__situacao-cab">
         <strong>Link seguro dos documentos</strong>
-        <small>Cada abertura fica registrada. Sem login do médico, o registro diz qual link, quando e de que aparelho — não o nome de quem abriu.</small>
+        <small>Cada abertura fica registrada: quando, de que aparelho e — nos links com código — o nome completo e o CPF que a pessoa informou (CPF conferido pelos dígitos; não prova que é ela). Links antigos, sem código, não pedem identificação.</small>
       </header>
       {links.map((lk) => {
         const docs = (lk.acessos || []).filter((a: any) => a.tipo === 'DOCUMENTO');
@@ -66,11 +66,21 @@ export function BlocoLinksDocumentos({ orderId }: { orderId: number }) {
                 ? <small>encerrado {fmt(lk.revogadoEm)}{lk.revogadoPor ? ` por ${lk.revogadoPor}` : ''}</small>
                 : <Button label="Encerrar link" size="small" text severity="danger" onClick={() => encerrar(lk.id)} />}
             </div>
+            {(lk.identificacoes || []).length > 0 && (
+              <div style={{ margin: '.35rem 0 0', fontSize: '.85rem' }}>
+                <b>Quem se identificou:</b>
+                <ul style={{ margin: '.15rem 0 0', paddingLeft: '1.1rem' }}>
+                  {lk.identificacoes.map((i: any, k: number) => (
+                    <li key={k}>{i.nome} · CPF {i.cpf} · {fmt(i.em)}{i.localidade ? ` · ${i.localidade}` : ''}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {(lk.acessos || []).length > 0 && (
               <ul style={{ margin: '.25rem 0 0', paddingLeft: '1.1rem', fontSize: '.85rem' }}>
                 {lk.acessos.slice(0, 20).map((a: any, i: number) => (
                   <li key={i}>
-                    {fmt(a.momento)} · {ROTULO[a.tipo] || a.tipo}{a.documento ? ` ${a.documento}` : ''} · {aparelho(a.aparelho)}{a.localidade ? ` · ${a.localidade}` : ''}{a.ip ? ` · IP ${a.ip}` : ''}
+                    {fmt(a.momento)}{a.nome ? ` · ${a.nome}` : ''} · {ROTULO[a.tipo] || a.tipo}{a.documento ? ` ${a.documento}` : ''} · {aparelho(a.aparelho)}{a.localidade ? ` · ${a.localidade}` : ''}{a.ip ? ` · IP ${a.ip}` : ''}
                   </li>
                 ))}
                 {lk.acessos.length > 20 && <li>… e mais {lk.acessos.length - 20}</li>}

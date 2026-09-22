@@ -46,14 +46,14 @@ const cor = {
   marca: '#0d0d0f', destaque: '#009739', aviso: '#8a5a00',
 };
 
-function Visualizador({ token, codigo, doc, onVoltar, irPara }: { token: string; codigo: string; doc: Documento; onVoltar: () => void; irPara?: number }) {
+function Visualizador({ token, codigo, acesso, doc, onVoltar, irPara }: { token: string; codigo: string; acesso: string; doc: Documento; onVoltar: () => void; irPara?: number }) {
   // Carrega página a página: mostra a 1ª; ao terminar de carregar, pede a próxima. A que responder
   // 404 marca o fim. Assim não é preciso saber o total antes, e um documento longo não baixa tudo de uma vez.
   const [paginas, setPaginas] = useState<number[]>([1]);
   const [fim, setFim] = useState(false);
   const [erro, setErro] = useState(false);
   // o código vai em CADA página: sem ele, quem soubesse o endereço da imagem pularia a tela de código
-  const url = (n: number) => `${API}/d/${token}/${doc.via ?? 'doc'}/${doc.id}/pagina/${n}/${codigo ? `?codigo=${encodeURIComponent(codigo)}` : ''}`;
+  const url = (n: number) => `${API}/d/${token}/${doc.via ?? 'doc'}/${doc.id}/pagina/${n}/${credenciais(codigo, acesso)}`;
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
@@ -198,6 +198,20 @@ function ReguaPrecos({ pagos, refs, menor }: { pagos: number[]; refs: number[]; 
   );
 }
 
+/** código + chave de identificação na query (o CPF nunca vai na URL — só a chave que o servidor devolveu). */
+function credenciais(codigo: string, acesso: string): string {
+  const p = new URLSearchParams();
+  if (codigo) p.set('codigo', codigo);
+  if (acesso) p.set('acesso', acesso);
+  const q = p.toString();
+  return q ? `?${q}` : '';
+}
+
+function formatarCpf(v: string): string {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  return d.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d{1,2})$/, '.$1-$2');
+}
+
 export function LinkDocumentosPage() {
   const { token = '' } = useParams();
   const [dados, setDados] = useState<Dados | null>(null);
@@ -212,10 +226,39 @@ export function LinkDocumentosPage() {
   const [digitado, setDigitado] = useState('');
   const [erroCodigo, setErroCodigo] = useState<string | null>(null);
   const [conferindo, setConferindo] = useState(false);
+  // @R 22/09 17:36: depois do código, nome completo + CPF. O servidor confere e devolve uma chave de acesso
+  // (guardada na aba, como o código). Nome e CPF ficam registrados com data e hora de cada acesso.
+  const chaveAcesso = `g4med_acesso_${token}`;
+  const [acesso, setAcesso] = useState<string>(() => { try { return sessionStorage.getItem(chaveAcesso) || ''; } catch { return ''; } });
+  const [pedeIdent, setPedeIdent] = useState(false);
+  const [nome, setNome] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [errosIdent, setErrosIdent] = useState<{ nome?: string; cpf?: string; geral?: string }>({});
 
-  const carregar = (cod: string, veioDoFormulario = false) => {
+  const identificar = (cod: string) => {
     setConferindo(true);
-    fetch(`${API}/d/${encodeURIComponent(token)}/${cod ? `?codigo=${encodeURIComponent(cod)}` : ''}`)
+    setErrosIdent({});
+    fetch(`${API}/d/${encodeURIComponent(token)}/identificar/${credenciais(cod, '')}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome, cpf }),
+    })
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (r.status === 400) return setErrosIdent(j?.erros || { geral: j?.error || 'Confira os dados.' });
+        if (r.status === 401) { setPedeIdent(false); setPedeCodigo(true); return; }
+        if (r.status === 410) return setFalha(j?.codigo === 'expirado' ? 'expirado' : 'encerrado');
+        if (!r.ok || !j?.acesso) return setErrosIdent({ geral: 'Não foi possível registrar agora. Tente de novo.' });
+        setAcesso(j.acesso);
+        try { sessionStorage.setItem(chaveAcesso, j.acesso); } catch { /* ok */ }
+        setPedeIdent(false);
+        carregar(cod, false, j.acesso);
+      })
+      .catch(() => setFalha('rede'))
+      .finally(() => setConferindo(false));
+  };
+
+  const carregar = (cod: string, veioDoFormulario = false, ac: string = acesso) => {
+    setConferindo(true);
+    fetch(`${API}/d/${encodeURIComponent(token)}/${credenciais(cod, ac)}`)
       .then(async (r) => {
         if (r.status === 410) {
           const j = await r.json().catch(() => ({}));
@@ -223,6 +266,16 @@ export function LinkDocumentosPage() {
         }
         if (r.status === 429) return setFalha('bloqueado');
         if (r.status === 401) {
+          const j401 = await r.clone().json().catch(() => ({}));
+          if (j401?.codigo === 'identificacao_necessaria') {
+            // código certo; falta quem é. Guarda o código e pede nome + CPF.
+            setCodigo(cod);
+            try { if (cod) sessionStorage.setItem(chave, cod); sessionStorage.removeItem(chaveAcesso); } catch { /* ok */ }
+            setAcesso('');
+            setPedeCodigo(false);
+            setPedeIdent(true);
+            return;
+          }
           setPedeCodigo(true);
           try { sessionStorage.removeItem(chave); } catch { /* sem armazenamento: só pede de novo */ }
           if (veioDoFormulario) {
@@ -254,7 +307,7 @@ export function LinkDocumentosPage() {
   };
 
   if (aberto) {
-    return <div style={pagina}><Visualizador token={token} codigo={codigo} doc={aberto} irPara={irPara} onVoltar={() => { setAberto(null); setIrPara(undefined); }} /></div>;
+    return <div style={pagina}><Visualizador token={token} codigo={codigo} acesso={acesso} doc={aberto} irPara={irPara} onVoltar={() => { setAberto(null); setIrPara(undefined); }} /></div>;
   }
 
   const agrupado = new Map<string, Documento[]>();
@@ -274,7 +327,34 @@ export function LinkDocumentosPage() {
       </header>
 
       <main style={{ padding: '16px 16px 40px', maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        {!dados && !falha && !pedeCodigo && <div style={{ color: cor.suave }}>Carregando…</div>}
+        {pedeIdent && !falha && (
+          <form onSubmit={(e) => { e.preventDefault(); identificar(codigo); }}
+            style={{ background: cor.cartao, borderRadius: 12, padding: 20, border: `1px solid ${cor.linha}`,
+              display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ fontWeight: 600, fontSize: 17 }}>🪪 Identifique-se para abrir os documentos</div>
+            <div style={{ fontSize: 14, color: cor.suave, lineHeight: 1.45 }}>
+              Informe seu nome completo e seu CPF. Cada acesso fica registrado com data e hora, e esses dados
+              poderão ser informados à Secretaria de Saúde ou à prefeitura responsável pelo processo.
+            </div>
+            <label htmlFor="ident-nome" style={{ fontWeight: 600, fontSize: 15 }}>Nome completo</label>
+            <input id="ident-nome" autoComplete="name" autoFocus value={nome} onChange={(e) => setNome(e.target.value)}
+              placeholder="Nome e sobrenome" aria-invalid={!!errosIdent.nome}
+              style={{ fontSize: 17, padding: '10px 12px', borderRadius: 10, border: `1px solid ${errosIdent.nome ? cor.aviso : cor.linha}` }} />
+            {errosIdent.nome && <div role="alert" style={{ color: cor.aviso, fontSize: 14 }}>{errosIdent.nome}</div>}
+            <label htmlFor="ident-cpf" style={{ fontWeight: 600, fontSize: 15 }}>CPF</label>
+            <input id="ident-cpf" inputMode="numeric" value={cpf} onChange={(e) => setCpf(formatarCpf(e.target.value))}
+              placeholder="000.000.000-00" aria-invalid={!!errosIdent.cpf}
+              style={{ fontSize: 17, padding: '10px 12px', borderRadius: 10, border: `1px solid ${errosIdent.cpf ? cor.aviso : cor.linha}`, fontVariantNumeric: 'tabular-nums' }} />
+            {errosIdent.cpf && <div role="alert" style={{ color: cor.aviso, fontSize: 14 }}>{errosIdent.cpf}</div>}
+            {errosIdent.geral && <div role="alert" style={{ color: cor.aviso, fontSize: 14 }}>{errosIdent.geral}</div>}
+            <button type="submit" disabled={conferindo || nome.trim().split(/\s+/).length < 2 || cpf.replace(/\D/g, '').length !== 11}
+              style={{ background: cor.destaque, color: '#fff', border: 'none', borderRadius: 10, padding: '14px 16px',
+                fontSize: 16, fontWeight: 700, opacity: conferindo || nome.trim().split(/\s+/).length < 2 || cpf.replace(/\D/g, '').length !== 11 ? 0.5 : 1 }}>
+              {conferindo ? 'Conferindo…' : 'Abrir documentos'}
+            </button>
+          </form>
+        )}
+        {!dados && !falha && !pedeCodigo && !pedeIdent && <div style={{ color: cor.suave }}>Carregando…</div>}
         {pedeCodigo && !falha && (
           <form onSubmit={(e) => { e.preventDefault(); if (digitado.length === 4) { setErroCodigo(null); carregar(digitado, true); } }}
             style={{ background: cor.cartao, borderRadius: 12, padding: 20, border: `1px solid ${cor.linha}`,
