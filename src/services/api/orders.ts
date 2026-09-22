@@ -571,7 +571,10 @@ export const marcarPendenciaLida = (orderId: number, pendenciaId: number) =>
    públicos: registra cada abertura, só visualiza (imagem com marca d'água), revogável. */
 export const previaLinkDocumentos = (orderId: number) =>
   api.get(`/orders/${orderId}/link-documentos/previa/`);
-export const gerarLinkDocumentos = (orderId: number, dados: { destino?: string; medicoId?: number | null; mostrarValores: boolean }) =>
+export const gerarLinkDocumentos = (orderId: number, dados: {
+  destino?: string; medicoId?: number | null; mostrarValores: boolean;
+  anexosExcluidos?: number[]; referenciasExcluidas?: number[];
+}) =>
   api.post(`/orders/${orderId}/link-documentos/`, dados);
 export const rastroLinksDocumentos = (orderId: number) =>
   api.get(`/orders/${orderId}/link-documentos/rastro/`);

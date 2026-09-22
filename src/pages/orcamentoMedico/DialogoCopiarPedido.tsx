@@ -136,11 +136,20 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   const [erro, setErro] = useState<string | null>(null);
   const [comValores, setComValores] = useState(false);
   const [copiando, setCopiando] = useState(false);
+  // @R 22/09 10:49: "marcar o que quer mandar no link... poder desmarcar algo que ele não queira mandar".
+  // Guarda o que foi DESMARCADO (padrão = vai tudo, como antes). O servidor recusa id de outro pedido.
+  const [docsFora, setDocsFora] = useState<Set<number>>(new Set());
+  const [refsFora, setRefsFora] = useState<Set<number>>(new Set());
+  const alternar = (set: Set<number>, id: number, fn: (s: Set<number>) => void) => {
+    const n = new Set(set); if (n.has(id)) n.delete(id); else n.add(id); fn(n);
+  };
 
   useEffect(() => {
     setPrevia(null);
     setErro(null);
     setComValores(false);
+    setDocsFora(new Set());
+    setRefsFora(new Set());
     if (!pedido) return;
     previaLinkDocumentos(pedido.id)
       .then((r) => setPrevia(r.data))
@@ -148,6 +157,10 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   }, [pedido]);
 
   const refs: any[] = previa?.referencias || [];
+  const docs: any[] = previa?.listaDocumentos || [];
+  const docsVao = docs.filter((d) => !docsFora.has(d.id)).length;
+  // só a referência que o médico PODE ver (conferida) conta como "vai"
+  const refsVao = refs.filter((x) => !x.ocultoAoMedico && !refsFora.has(x.id)).length;
   const hist = previa?.historicoPago;
   const deflatorPct = previa ? `${(previa.deflator * 100).toFixed(2).replace('.', ',')}%` : '';
 
@@ -159,6 +172,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
       try {
         r = await gerarLinkDocumentos(pedido.id, {
           medicoId: pedido.idMedico ?? null, destino: pedido.medico || undefined, mostrarValores: comValores,
+          anexosExcluidos: [...docsFora], referenciasExcluidas: comValores ? [...refsFora] : [],
         });
       } catch (e: any) {
         alert(`${e?.response?.data?.error || 'Não foi possível gerar o link seguro.'}\n\nNada foi copiado.`);
@@ -198,10 +212,26 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
       {previa && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontSize: 14 }}>
           <section>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>O que vai no link ({previa.documentos})</div>
-            {previa.documentos
-              ? <div>{descreverDocumentos(previa.documentosPorTipo)}</div>
-              : <div style={{ color: '#92400e' }}>Nenhum documento clínico neste pedido ainda. O link abre vazio.</div>}
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>
+              O que vai no link ({docsVao} de {docs.length}) <span style={{ fontWeight: 400, color: '#6b7280', fontSize: 12 }}>— desmarque o que não quer mandar</span>
+            </div>
+            {docs.length ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {docs.map((d) => (
+                  <label key={d.id} style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer' }}>
+                    <Checkbox inputId={`doc-${d.id}`} checked={!docsFora.has(d.id)}
+                      onChange={() => alternar(docsFora, d.id, setDocsFora)} />
+                    <span style={{ flex: 1, color: docsFora.has(d.id) ? '#9ca3af' : undefined,
+                      textDecoration: docsFora.has(d.id) ? 'line-through' : undefined }}>
+                      {d.rotulo}{d.nome ? ` — ${d.nome}` : ''}
+                    </span>
+                    {d.link ? <a href={d.link} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+                      <i className="pi pi-external-link" style={{ fontSize: 12 }} /> ver</a> : null}
+                  </label>
+                ))}
+                {!docsVao && <div style={{ color: '#92400e' }}>Nenhum documento marcado: o link abre vazio.</div>}
+              </div>
+            ) : <div style={{ color: '#92400e' }}>Nenhum documento clínico neste pedido ainda. O link abre vazio.</div>}
           </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
@@ -209,7 +239,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
               <Checkbox inputId="incluirValores" checked={comValores} onChange={(e) => setComValores(!!e.checked)}
                 disabled={!refs.length} />
               <span>
-                <b>Incluir os valores de referência no link</b> (com deflator de {deflatorPct})<br />
+                <b>Incluir os valores de referência no link</b> (com deflator de {deflatorPct}){comValores && refs.length ? ` — ${refsVao} marcado(s)` : ''}<br />
                 <span style={{ color: '#6b7280' }}>
                   {refs.length
                     ? 'O médico vê a referência total por procedimento e o local — nunca o valor original nem que existe deflator.'
@@ -222,23 +252,42 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontVariantNumeric: 'tabular-nums' }}>
                   <thead>
                     <tr style={{ textAlign: 'left', color: '#6b7280', fontSize: 12 }}>
+                      <th style={{ padding: '4px 6px' }}>Vai</th>
                       <th style={{ padding: '4px 6px' }}>Prestador (só você vê)</th>
                       <th style={{ padding: '4px 6px' }}>Tipo</th>
                       <th style={{ padding: '4px 6px', textAlign: 'right' }}>Valor real</th>
                       <th style={{ padding: '4px 6px', textAlign: 'right' }}>Médico vê</th>
+                      <th style={{ padding: '4px 6px' }}>Origem</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {refs.map((x, i) => (
-                      <tr key={i} style={{ borderTop: '1px solid #f3f4f6' }}>
+                    {refs.map((x, i) => {
+                      const bloqueada = !!x.ocultoAoMedico;       // a Conferência não validou: nunca vai
+                      const vai = comValores && !bloqueada && !refsFora.has(x.id);
+                      return (
+                      <tr key={x.id ?? i} style={{ borderTop: '1px solid #f3f4f6', color: vai ? undefined : '#9ca3af' }}>
+                        <td style={{ padding: '4px 6px' }}>
+                          <Checkbox inputId={`ref-${x.id}`} checked={vai} disabled={!comValores || bloqueada}
+                            onChange={() => alternar(refsFora, x.id, setRefsFora)} />
+                        </td>
                         <td style={{ padding: '4px 6px' }}>{x.prestador || '—'}{x.conferido ? '' : ' ·  não conferido'}</td>
                         <td style={{ padding: '4px 6px' }}>{x.categoria}</td>
                         <td style={{ padding: '4px 6px', textAlign: 'right' }}>{brl(x.valorOriginal)}</td>
                         <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600 }}>
-                          {comValores ? brl(x.valorReferencia) : <span style={{ color: '#9ca3af' }}>não vai</span>}
+                          {vai ? brl(x.valorReferencia)
+                            : <span style={{ color: '#9ca3af' }} title={bloqueada ? x.ocultoAoMedico : undefined}>
+                                {bloqueada ? 'não vai (não conferido)' : 'não vai'}</span>}
+                        </td>
+                        <td style={{ padding: '4px 6px' }}>
+                          {x.linkAbrir
+                            ? <a href={x.linkAbrir} target="_blank" rel="noreferrer"
+                                title={x.origemAbrir === 'PECA' && x.pagina ? `Abre o processo — o orçamento está na página ${x.pagina}` : 'Abre o documento de onde o valor foi lido'}>
+                                <i className="pi pi-file-pdf" style={{ fontSize: 12 }} /> ver{x.pagina ? ` p.${x.pagina}` : ''}</a>
+                            : <span style={{ color: '#9ca3af' }}>—</span>}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
