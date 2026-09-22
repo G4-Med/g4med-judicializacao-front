@@ -121,7 +121,7 @@ R$ 70 mil; você cota R$ 69 mil — e a Secretaria junta um de R$ 50 mil que rec
 página do pedido pode mostrar as últimas cotações dele — valor, data, procedimento e o que aconteceu
 com cada uma (*seguiu com o seu orçamento*, *não seguiu*, com o motivo quando existe, ou *em
 andamento*) — e dá para abrir o orçamento enviado, só leitura. **É informação sua, não é comparação
-com outros prestadores.** Em links que vão para um grupo com outros médicos, essa seção não aparece.
+com outros prestadores.** Quando o link vai para um grupo com outros médicos, essa seção não é incluída.
 
 Quando houver, a página do pedido mostra também **quanto o Estado já pagou em processos parecidos** — o menor e o
 maior valor dos últimos casos. Esse valor cobre o **processo inteiro** e pode incluir mais de um prestador. É
