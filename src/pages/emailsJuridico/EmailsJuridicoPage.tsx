@@ -98,6 +98,11 @@ export function EmailsJuridicoPage() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [busca, setBusca] = useState('');
+  // Checkbox por linha + ações em lote (@R 21/09 23:39: "marcar todos ou deselecionar... darmos
+  // tratados em todos e um voltar para tratar"). O lote reusa a MESMA rota por-item que o botão
+  // "Tratado"/↩ de cada linha já usa — sem endpoint novo, sem 2ª fonte de verdade de status.
+  const [selecionados, setSelecionados] = useState<Set<number>>(new Set());
+  const [aplicandoLote, setAplicandoLote] = useState(false);
   // ?classe=JUSTICA vem do alerta da Home/fases: abre já filtrado no que o alerta contou.
   const [classeFiltro, setClasseFiltro] = useState<ClasseEmailJuridico | null>(() => {
     const q = new URLSearchParams(window.location.search).get('classe');
@@ -136,6 +141,36 @@ export function EmailsJuridicoPage() {
     }
   };
 
+  const alternarSelecao = (id: number) => setSelecionados((s) => {
+    const novo = new Set(s);
+    if (novo.has(id)) novo.delete(id); else novo.add(id);
+    return novo;
+  });
+  const marcarTodosVisiveis = () => setSelecionados(new Set(visiveis.map((i) => i.id)));
+  const limparSelecao = () => setSelecionados(new Set());
+  const todosVisiveisSelecionados = visiveis.length > 0 && visiveis.every((i) => selecionados.has(i.id));
+
+  // 1 requisição por item (a rota é por-item — não existe endpoint de lote no servidor), em
+  // paralelo com allSettled: 1 falha não trava as outras, e o operador vê quantas deram certo.
+  const aplicarEmLote = async (body: Parameters<typeof tratarEmailJuridico>[1]) => {
+    const ids = Array.from(selecionados);
+    if (!ids.length) return;
+    setAplicandoLote(true);
+    try {
+      const resultados = await Promise.allSettled(ids.map((id) => tratarEmailJuridico(id, body)));
+      const atualizados = new Map<number, EmailJuridicoItem>();
+      let falhas = 0;
+      resultados.forEach((r, i) => {
+        if (r.status === 'fulfilled') atualizados.set(ids[i], r.value.data);
+        else falhas += 1;
+      });
+      setItens((xs) => xs.map((x) => atualizados.get(x.id) ?? x));
+      carregarContagem(true);
+      if (falhas) alert(`${atualizados.size} de ${ids.length} aplicado(s). ${falhas} falharam — tente de novo nesses.`);
+      limparSelecao();
+    } finally { setAplicandoLote(false); }
+  };
+
   return (
     <div className="p-3">
       <h1 className="mt-0 mb-1">E-mails e ofícios que chegam ao jurídico</h1>
@@ -167,9 +202,29 @@ export function EmailsJuridicoPage() {
       </div>
       {erro && <p className="text-red-600">{erro}</p>}
 
+      {selecionados.size > 0 && (
+        <div className="flex gap-2 flex-wrap align-items-center mb-2 p-2"
+          style={{ background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 6 }}>
+          <strong>{selecionados.size} selecionado(s)</strong>
+          <Button label="Marcar tratados" icon="pi pi-check" size="small" severity="success" outlined
+            loading={aplicandoLote} onClick={() => aplicarEmLote({ tratado: true })} />
+          <Button label="Voltar (reabrir)" icon="pi pi-undo" size="small" outlined
+            loading={aplicandoLote} onClick={() => aplicarEmLote({ tratado: false })} />
+          <Button label="Limpar seleção" size="small" text onClick={limparSelecao} disabled={aplicandoLote} />
+        </div>
+      )}
+
       <DataTable value={visiveis} loading={carregando} size="small" stripedRows paginator rows={25} dataKey="id" {...ordenacao}
         emptyMessage={status === 'ABERTO' ? 'Nada aberto — a fila está zerada.' : 'Nenhum e-mail neste filtro.'}
         rowClassName={(r: EmailJuridicoItem) => (r.vencido ? 'mc-linha-vencida' : '')}>
+        <Column header={
+          <input type="checkbox" checked={todosVisiveisSelecionados} aria-label="Marcar todos os visíveis"
+            title={todosVisiveisSelecionados ? 'Desmarcar todos' : 'Marcar todos os visíveis'}
+            onChange={() => (todosVisiveisSelecionados ? limparSelecao() : marcarTodosVisiveis())} />
+        } style={{ width: '2.5rem' }} body={(r: EmailJuridicoItem) => (
+          <input type="checkbox" checked={selecionados.has(r.id)} aria-label={`Selecionar e-mail ${r.id}`}
+            onChange={() => alternarSelecao(r.id)} />
+        )} />
         <Column field="chegouEm" header="Chegou" sortable style={{ width: '10rem' }} body={(r: EmailJuridicoItem) => (
           <span>{r.novo && <Tag value="NOVO" severity="danger" className="mr-1" />}{fmt(r.dataEmail || r.chegouEm)}</span>
         )} />

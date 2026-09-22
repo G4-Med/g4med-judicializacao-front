@@ -92,10 +92,23 @@ para acompanhamento da cotação, conforme a transparência acordada junto à en
 _Pedido #${p.id} · G4MED · ${data}_`;
 }
 
-async function copiarTexto(texto: string) {
+/* Devolve se REALMENTE copiou (¬se "não lançou exceção"). Achado @R 21/09 23:27: entre o clique
+   em "Gerar link e copiar" e o navigator.clipboard.writeText existem 2 awaits de rede
+   (gerarLinkDocumentos + o histórico da prévia já carregado antes) — em alguns navegadores/abas
+   isso perde a ativação transitória exigida pela Clipboard API, e writeText RESOLVE sem escrever
+   nada (¬lança erro — por isso o alert "Não foi possível copiar" nunca aparecia e a tela seguia
+   como se tivesse dado certo: marcava "pedido ao médico" e recarregava a tabela com a área de
+   trabalho vazia no clipboard). document.execCommand('copy') tem essa vantagem: devolve um
+   boolean SÍNCRONO de sucesso — é o único sinal confiável que temos sem pedir permissão de leitura
+   do clipboard (que o usuário pode nunca ter concedido). */
+async function copiarTexto(texto: string): Promise<boolean> {
   if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(texto);
-    return;
+    try {
+      await navigator.clipboard.writeText(texto);
+      return true;
+    } catch {
+      // cai para o fallback abaixo em vez de desistir
+    }
   }
   const t = document.createElement('textarea');
   t.value = texto;
@@ -104,8 +117,9 @@ async function copiarTexto(texto: string) {
   document.body.appendChild(t);
   t.focus();
   t.select();
-  document.execCommand('copy');
+  const ok = document.execCommand('copy');
   document.body.removeChild(t);
+  return ok;
 }
 
 interface Props {
@@ -149,10 +163,11 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
       }
       const d = r.data;
       const texto = montarTextoPedido(pedido, d.url, d.documentosPorTipo || {}, d.documentos || 0, !!d.mostrarValores);
-      try {
-        await copiarTexto(texto);
-      } catch {
-        alert('Não foi possível copiar.');
+      const copiou = await copiarTexto(texto);
+      if (!copiou) {
+        // FALLBACK MANUAL — o link JÁ foi gerado (custou uma escrita no banco); perder o texto
+        // aqui seria pior que um prompt feio. O prompt() vem com o valor pré-selecionado: 1 Ctrl+C.
+        window.prompt('Não deu para copiar automaticamente — selecione e copie (Ctrl+C):', texto);
         return;
       }
       // mesma regra de antes: copiar conta como pedido; a marca vem DEPOIS do copiar dar certo

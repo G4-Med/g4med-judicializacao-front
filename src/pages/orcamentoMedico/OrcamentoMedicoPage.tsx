@@ -500,20 +500,26 @@ const copiarParaWhatsapp = async (rowData: ProcessoOrcamentoRow, recarregar?: ()
 // quem abre o diálogo — mesmo motivo do `recarregar` passado por parâmetro
 let abrirCopiaComLink: ((p: PedidoParaCopiar, recarregar?: () => void) => void) | null = null
 
-const copiarTexto = async (texto: string) => {
+// mesma classe de bug do DialogoCopiarPedido.tsx (achado @R 21/09 23:27): execCommand('copy')
+// tem retorno booleano de sucesso e estava sendo IGNORADO — a função "dava certo" mesmo
+// quando não copiava nada, e quem chama nunca sabia diferenciar os dois casos.
+const copiarTexto = async (texto: string): Promise<boolean> => {
   if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(texto)
-  } else {
-    const textarea = document.createElement('textarea')
-    textarea.value = texto
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.focus()
-    textarea.select()
-    document.execCommand('copy')
-    document.body.removeChild(textarea)
+    try {
+      await navigator.clipboard.writeText(texto)
+      return true
+    } catch { /* cai no fallback abaixo */ }
   }
+  const textarea = document.createElement('textarea')
+  textarea.value = texto
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  const ok = document.execCommand('copy')
+  document.body.removeChild(textarea)
+  return ok
 }
 
 const gerarTextoCobranca = async (medico: string, itens: ProcessoOrcamentoRow[]) => {
@@ -560,12 +566,12 @@ ${blocos}
 [!] *Por favor, providenciar envio dos orcamentos!*
 [TEL] Qualquer duvida, entrar em contato com a equipe G4Med.`
 
-  try {
-    await copiarTexto(texto)
-    alert('Cobrança copiada! Cole no WhatsApp.')
-  } catch {
-    alert('Não foi possível copiar a cobrança.')
+  const copiou = await copiarTexto(texto)
+  if (!copiou) {
+    window.prompt('Não deu para copiar automaticamente — selecione e copie (Ctrl+C):', texto)
+    return
   }
+  alert('Cobrança copiada! Cole no WhatsApp.')
 }
 
   return (
