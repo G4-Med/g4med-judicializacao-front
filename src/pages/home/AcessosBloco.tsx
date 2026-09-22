@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAcessos, type Acessos } from '../../services/api/rotinaAcessos';
+import { getLogAuditoria } from '../../services/api/orders';
 
 /* @R 22/09 18:18: "uma parte que mostra histórico de login por dia, quem logou, horário, e podemos ver dias
    anteriores no mês, para saber quem logou, quem está logado e ativo no momento na plataforma".
@@ -16,6 +17,50 @@ const hojeIso = () => {
     — o servidor não marca conta de serviço de forma confiável; a regra fica dita na tela. */
 const ehRobo = (nome: string) => /rob[oô]|eliza|\(api\)|servi[cç]o/i.test(nome);
 
+interface ItemLog { id: number; orderId: number | null; paciente: string | null; campo: string; valorAnterior: string | null;
+  valorNovo: string | null; usuario: string | null; origem: string | null; createDate: string }
+
+/* @R 22/09 19:00: "para cada usuário ter um log de últimas atividades com horário — clicar na home no usuário
+   para ver as ações de cada um". Fonte = o MESMO histórico da tela de Logs (OrderStatusHistorico, gravado
+   sozinho pelos signals). Só o que MUDA dado aparece; abrir tela ou ler sem alterar não é registrado. */
+function LogDoUsuario({ usuario, nome, onFechar, logins }: { usuario: string; nome: string; onFechar: () => void;
+  logins: { em: string }[] }) {
+  const [itens, setItens] = useState<ItemLog[] | null>(null);
+  const [erro, setErro] = useState(false);
+  useEffect(() => {
+    getLogAuditoria({ usuario })
+      // o servidor filtra por "contém"; aqui fica só o usuário EXATO (rapha ≠ raphael)
+      .then((r) => setItens(((r.data?.itens ?? []) as ItemLog[]).filter((i) => i.usuario === usuario).slice(0, 50)))
+      .catch(() => setErro(true));
+  }, [usuario]);
+  return (
+    <div className="acessos-log" role="dialog" aria-label={`Últimas ações de ${nome}`}>
+      <div className="acessos-log__cab">
+        <strong>Últimas ações de {nome}</strong>
+        <button type="button" onClick={onFechar} aria-label="Fechar"><i className="pi pi-times" /></button>
+      </div>
+      {logins.length > 0 && (
+        <p className="acessos-log__logins">Entrou hoje às {logins.map((l) => hora(l.em)).join(', ')}</p>
+      )}
+      {erro && <p className="acessos-bloco__erro">Não foi possível ler o histórico agora — isso não quer dizer que não houve ações.</p>}
+      {!erro && itens === null && <p className="acessos-bloco__vazio">Carregando…</p>}
+      {itens && itens.length === 0 && <p className="acessos-bloco__vazio">Nenhuma alteração registrada por esta pessoa no histórico.</p>}
+      {itens && itens.length > 0 && (
+        <ul className="acessos-log__lista">
+          {itens.map((i) => (
+            <li key={i.id}>
+              <b>{diaHora(i.createDate)}</b>
+              <span>{i.orderId ? <a href={`/base-processos?paciente=${encodeURIComponent(i.paciente || '')}`} title="Abrir na Base de Processos">#{i.orderId}</a> : '—'}{i.paciente ? ` ${i.paciente}` : ''}</span>
+              <span className="acessos-log__mudanca">{i.campo}: {i.valorAnterior || '—'} → {i.valorNovo || '—'}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="acessos-bloco__regra">Mostra as últimas 50 alterações gravadas no histórico (fase, status, campos do pedido). Abrir telas sem alterar nada não fica registrado.</p>
+    </div>
+  );
+}
+
 export function AcessosBloco() {
   const [dia, setDia] = useState(hojeIso());
   const [dados, setDados] = useState<Acessos | null>(null);
@@ -23,6 +68,7 @@ export function AcessosBloco() {
   const [erro, setErro] = useState(false);
   const [aberto, setAberto] = useState(false);
   const [verRobos, setVerRobos] = useState(false);
+  const [logDe, setLogDe] = useState<{ usuario: string; nome: string } | null>(null);
 
   useEffect(() => {
     setErro(false);
@@ -43,7 +89,10 @@ export function AcessosBloco() {
     : erro ? 'não foi possível carregar agora' : 'carregando…';
 
   const linhaPessoa = (p: Acessos['agora'][number]) => (
-    <li key={p.usuario} className="acessos-bloco__pessoa">
+    <li key={p.usuario} className="acessos-bloco__pessoa acessos-bloco__pessoa--clicavel" role="button" tabIndex={0}
+      title="Clique para ver as últimas ações desta pessoa"
+      onClick={() => setLogDe({ usuario: p.usuario, nome: p.nome })}
+      onKeyDown={(e) => { if (e.key === 'Enter') setLogDe({ usuario: p.usuario, nome: p.nome }); }}>
       <span className={`acessos-bloco__ponto ${p.ativo ? 'ativo' : p.logado ? 'logado' : ''}`}
         aria-label={p.ativo ? 'ativo' : p.logado ? 'logado' : 'fora'} />
       <span className="acessos-bloco__nome">{p.nome}</span>
@@ -78,7 +127,11 @@ export function AcessosBloco() {
               <div className="acessos-bloco__coluna">
                 <h3>Agora <span>{ativos} ativa(s) · {logados} logada(s)</span></h3>
                 <ul className="acessos-bloco__lista">{pessoasAgora.map(linhaPessoa)}</ul>
-                <p className="acessos-bloco__regra">Ativo = fez alguma ação nos últimos {dados.regras.ativoMinutos} min · Logado = entrou nas últimas {dados.regras.logadoHoras} h.</p>
+                {logDe && (
+                  <LogDoUsuario usuario={logDe.usuario} nome={logDe.nome} onFechar={() => setLogDe(null)}
+                    logins={(dados.logins ?? []).filter((l) => l.usuario === logDe.usuario)} />
+                )}
+                <p className="acessos-bloco__regra">Clique numa pessoa para ver as últimas ações dela. Ativo = fez alguma ação nos últimos {dados.regras.ativoMinutos} min · Logado = entrou nas últimas {dados.regras.logadoHoras} h.</p>
               </div>
               <div className="acessos-bloco__coluna">
                 <h3>Quem entrou em {new Date(`${dados.dia}T12:00:00`).toLocaleDateString('pt-BR')} <span>{loginsPessoas.length}</span></h3>

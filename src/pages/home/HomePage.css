@@ -548,3 +548,18 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
 .home-comparar__tabela th:first-child, .home-comparar__tabela td:first-child { text-align: left; }
 .home-comparar__tabela td small { color: inherit; opacity: .8; }
 .home-comparar__legenda { margin-top: 6px !important; }
+
+/* @R 22/09 19:00: clicar na pessoa abre o log das últimas ações */
+.acessos-bloco__pessoa--clicavel { cursor: pointer; }
+.acessos-bloco__pessoa--clicavel:hover .acessos-bloco__nome { color: #0A3D62; text-decoration: underline; }
+.acessos-log { margin-top: 10px; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; box-shadow: 0 4px 14px rgba(15, 23, 42, .08); }
+.acessos-log__cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.acessos-log__cab button { border: 0; background: transparent; cursor: pointer; color: #64748b; padding: 4px; border-radius: 6px; }
+.acessos-log__cab button:hover { background: #eef2f7; color: #0f172a; }
+.acessos-log__logins { font-size: 12px; color: #475569; margin: 0 0 6px; }
+.acessos-log__lista { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; font-size: 12px; }
+.acessos-log__lista li { display: grid; grid-template-columns: 92px 1fr; gap: 2px 8px; padding: 5px 4px; border-bottom: 1px solid #f1f5f9; }
+.acessos-log__lista li:hover { background: #f8fafc; }
+.acessos-log__lista b { color: #0A3D62; font-variant-numeric: tabular-nums; font-weight: 600; }
+.acessos-log__lista a { color: #0A3D62; font-weight: 600; }
+.acessos-log__mudanca { grid-column: 2; color: #475569; }
