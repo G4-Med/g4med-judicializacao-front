@@ -236,6 +236,22 @@ function formatCurrency(value: number): string {
 
 
 
+/** "2026-09-11" → "11/09" */
+const dataCurta = (iso?: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '?');
+
+/** Dica do card "Dados do Estado": cada elo da cadeia, na ordem em que o dado anda (@R 22/09). */
+function textoSaudeDados(d: SaudeDados): string {
+  const f = d.fonte;
+  const linhas = [
+    `1. Portal do Estado (dados.mg.gov.br): ${!f?.disponivel ? 'sem informação' : f.portalVazio ? `publicando arquivos VAZIOS (visto em ${f.portalDesde?.slice(0, 16).replace('T', ' ')})` : 'arquivos com dados'}`,
+    `2. Coleta: ${f?.disponivel ? `último dado novo há ${Math.round((f.coletaIdadeHoras ?? 0) / 24)} dia(s) · empenhos até ${dataCurta(f.coletaMaxEmpenho)} (com nº do processo) · ${f.semCnj ?? '?'} sem nº do processo` : 'sem informação'}`,
+    `3. Carga no MedCheck (diária 08:07): ${f?.disponivel ? `última rodada ${f.rodadaEm?.slice(0, 16).replace('T', ' ')} · ${f.rc === 0 ? 'ok' : `falhou (${f.etapa})`}` : 'nunca mandou o estado'}`,
+    `4. Pagamentos no MedCheck: ${d.empenhos.n} registros · o mais recente é de ${dataCurta(d.empenhos.maxPagamento)} (${d.resumo?.diasSemPagamentoNovo ?? '?'} dias; alerta acima de ${d.resumo?.limiteDias ?? 7})`,
+    `5. Régua de preços: recalculada há ${d.regua.idadeHoras ?? '?'} h`,
+  ];
+  return linhas.join('\n');
+}
+
 export function HomePage() {
   const emailsJur = useEmailsJuridicoContagem();   // linha 1.2 do painel (@R 21/09)
   /* Linha 3.1 do painel (@R 22/09: "criar uma fase bater preços na parte de baixo para ela").
@@ -683,21 +699,19 @@ export function HomePage() {
               O dado é medido no banco, não em log — dado velho aqui é elo parado, sem exceção. */}
           <div
             className="home-hero__metric"
-            title={
-              saudeDados
-                ? `Empenhos: ${saudeDados.empenhos.n} registros · pagamentos até ${saudeDados.empenhos.maxPagamento ?? '?'} · empenhos até ${saudeDados.empenhos.maxEmpenho ?? '?'} · atualizado há ${saudeDados.empenhos.idadeHoras ?? '?'}h\nRégua 548: ${saudeDados.regua.n} · atualizada há ${saudeDados.regua.idadeHoras ?? '?'}h`
-                : 'Não foi possível medir o frescor dos dados do Estado'
-            }
+            title={saudeDados ? textoSaudeDados(saudeDados) : 'Não foi possível medir o frescor dos dados do Estado'}
           >
             <strong>Dados do Estado</strong>
-            <span>
+            <span style={saudeDados && !(saudeDados.resumo?.ok ?? (saudeDados.empenhos.ok && saudeDados.regua.ok)) ? { color: '#fcd34d' } : undefined}>
               {!saudeDados
                 ? '—'
-                : saudeDados.empenhos.ok && saudeDados.regua.ok
-                  ? `✓ atualizados · pagos até ${saudeDados.empenhos.maxPagamento ?? '?'}`
-                  : !saudeDados.empenhos.ok
-                    ? `⚠ empenhos parados há ${Math.round(saudeDados.empenhos.idadeHoras ?? 0)}h`
-                    : `⚠ régua 548 parada há ${Math.round(saudeDados.regua.idadeHoras ?? 0)}h`}
+                : saudeDados.resumo
+                  ? (saudeDados.resumo.ok
+                    ? `✓ pagos até ${dataCurta(saudeDados.empenhos.maxPagamento)}`
+                    : `⚠ ${saudeDados.resumo.texto} · pagos até ${dataCurta(saudeDados.empenhos.maxPagamento)}`)
+                  : saudeDados.empenhos.ok && saudeDados.regua.ok
+                    ? `✓ atualizados · pagos até ${saudeDados.empenhos.maxPagamento ?? '?'}`
+                    : `⚠ dados parados · pagos até ${saudeDados.empenhos.maxPagamento ?? '?'}`}
             </span>
           </div>
         </div>

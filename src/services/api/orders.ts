@@ -50,6 +50,12 @@ export type SaudeDados = {
   empenhos: { n: number; maxPagamento: string | null; maxEmpenho: string | null; atualizadoEm: string | null; idadeHoras: number | null; ok: boolean };
   regua: { n: number; atualizadoEm: string | null; idadeHoras: number | null; ok: boolean };
   medidoEm: string;
+  /** @R 22/09: o primeiro elo parado da cadeia portal → coleta → carga → pagamentos, em português */
+  resumo?: { ok: boolean; elo: 'portal' | 'coleta' | 'envio' | 'pagamentos' | null; texto: string | null;
+             diasSemPagamentoNovo: number | null; limiteDias: number };
+  fonte?: { disponivel: boolean; rodadaEm?: string; rodadaIdadeHoras?: number | null; rc?: number; etapa?: string;
+            mensagem?: string; coletaIdadeHoras?: number | null; coletaMaxEmpenho?: string; coletaMaxEmpenhoBruto?: string;
+            semCnj?: number | null; portalVazio?: boolean; portalDesde?: string };
 };
 export const getSaudeDados = () => api.get<SaudeDados>('/kpis/saude-dados/');
 export const getPerdas = () => api.get('/orders/perdas/');
