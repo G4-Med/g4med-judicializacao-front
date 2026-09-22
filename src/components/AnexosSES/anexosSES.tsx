@@ -106,7 +106,7 @@ function Dossie({ orderId, dossie, onChange }: { orderId: number; dossie: any; o
 }
 
 /** O modal: anexos (ver/baixar) + a thread de e-mails (enviados e recebidos) do pedido. */
-function ModalAnexosSES({ orderId, paciente, aberto, fechar }: { orderId: number; paciente?: string; aberto: boolean; fechar: () => void }) {
+export function ModalAnexosSES({ orderId, paciente, aberto, fechar }: { orderId: number; paciente?: string; aberto: boolean; fechar: () => void }) {
   const [dados, setDados] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   useEffect(() => {

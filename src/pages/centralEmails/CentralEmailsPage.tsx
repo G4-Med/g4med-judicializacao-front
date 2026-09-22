@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TabView, TabPanel } from 'primereact/tabview';
+import { AguardandoDocumentos } from './AguardandoDocumentos';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
@@ -588,6 +589,8 @@ export function CentralEmailsPage() {
           <p className="ce-sub">Os textos que saem automaticamente para quem mandou o pedido: <strong>Recebimento normal</strong>, <strong>Segredo de justiça</strong> (menor de 18 — sem nome nem número do processo) e <strong>Sem anexo</strong> (pede o documento que faltou). Os demais são os e-mails enviados pela equipe nas fases seguintes.</p>
           <div className="ce-templates"><ConfiguracoesEmailsPage /></div>
         </TabPanel>
+        {/* #539 (@R 21/09): pedidos que chegaram sem documento — no fim para não mudar o índice das outras abas */}
+        <TabPanel header="Aguardando documentos" leftIcon="pi pi-paperclip mr-2"><AguardandoDocumentos /></TabPanel>
       </TabView>
     </div>
   );

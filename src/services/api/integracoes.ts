@@ -101,3 +101,13 @@ export const postThreadVista = (orderId: number) => api.post(`/integracoes/centr
 // Checkbox do dossiê (v2 ①): OK = equipe confirmou · NA = não se aplica · FALTA = falta mesmo com anexo · null = máquina decide.
 export const patchDossie = (orderId: number, payload: Partial<Record<'oficio' | 'relatorio' | 'exames', 'OK' | 'NA' | 'FALTA' | null>>) =>
   api.patch(`/integracoes/central/pedidos/${orderId}/dossie/`, payload);
+
+/* Aguardando documentos (#539, desenho @R 21/09): aba da Central de E-mails */
+export const getAguardandoDocumentos = (aba: 'nao_chegou' | 'chegou') =>
+  api.get('/integracoes/central/aguardando-documentos/', { params: { aba } });
+export const getPreviaPedirDocumento = (orderId: number) =>
+  api.get(`/integracoes/central/aguardando-documentos/${orderId}/pedir-de-novo/`);
+export const postPedirDocumentoDeNovo = (orderId: number) =>
+  api.post(`/integracoes/central/aguardando-documentos/${orderId}/pedir-de-novo/`);
+export const postMarcarDocumentoRecebido = (orderId: number, como: string) =>
+  api.post(`/integracoes/central/aguardando-documentos/${orderId}/marcar-recebido/`, { como });
