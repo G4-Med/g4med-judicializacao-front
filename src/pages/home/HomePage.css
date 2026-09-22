@@ -608,3 +608,19 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
 .home-hero__panel { container-type: inline-size; }
 @container (max-width: 540px) { .home-hero__fases { columns: 1; } }
 .acessos-log__historico { margin-top: 8px; } .acessos-log__historico summary { cursor: pointer; font-size: 12.5px; color: #0A3D62; font-weight: 600; }
+
+/* @R 22/09 23:40 "arruma o visual do /home da largura" — v3, MEDIDO com o HTML real em 1280/1366/1536/1920.
+   Causas: (1) `.home-hero__metric span` (18px) também pegava o NOME da fase → nomes 30% maiores que o previsto;
+   (2) o "…" escondia o fim do nome ("Enviado à SES (sem prot…"); (3) coluna da esquerda estreita → título em
+   5 linhas e banner alto. Cura: nome a 14px por seletor mais específico, sem corte; título proporcional à tela;
+   a linha "A verificar" (a única com selo) ocupa as 2 colunas embaixo, com o selo AO LADO do nome. */
+.home-hero { grid-template-columns: minmax(280px, 0.7fr) minmax(0, 1.55fr); align-items: start; }
+.home-hero__content h1 { font-size: clamp(26px, 2.1vw, 36px); line-height: 1.12; }
+.home-hero .home-hero__fases .home-hero__fase-nome {
+  font-size: 14px; font-weight: 500; white-space: nowrap; overflow: visible; text-overflow: clip;
+}
+.home-hero .home-hero__fases li:has(.home-hero__selo) .home-hero__fase-nome { white-space: nowrap; }
+.home-hero .home-hero__fases .home-hero__fase-nome .home-hero__selo { display: inline-block; margin: 0 0 0 8px; vertical-align: 1px; }
+.home-hero__fases li:has(.home-hero__selo) { column-span: all; margin-top: 4px; }
+.home-hero__fases li { padding: 2px 0; }
+@container (max-width: 520px) { .home-hero__fases { columns: 1; } }
