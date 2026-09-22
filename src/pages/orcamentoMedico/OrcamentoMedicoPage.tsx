@@ -115,12 +115,13 @@ export function OrcamentoMedicoPage() {
   // "to mudando e a linha continua na tabela com os status incorretos"). O contexto
   // incrementa este número; ele entra nas dependências do efeito de carga abaixo.
   const { versaoDados, abrir: abrirFichaPedido } = useFichaPedido();
-  // diálogo do link seguro (Copiar): a função de copiar vive fora do componente e chama por aqui
+  // diálogo do link seguro (Copiar): `copiarParaWhatsapp` vive FORA do componente (chamada de
+  // 2 lugares) e recebe este setter DIRETO como parâmetro — achado @R 21/09 23:52: antes a
+  // ponte era uma variável `let` de módulo escrita por este useEffect e ZERADA no cleanup do
+  // unmount; se o clique acontecesse depois de um unmount (navegação, remount por erro/HMR/
+  // Suspense) a chamada virava `null?.(...)` — SEM erro, SEM aviso, SEM nada. "Clico em Copiar
+  // e não acontece nada" é exatamente essa assinatura: nem confirm(), nem rede, nem modal.
   const [copiaComLink, setCopiaComLink] = useState<{ p: PedidoParaCopiar; recarregar?: () => void } | null>(null);
-  useEffect(() => {
-    abrirCopiaComLink = (p, recarregar) => setCopiaComLink({ p, recarregar });
-    return () => { abrirCopiaComLink = null; };
-  }, []);
   // @R 28/08 03:37: painel do pedido abre ABAIXO da linha, em toda fase.
   const [expandidas, setExpandidas] = useState<any>(undefined);
   const { isReadOnly } = useAccess();
@@ -462,7 +463,15 @@ const abrirDetalhe = (rowData: ProcessoOrcamentoRow) => {
 // `recarregar` vem de fora porque esta função vive FORA do componente e não enxerga o
 // carregarDados dele — sem isso, a marca de "pedido" gravaria no banco e a linha só
 // mostraria na próxima abertura da tela (a cicatriz de 17/09: peça provada, ¬instalada).
-const copiarParaWhatsapp = async (rowData: ProcessoOrcamentoRow, recarregar?: () => void) => {
+// `abrirDialogo` TAMBÉM vem por parâmetro agora (achado @R 21/09 23:52): antes era uma
+// variável `let` de módulo escrita por um useEffect e ZERADA no cleanup do unmount — se o
+// clique acontecesse depois de um unmount (navegação/HMR/remount) virava `null?.(...)`,
+// sem erro nem aviso. "Clico em Copiar e não acontece nada" era exatamente essa assinatura.
+const copiarParaWhatsapp = async (
+  rowData: ProcessoOrcamentoRow,
+  abrirDialogo: (p: PedidoParaCopiar, recarregar?: () => void) => void,
+  recarregar?: () => void,
+) => {
   /* SEGREDO DE JUSTIÇA NÃO VAI A PRESTADOR (mandato @R via eliza-urgencia, 20/09 02:08): 7 pedidos em
      segredo foram disparados a canais de prestador nesta madrugada. O servidor também recusa
      (409 segredo_de_justica em cotacao-pedida e solicitar-cotacao-medico); aqui barramos ANTES de
@@ -489,16 +498,12 @@ const copiarParaWhatsapp = async (rowData: ProcessoOrcamentoRow, recarregar?: ()
      ordem clínica e a frase da SES moraram aqui até hoje e foram para DialogoCopiarPedido.tsx
      (texto) e backend/link_documentos.py (lista branca, servidor). */
   const m = rowData as any
-  abrirCopiaComLink?.({
+  abrirDialogo({
     id: rowData.id, paciente: rowData.paciente, idade: rowData.idade, procedimento: rowData.procedimento,
     area: rowData.area, subarea: rowData.subarea,
     idMedico: m.idMedico ?? m.medicoId ?? m.medico_id ?? null, medico: m.nomeMedico ?? m.medico ?? null,
   }, recarregar)
 }
-
-// a função acima vive FORA do componente (é chamada de 2 lugares); o componente registra aqui
-// quem abre o diálogo — mesmo motivo do `recarregar` passado por parâmetro
-let abrirCopiaComLink: ((p: PedidoParaCopiar, recarregar?: () => void) => void) | null = null
 
 // mesma classe de bug do DialogoCopiarPedido.tsx (achado @R 21/09 23:27): execCommand('copy')
 // tem retorno booleano de sucesso e estava sendo IGNORADO — a função "dava certo" mesmo
@@ -681,7 +686,7 @@ ${blocos}
                   icon="pi pi-copy"
                   outlined
                   severity="secondary"
-                  onClick={() => copiarParaWhatsapp(rowData, carregarDados)}
+                  onClick={() => copiarParaWhatsapp(rowData, (p, r) => setCopiaComLink({ p, recarregar: r }), carregarDados)}
                 />
               )) as any)(r)}</>, excluir: carregarDados })}
           <Column field="paciente" header={cabecalhoComHint('Paciente', 'Nome do beneficiário, em MAIÚSCULAS sem acento (padrão de busca).')} filter
@@ -1119,7 +1124,7 @@ ${blocos}
             candidatos={linha?.cotacaoConcorrente ?? []}
             readOnly={readOnly}
             onMudou={carregarDados}
-            onCopiarPedido={linha ? () => copiarParaWhatsapp(linha, carregarDados) : undefined}
+            onCopiarPedido={linha ? () => copiarParaWhatsapp(linha, (p, r) => setCopiaComLink({ p, recarregar: r }), carregarDados) : undefined}
           />
         );
       })()}
