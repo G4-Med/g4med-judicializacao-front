@@ -1,4 +1,3 @@
-
 # G4MED · Manual do hospital participante
 
 **Como funciona o processo de cotação de cirurgias judiciais, qual é o papel do seu hospital e como a G4MED
@@ -92,7 +91,18 @@ avaliado, diga o que falta.
 - **Realizar o atendimento ou a pré-consulta do paciente, presencial ou online**, quando o caso pedir.
 - Se quiser, **especificar essas informações no orçamento**: forma de atendimento, pré-consulta, contatos.
 
-## 6. Depois do envio
+## 6. Antes do envio: a conferência de valor
+
+Desde 22/09, todo orçamento para antes de ir à Secretaria, numa conferência de valor. Na maioria dos casos
+ela é só um registro e o e-mail sai na hora. Quando o processo já traz **um orçamento de outro prestador
+mais barato**, a G4MED mostra os dois lado a lado e pode perguntar se o hospital mantém ou revisa. Um
+orçamento de terceiro muito abaixo do seu aparece marcado como **"pode ser parcial"**, porque às vezes
+cobre só uma parte do procedimento.
+
+**Nós não alteramos o valor do hospital nem sugerimos onde cortar.** A revisão só entra com o valor que
+**o hospital** mandar, e a versão anterior fica registrada.
+
+## 7. Depois do envio
 
 1. O orçamento vai **à Secretaria de Saúde, por e-mail**.
 2. A equipe jurídica **protocola o orçamento no processo judicial** e acompanha o processo.
@@ -101,18 +111,24 @@ avaliado, diga o que falta.
 **O valor que vai para a Secretaria já deve ser o seu melhor valor.** Todo orçamento que participa é acompanhado,
 ganhe ou perca: é daí que vem a inteligência da próxima cotação.
 
-## 7. O preço do processo não é o preço a cotar
+## 8. O preço do processo não é o preço a cotar
 
 Muitos processos trazem orçamentos de outros hospitais. Eles são **referência, não regra**: a Secretaria também
 recebe orçamentos diretamente, que só aparecem depois de participar. Um processo pode trazer R$ 80 mil e
 R$ 70 mil; você cota R$ 69 mil — e a Secretaria junta um de R$ 50 mil que recebeu direto. *(Ilustração.)*
+
+**Suas cotações anteriores:** se o hospital já nos mandou orçamento para um procedimento parecido, a
+página do pedido pode mostrar as últimas cotações dele — valor, data, procedimento e o que aconteceu
+com cada uma (*seguiu com o seu orçamento*, *não seguiu*, com o motivo quando existe, ou *em
+andamento*) — e dá para abrir o orçamento enviado, só leitura. **É informação sua, não é comparação
+com outros prestadores.** Em links que vão para um grupo com outros médicos, essa seção não aparece.
 
 Quando houver, a página do pedido mostra também **quanto o Estado já pagou em processos parecidos** — o menor e o
 maior valor dos últimos casos. Esse valor cobre o **processo inteiro** e pode incluir mais de um prestador. É
 referência, **não piso nem teto**: cote o valor que o hospital consegue cumprir — desistir depois de escolhido é
 pior do que não vencer.
 
-## 8. A primeira cotação é aprendizagem
+## 9. A primeira cotação é aprendizagem
 
 Na primeira cotação de um tipo de cirurgia, ninguém sabe ainda quem compete e a que preço. É essa primeira
 participação que revela o mercado; a partir da segunda, o hospital cota **sabendo contra quem**.
@@ -124,7 +140,7 @@ participação que revela o mercado; a partir da segunda, o hospital cota **sabe
 Cotar para o Estado é um jogo de informação: quem não acompanha perde sem saber por quê, e desiste. Com o
 acompanhamento, cada perda vira informação para a próxima.
 
-## 9. Prazos — são dois
+## 10. Prazos — são dois
 
 | O que | Quanto tempo |
 |---|---|
@@ -133,12 +149,12 @@ acompanhamento, cada perda vira informação para a próxima.
 
 Não planeje a agenda cirúrgica pelo primeiro prazo.
 
-## 10. Condições comerciais
+## 11. Condições comerciais
 
 As condições comerciais — período inicial, forma de remuneração e o que se avalia nele — estão na **proposta
 comercial da G4MED** para o seu hospital. Este manual trata só de como o processo funciona.
 
-## 11. Perguntas frequentes
+## 12. Perguntas frequentes
 
 **Se não há orçamento no processo, o Estado pode decidir só com o nosso?**
 A Secretaria consulta vários hospitais no mesmo prazo. Se ninguém mais responde, a sua cotação pode ser a única —
@@ -151,4 +167,4 @@ Hoje esses casos são identificados lendo os documentos um a um; ainda não há 
 Pela nossa experiência, já encurtou: de 6 cotações para 1. A primeira participação continua necessária — é ela que mostra quem compete.
 
 ---
-*G4MED · Manual do hospital participante · versão 1.0 · 21/09/2026*
+*G4MED · Manual do hospital participante · versão 1.2 · 22/09/2026 (conferência de valor · valores pagos pelo Estado · suas cotações anteriores)*

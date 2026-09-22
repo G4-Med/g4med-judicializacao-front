@@ -1,4 +1,3 @@
-
 # G4MED · Guia rápido para o médico
 
 **Você vai receber pedidos de orçamento de cirurgias que estão na Justiça. Este guia mostra, em 2 minutos,
@@ -67,10 +66,26 @@ preço cotam. É essa primeira participação que revela isso — e a partir da 
 quem**. O preço que aparece no processo é referência, não regra: a Secretaria também recebe orçamentos que só
 aparecem depois.
 
+### Suas cotações anteriores
+
+Se você já nos mandou orçamento para um procedimento parecido, a página do pedido pode mostrar **as
+suas últimas cotações**: valor, data, procedimento e o que aconteceu com cada uma — *seguiu com o seu
+orçamento*, *não seguiu* (com o motivo quando existe) ou *em andamento*. Você também pode abrir o
+orçamento que mandou, só para leitura. **É informação sua — não é comparação com outros prestadores.**
+
 Quando houver, a página do pedido mostra também **quanto o Estado já pagou em processos parecidos** — o menor e o
 maior valor dos últimos casos. Esse valor cobre o **processo inteiro** e pode incluir mais de um prestador. É
 referência, **não piso nem teto**: cote o valor que você consegue cumprir — desistir depois de escolhido é pior do
 que não vencer.
+
+## Antes de o seu orçamento ir à Secretaria
+
+Desde 22/09, todo orçamento passa por uma conferência de valor antes do envio. Na maioria dos casos ela é
+só um registro e o e-mail sai na hora. Quando o processo já traz **um orçamento de outro prestador mais
+barato**, a G4MED coloca os dois lado a lado e pode perguntar se você quer manter ou revisar.
+
+**Nós não alteramos o seu valor nem sugerimos onde cortar.** Se houver revisão, ela só entra com o valor
+que **você** mandar, e a versão anterior fica registrada.
 
 ## Prazos
 
@@ -80,4 +95,4 @@ que não vencer.
   Não planeje a agenda cirúrgica pelo primeiro prazo.
 
 ---
-*G4MED · Guia do médico · versão 1.0 · 21/09/2026*
+*G4MED · Guia do médico · versão 1.2 · 22/09/2026 (conferência de valor · valores pagos pelo Estado · suas cotações anteriores)*
