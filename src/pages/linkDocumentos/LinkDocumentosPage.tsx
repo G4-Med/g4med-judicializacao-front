@@ -21,7 +21,12 @@ interface Dados {
   referencias: { categoria: string; valorReferencia: number; local?: string | null; descricao?: string | null;
                  data?: string | null; pagina?: number | null }[];
   referenciasNota: string;
-  pagoPeloEstado?: { n: number; media: number; mediana: number; de: string; ate: string; aviso: string } | null;
+  pagoPeloEstado?: { n: number; media: number; mediana: number; de: string; ate: string; aviso: string;
+                    lista?: { valor: number; mes: string; procedimento: string }[] } | null;
+  // @R 22/09: relatório médico da IA para leitura rápida, cada ponto com documento + página citados
+  resumoClinico?: { geradoEm: string; aviso: string;
+                    campos: { campo: string; rotulo: string; valor: string;
+                              citacoes: { anexoId: number; documento: string; nome: string | null; pagina: number; trecho: string }[] }[] } | null;
   expiraEm?: string | null;
 }
 
@@ -34,7 +39,7 @@ const cor = {
   marca: '#0d0d0f', destaque: '#009739', aviso: '#8a5a00',
 };
 
-function Visualizador({ token, codigo, doc, onVoltar }: { token: string; codigo: string; doc: Documento; onVoltar: () => void }) {
+function Visualizador({ token, codigo, doc, onVoltar, irPara }: { token: string; codigo: string; doc: Documento; onVoltar: () => void; irPara?: number }) {
   // Carrega página a página: mostra a 1ª; ao terminar de carregar, pede a próxima. A que responder
   // 404 marca o fim. Assim não é preciso saber o total antes, e um documento longo não baixa tudo de uma vez.
   const [paginas, setPaginas] = useState<number[]>([1]);
@@ -59,12 +64,16 @@ function Visualizador({ token, codigo, doc, onVoltar }: { token: string; codigo:
       </div>
       <div style={{ padding: '12px 8px 32px', display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center' }}>
         {paginas.map((n) => (
-          <img key={n} src={url(n)} alt={`${doc.rotulo}, página ${n}`} draggable={false}
+          <img key={n} id={`pag-${n}`} src={url(n)} alt={`${doc.rotulo}, página ${n}`} draggable={false}
             onContextMenu={(e) => e.preventDefault()}
             style={{ width: '100%', maxWidth: 900, background: '#fff', borderRadius: 4,
               boxShadow: '0 1px 3px rgba(0,0,0,.12)', userSelect: 'none', WebkitUserSelect: 'none',
               WebkitTouchCallout: 'none' } as React.CSSProperties}
-            onLoad={() => { if (n === paginas[paginas.length - 1] && !fim) setPaginas((p) => [...p, n + 1]); }}
+            onLoad={() => {
+              // citação do relatório: abre o documento e rola até a página citada quando ela chega
+              if (irPara && n === irPara) document.getElementById(`pag-${n}`)?.scrollIntoView({ block: 'start' });
+              if (n === paginas[paginas.length - 1] && !fim) setPaginas((p) => [...p, n + 1]);
+            }}
             onError={() => {
               if (n === 1) setErro(true);
               setFim(true);
@@ -84,6 +93,7 @@ export function LinkDocumentosPage() {
   const [dados, setDados] = useState<Dados | null>(null);
   const [falha, setFalha] = useState<'encerrado' | 'expirado' | 'invalido' | 'rede' | 'bloqueado' | null>(null);
   const [aberto, setAberto] = useState<Documento | null>(null);
+  const [irPara, setIrPara] = useState<number | undefined>(undefined);
   // @R 22/09: código de 4 dígitos que chega SÓ na mensagem. Guardado na aba (sessionStorage) para
   // recarregar a página não pedir de novo; nunca vai na URL (senão quem visse o link veria o código).
   const chave = `g4med_codigo_${token}`;
@@ -134,7 +144,7 @@ export function LinkDocumentosPage() {
   };
 
   if (aberto) {
-    return <div style={pagina}><Visualizador token={token} codigo={codigo} doc={aberto} onVoltar={() => setAberto(null)} /></div>;
+    return <div style={pagina}><Visualizador token={token} codigo={codigo} doc={aberto} irPara={irPara} onVoltar={() => { setAberto(null); setIrPara(undefined); }} /></div>;
   }
 
   const agrupado = new Map<string, Documento[]>();
@@ -215,6 +225,36 @@ export function LinkDocumentosPage() {
                 {dados.expiraEm && <><br /><b>Disponível até {new Date(dados.expiraEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}.</b></>}</span>
             </div>
 
+            {dados.resumoClinico && (
+              <section>
+                <h2 style={tituloSecao}>Resumo médico para leitura rápida</h2>
+                <div style={{ background: cor.cartao, borderRadius: 12, border: `1px solid ${cor.linha}`, padding: '14px 16px',
+                  display: 'flex', flexDirection: 'column', gap: 12, fontSize: 15, lineHeight: 1.45 }}>
+                  {dados.resumoClinico.campos.map((c) => (
+                    <div key={c.campo}>
+                      <div style={{ fontSize: 12, color: cor.suave, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{c.rotulo}</div>
+                      <div>{c.valor}</div>
+                      {c.citacoes.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                          {c.citacoes.map((x, i) => {
+                            const doc = dados.documentos.find((d) => d.id === x.anexoId);
+                            return doc ? (
+                              <button key={i} title={x.trecho} onClick={() => { setIrPara(x.pagina); setAberto(doc); }}
+                                style={{ background: '#eaf5ee', border: '1px solid #bfe3cb', borderRadius: 999, padding: '4px 10px',
+                                  fontSize: 13, color: cor.texto, cursor: 'pointer' }}>
+                                {x.documento}{x.nome ? ` · ${x.nome}` : ''}, p. {x.pagina} ›
+                              </button>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <div style={{ fontSize: 12, color: cor.aviso }}>{dados.resumoClinico.aviso}</div>
+                </div>
+              </section>
+            )}
+
             {dados.documentos.length === 0 && (
               <div style={{ background: cor.cartao, borderRadius: 12, padding: 16, color: cor.suave }}>
                 Ainda não há documentos clínicos neste pedido.
@@ -228,7 +268,7 @@ export function LinkDocumentosPage() {
                 </h2>
                 <div style={{ background: cor.cartao, borderRadius: 12, overflow: 'hidden', border: `1px solid ${cor.linha}` }}>
                   {docs.map((d, i) => (
-                    <button key={d.id} onClick={() => setAberto(d)}
+                    <button key={d.id} onClick={() => { setIrPara(undefined); setAberto(d); }}
                       style={{ display: 'flex', width: '100%', alignItems: 'center', gap: 12, textAlign: 'left',
                         background: 'transparent', border: 'none', borderTop: i ? `1px solid ${cor.linha}` : 'none',
                         padding: '14px 16px', minHeight: 56, fontSize: 16, color: cor.texto, cursor: 'pointer' }}>
@@ -257,6 +297,12 @@ export function LinkDocumentosPage() {
                     {dados.pagoPeloEstado.n} processo{dados.pagoPeloEstado.n === 1 ? '' : 's'} com procedimento parecido,
                     pagos entre {dataBR(dados.pagoPeloEstado.de)} e {dataBR(dados.pagoPeloEstado.ate)}. {dados.pagoPeloEstado.aviso}
                   </div>
+                  {(dados.pagoPeloEstado.lista ?? []).map((x, i) => (
+                    <div key={i} style={{ display: 'flex', gap: 12, justifyContent: 'space-between', borderTop: `1px solid ${cor.linha}`, paddingTop: 6 }}>
+                      <span style={{ fontSize: 13, color: cor.suave, flex: 1 }}>{x.mes.split('-').reverse().join('/')} · {x.procedimento}</span>
+                      <b>{brl(x.valor)}</b>
+                    </div>
+                  ))}
                 </div>
               </section>
             )}

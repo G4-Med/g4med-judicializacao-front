@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
-import { previaLinkDocumentos, gerarLinkDocumentos, registrarCotacaoPedida } from '../../services/api/orders';
+import { previaLinkDocumentos, gerarLinkDocumentos, gerarRelatorioMedico, registrarCotacaoPedida } from '../../services/api/orders';
 
 /* ═══ COPIAR O PEDIDO COM O LINK SEGURO (@R 21/09 18:27 → 18:45) ═══
    ⟦"registrar quem abriu, e o momento que o item foi aberto ... o link ali não pode ser baixado"⟧
@@ -55,11 +55,14 @@ export function descreverDocumentos(porTipo: Record<string, number>): string {
 }
 
 export function montarTextoPedido(p: PedidoParaCopiar, url: string, porTipo: Record<string, number>,
-                                  total: number, comValores: boolean, codigo?: string | null): string {
+                                  total: number, comValores: boolean, codigo?: string | null,
+                                  extras: { pagamentos?: boolean; relatorio?: boolean } = {}): string {
   const oQueTem = total > 0
     ? `No link abaixo estão ${descreverDocumentos(porTipo)}, extraídos do processo e em ordem de leitura clínica.`
     : 'Os documentos clínicos deste processo ainda estão sendo reunidos; o link abaixo mostra o que já temos.';
-  const valores = comValores ? '\nTambém está lá a referência de preço total por procedimento.' : '';
+  const valores = (comValores ? '\nTambém está lá a referência de preço total por procedimento.' : '')
+    + (extras.pagamentos ? '\nE o que o Estado já pagou recentemente por procedimento parecido.' : '')
+    + (extras.relatorio ? '\nNo topo, um resumo médico feito por IA para leitura rápida, com a página de cada documento citado.' : '');
   const hoje = new Date();
   const data = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
   return `*G4MED · SOLICITAÇÃO DE ORÇAMENTO*
@@ -140,6 +143,15 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   // Guarda o que foi DESMARCADO (padrão = vai tudo, como antes). O servidor recusa id de outro pedido.
   const [docsFora, setDocsFora] = useState<Set<number>>(new Set());
   const [refsFora, setRefsFora] = useState<Set<number>>(new Set());
+  // @R 22/09 ~11:10: "um check que vamos mandar os últimos pagamentos, os 5... e podemos desmarcar os
+  // valores para enviar só os corretos". Padrão: NÃO vai (como antes); ligando, vão os 5 e desmarca-se.
+  const [enviarPag, setEnviarPag] = useState(false);
+  const [pagFora, setPagFora] = useState<Set<number>>(new Set());
+  // @R 22/09 ~11:10: "enviar o relatório feito por IA da parte médica para leitura rápida do médico".
+  const [relatorio, setRelatorio] = useState<any>(null);
+  const [enviarRel, setEnviarRel] = useState(false);
+  const [gerandoRel, setGerandoRel] = useState(false);
+  const [erroRel, setErroRel] = useState<string | null>(null);
   const alternar = (set: Set<number>, id: number, fn: (s: Set<number>) => void) => {
     const n = new Set(set); if (n.has(id)) n.delete(id); else n.add(id); fn(n);
   };
@@ -150,9 +162,11 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
     setComValores(false);
     setDocsFora(new Set());
     setRefsFora(new Set());
+    setEnviarPag(false); setPagFora(new Set());
+    setRelatorio(null); setEnviarRel(false); setErroRel(null);
     if (!pedido) return;
     previaLinkDocumentos(pedido.id)
-      .then((r) => setPrevia(r.data))
+      .then((r) => { setPrevia(r.data); setRelatorio(r.data?.relatorio ?? null); })
       .catch((e) => setErro(e?.response?.data?.error || 'Não foi possível montar a prévia do link.'));
   }, [pedido]);
 
@@ -162,6 +176,20 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   // só a referência que o médico PODE ver (conferida) conta como "vai"
   const refsVao = refs.filter((x) => !x.ocultoAoMedico && !refsFora.has(x.id)).length;
   const hist = previa?.historicoPago;
+  const pagamentos: any[] = hist?.pagamentos || [];
+  const pagVao = pagamentos.filter((p) => !pagFora.has(p.id));
+  // relatório gerado com um documento que depois foi DESMARCADO: a citação a ele não vai ao médico
+  const citaDesmarcado = !!relatorio && (relatorio.meta?.documentos || []).some((d: any) => docsFora.has(d.anexoId));
+  const gerarRelatorio = async () => {
+    if (!pedido) return;
+    setGerandoRel(true); setErroRel(null);
+    try {
+      const r = await gerarRelatorioMedico(pedido.id, [...docsFora]);
+      setRelatorio(r.data); setEnviarRel(true);
+    } catch (e: any) {
+      setErroRel(e?.response?.data?.error || 'Não foi possível gerar o relatório agora.');
+    } finally { setGerandoRel(false); }
+  };
   const deflatorPct = previa ? `${(previa.deflator * 100).toFixed(2).replace('.', ',')}%` : '';
 
   const gerarECopiar = async () => {
@@ -173,13 +201,16 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
         r = await gerarLinkDocumentos(pedido.id, {
           medicoId: pedido.idMedico ?? null, destino: pedido.medico || undefined, mostrarValores: comValores,
           anexosExcluidos: [...docsFora], referenciasExcluidas: comValores ? [...refsFora] : [],
+          pagamentosIncluidos: enviarPag ? pagVao.map((p) => p.id) : [],
+          resumoId: enviarRel && relatorio ? relatorio.id : null,
         });
       } catch (e: any) {
         alert(`${e?.response?.data?.error || 'Não foi possível gerar o link seguro.'}\n\nNada foi copiado.`);
         return;
       }
       const d = r.data;
-      const texto = montarTextoPedido(pedido, d.url, d.documentosPorTipo || {}, d.documentos || 0, !!d.mostrarValores, d.codigoAcesso);
+      const texto = montarTextoPedido(pedido, d.url, d.documentosPorTipo || {}, d.documentos || 0, !!d.mostrarValores, d.codigoAcesso,
+        { pagamentos: enviarPag && pagVao.length > 0, relatorio: enviarRel && !!relatorio });
       const copiou = await copiarTexto(texto);
       if (!copiou) {
         // FALLBACK MANUAL — o link JÁ foi gerado (custou uma escrita no banco); perder o texto
@@ -294,21 +325,85 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
             )}
           </section>
 
-          <section>
+          <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>Quanto o Estado já pagou por procedimento parecido</div>
             {hist?.disponivel ? (
-              <div>
-                Média <b>{brl(hist.media)}</b> · mediana {brl(hist.mediana)} · {hist.n} pagamento(s) de{' '}
-                {dataBR(hist.de)} a {dataBR(hist.ate)}
-                <div style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>
-                  Casado pelas palavras {hist.chave.join(', ')} — confira se os exemplos são o mesmo procedimento:{' '}
-                  {hist.exemplos.join(' · ')}. {hist.aviso}
+              <>
+                <div>
+                  Média <b>{brl(hist.media)}</b> · mediana {brl(hist.mediana)} · {hist.n} pagamento(s) de{' '}
+                  {dataBR(hist.de)} a {dataBR(hist.ate)}
+                  <div style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>
+                    Casado pelas palavras {hist.chave.join(', ')}. {hist.aviso}
+                  </div>
                 </div>
-              </div>
+                {pagamentos.length > 0 && (
+                  <>
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer', marginTop: 10 }}>
+                      <Checkbox inputId="enviarPag" checked={enviarPag} onChange={(e) => setEnviarPag(!!e.checked)} />
+                      <span><b>Enviar os últimos pagamentos ao médico</b>{enviarPag ? ` — ${pagVao.length} de ${pagamentos.length} marcado(s)` : ''}<br />
+                        <span style={{ color: '#6b7280' }}>O médico vê valor, mês e procedimento de cada um — nunca processo, paciente ou prestador. Desmarque o que não for o mesmo procedimento.</span>
+                      </span>
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginTop: 6, marginLeft: 28 }}>
+                      {pagamentos.map((p) => {
+                        const vai = enviarPag && !pagFora.has(p.id);
+                        return (
+                          <label key={p.id} style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: enviarPag ? 'pointer' : 'default',
+                            color: vai ? undefined : '#9ca3af', fontVariantNumeric: 'tabular-nums' }}>
+                            <Checkbox inputId={`pag-${p.id}`} checked={vai} disabled={!enviarPag}
+                              onChange={() => alternar(pagFora, p.id, setPagFora)} />
+                            <span style={{ width: 110, textAlign: 'right', fontWeight: 600 }}>{brl(p.valor)}</span>
+                            <span style={{ width: 70 }}>{dataBR(p.data)?.slice(3) ?? ''}</span>
+                            <span style={{ flex: 1, fontSize: 12 }}>{p.procedimento}</span>
+                          </label>
+                        );
+                      })}
+                      {enviarPag && !pagVao.length && <div style={{ color: '#92400e' }}>Nenhum marcado: nenhum pagamento vai.</div>}
+                    </div>
+                  </>
+                )}
+              </>
             ) : (
               <div style={{ color: '#6b7280' }}>{hist?.motivo || 'Sem base para comparar.'}</div>
             )}
-            <div style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>Só para você decidir — não vai ao médico.</div>
+          </section>
+
+          <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ fontWeight: 600 }}>Relatório médico da IA</div>
+              <Button size="small" outlined icon="pi pi-bolt" loading={gerandoRel} disabled={!docsVao}
+                label={relatorio ? 'Gerar de novo com os marcados' : 'Gerar com os documentos marcados'} onClick={gerarRelatorio} />
+            </div>
+            <div style={{ color: '#6b7280', fontSize: 12, marginTop: 2 }}>
+              Resumo de leitura rápida (diagnóstico, procedimento, exames, urgência e o que falta), cada ponto com o documento e a página de onde saiu. Leva uns 30 segundos.
+            </div>
+            {erroRel && <div style={{ color: '#b91c1c', marginTop: 6 }}>{erroRel}</div>}
+            {relatorio && (
+              <>
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {relatorio.campos.map((c: any) => (
+                    <div key={c.campo}>
+                      <b>{c.rotulo}:</b> {c.valor}
+                      {c.citacoes?.length ? (
+                        <span style={{ color: '#6b7280', fontSize: 12 }}>
+                          {' '}({c.citacoes.map((x: any) => `${x.documento}${x.nome ? ` ${x.nome}` : ''}, p. ${x.pagina}`).join('; ')})
+                        </span>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ color: '#6b7280', fontSize: 12, marginTop: 6 }}>
+                  Gerado em {dataBR(relatorio.criadoEm)} · {relatorio.meta?.paginasLidas} página(s) lida(s)
+                  {relatorio.meta?.paginasSemTexto ? ` · ${relatorio.meta.paginasSemTexto} página(s) são imagem e não foram lidas` : ''}.
+                </div>
+                {citaDesmarcado && <div style={{ color: '#92400e', fontSize: 12, marginTop: 4 }}>
+                  Este relatório leu um documento que você desmarcou: as citações a ele não vão ao médico. Gere de novo para considerar só os marcados.</div>}
+                <label style={{ display: 'flex', gap: 8, alignItems: 'center', cursor: 'pointer', marginTop: 8 }}>
+                  <Checkbox inputId="enviarRel" checked={enviarRel} onChange={(e) => setEnviarRel(!!e.checked)} />
+                  <b>Enviar o relatório ao médico</b>
+                </label>
+              </>
+            )}
           </section>
 
           {(previa.outrosParticipantes || []).length > 0 && (

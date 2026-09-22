@@ -29,6 +29,28 @@ const ORIGEM: Record<string, string> = { RECORTE: 'folha', ARQUIVO: 'arquivo', P
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmt = (s: string | null) => (s ? new Date(s).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
 
+const VEREDITO: Record<string, { txt: string; cor: string }> = {
+  NAO_E_ORCAMENTO: { txt: 'não é orçamento (2 juízes)', cor: '#b42318' },
+  ORCAMENTO: { txt: 'é orçamento (2 juízes)', cor: '#067647' },
+  DIVERGENTE: { txt: 'juízes divergem', cor: '#b54708' },
+  INDETERMINADO: { txt: 'só 1 juiz respondeu', cor: '#667085' },
+};
+const pct = (v: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`);
+
+/** O que o revisor por IA entendeu da folha de origem (@R 22/09: "coluna que indica o que a LLM
+ *  entende que é o documento"). Visão = imagem; Jev = texto. Sem parecer = ainda não revisado. */
+function ParecerIa({ ia }: { ia: ItemConferencia['ia'] }) {
+  if (!ia) return <span className="text-500" style={{ fontSize: '.8rem' }}>ainda não revisado</span>;
+  const v = VEREDITO[ia.veredito ?? ''] ;
+  return (
+    <div style={{ fontSize: '.8rem' }} title={[ia.motivo, `visão ${pct(ia.confianca)} · Jev ${pct(ia.jev)}`, ia.modelo].filter(Boolean).join('\n')}>
+      <strong>{ia.rotulo}</strong>{ia.timbrado ? ' · papel timbrado' : ''}
+      {ia.emissor ? <div className="text-600">emitido por {ia.emissor}</div> : null}
+      {v ? <div style={{ color: v.cor }}>{v.txt}</div> : null}
+    </div>
+  );
+}
+
 export function ConferenciaOrcamentosPage() {
   const [estado, setEstado] = useState<EstadoConferencia | 'todos'>('REVISAR');
   const [todasFases, setTodasFases] = useState(false);
@@ -74,7 +96,9 @@ export function ConferenciaOrcamentosPage() {
       <p className="mt-0 text-600" style={{ maxWidth: '60rem' }}>
         O leitor acha orçamentos dentro das peças do processo. <strong>O médico só vê os validados.</strong>{' '}
         Os que o leitor tem dúvida ficam em <em>A revisar</em>, escondidos do médico até alguém validar.
-        Referências do SUS (nota técnica, NatJus, SIGTAP) já saem descartadas. Toda decisão pode ser desfeita.
+        Referências do SUS (nota técnica, NatJus, SIGTAP) já saem descartadas. Toda decisão pode ser desfeita.{' '}
+        Uma IA também olha a folha de cada um: quando a leitura da imagem e a do texto concordam que a folha
+        não é orçamento (é petição, decisão…), ele sai sozinho de <em>A revisar</em>. Sua decisão sempre vence.
       </p>
 
       <div className="flex flex-wrap align-items-center gap-3 mb-3">
@@ -90,7 +114,10 @@ export function ConferenciaOrcamentosPage() {
 
       {erro ? <div role="alert" className="mb-3 p-2" style={{ background: '#fde8e8', border: '1px solid #f5b5b5', borderRadius: 6 }}>{erro}</div> : null}
 
-      <DataTable value={dados?.itens ?? []} loading={carregando} size="small" stripedRows paginator rows={25} dataKey="id" {...ordenacao}
+      {/* @R 22/09: "um numerador para ver mais itens sem passar de página: 200 100 50 20" */}
+      <DataTable value={dados?.itens ?? []} loading={carregando} size="small" stripedRows paginator rows={50}
+        rowsPerPageOptions={[20, 50, 100, 200]} paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+        currentPageReportTemplate="{first}–{last} de {totalRecords}" dataKey="id" {...ordenacao}
         emptyMessage={erro ? 'Lista não carregada.' : (estado === 'REVISAR' ? 'Nada a revisar.' : 'Nenhum orçamento neste filtro.')}>
         <Column field="pedido" header="Pedido" sortable style={{ width: '7rem', whiteSpace: 'nowrap' }} body={(r: ItemConferencia) => (
           <Button label={`#${r.pedido}`} link size="small" onClick={() => ficha.abrir(r.pedido)} />)} />
@@ -98,8 +125,9 @@ export function ConferenciaOrcamentosPage() {
         <Column field="fase" header="Fase" sortable style={{ width: '11rem' }} />
         <Column field="prestador" header="Prestador" sortable body={(r: ItemConferencia) => r.prestador ?? <em className="text-500">não identificado</em>} />
         <Column field="valorTotal" header="Valor" sortable style={{ width: '9rem', textAlign: 'right' }} body={(r: ItemConferencia) => brl(r.valorTotal)} />
-        <Column header="O que é" body={(r: ItemConferencia) => (
+        <Column header="Procedimento" body={(r: ItemConferencia) => (
           <span title={r.observacao ?? ''} style={{ fontSize: '.85rem' }}>{r.procedimento ?? '—'}</span>)} />
+        <Column header="O que a IA diz que é" style={{ width: '13rem' }} body={(r: ItemConferencia) => <ParecerIa ia={r.ia} />} />
         <Column field="estado" header="Situação" sortable style={{ width: '16rem' }} body={(r: ItemConferencia) => (
           <div>
             <Tag value={ROTULO[r.estado]} severity={COR[r.estado]} />

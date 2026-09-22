@@ -24,6 +24,14 @@ export interface ItemConferencia {
   conferenciaMotivo: string | null;
   linkAbrir: string | null;
   origemAbrir: 'RECORTE' | 'ARQUIVO' | 'PECA' | null;
+  /** Parecer do revisor por IA sobre a FOLHA (@R 22/09): visão lê a imagem, Jev lê o texto.
+   *  O veredito é calculado no servidor; só NAO_E_ORCAMENTO (os 2 concordam) descarta sozinho. */
+  ia: {
+    tipo: string; rotulo: string; emissor: string | null; timbrado: boolean;
+    confianca: number | null; jev: number | null; motivo: string | null;
+    veredito: 'NAO_E_ORCAMENTO' | 'ORCAMENTO' | 'DIVERGENTE' | 'INDETERMINADO' | null;
+    modelo: string | null; em: string | null;
+  } | null;
 }
 
 export interface ListaConferencia {

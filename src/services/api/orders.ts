@@ -574,8 +574,16 @@ export const previaLinkDocumentos = (orderId: number) =>
 export const gerarLinkDocumentos = (orderId: number, dados: {
   destino?: string; medicoId?: number | null; mostrarValores: boolean;
   anexosExcluidos?: number[]; referenciasExcluidas?: number[];
+  /** @R 22/09: os pagamentos do Estado que VÃO ao médico (lista positiva; [] = nenhum). */
+  pagamentosIncluidos?: number[];
+  /** @R 22/09: o relatório médico da IA que vai junto (o que quem copia viu). */
+  resumoId?: number | null;
 }) =>
   api.post(`/orders/${orderId}/link-documentos/`, dados);
+/* Relatório médico da IA (@R 22/09): gerado no clique, a partir dos documentos MARCADOS, com citação
+   por documento e página. ~30 s. */
+export const gerarRelatorioMedico = (orderId: number, anexosExcluidos: number[]) =>
+  api.post(`/orders/${orderId}/link-documentos/relatorio/`, { anexosExcluidos }, { timeout: 120000 });
 export const rastroLinksDocumentos = (orderId: number) =>
   api.get(`/orders/${orderId}/link-documentos/rastro/`);
 export const revogarLinkDocumentos = (linkId: number) =>
