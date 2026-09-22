@@ -182,7 +182,9 @@ function TerceiroComparavel({ pedido, t }: { pedido: number; t: PainelBaterValor
       </div>
       {comp && aberto && (
         <div className="bv-comp">
-          {comp.maiorDiferenca && <div className="bv-comp__destaque">A maior diferença está em <b>{comp.maiorDiferenca}</b>.</div>}
+          {comp.nossoSemComponentes
+            ? <div className="bv-comp__destaque bv-comp__destaque--aviso">O nosso orçamento ainda não está discriminado por componente — só o total. Sem isso não dá para dizer onde está a diferença.</div>
+            : comp.maiorDiferenca && <div className="bv-comp__destaque">A maior diferença está em <b>{comp.maiorDiferenca}</b>.</div>}
           <table>
             <thead><tr><th>Componente</th><th>Nosso</th><th>Terceiro</th><th>Diferença</th></tr></thead>
             <tbody>
@@ -193,10 +195,19 @@ function TerceiroComparavel({ pedido, t }: { pedido: number; t: PainelBaterValor
             </tbody>
           </table>
           <ul className="bv-comp__notas">
-            <li>Rubricas do terceiro somam {brl(comp.somaRubricasTerceiro)}{comp.totalDeclaradoTerceiro != null ? ` · total escrito na folha ${brl(comp.totalDeclaradoTerceiro)}` : ' · a folha não traz total escrito'}
-              {comp.naoDetalhadoTerceiro ? <b> · {brl(comp.naoDetalhadoTerceiro)} não detalhados na folha</b> : null}.</li>
-            <li>Diárias do terceiro: {comp.diariasTerceiro?.enfermaria ?? '?'} de enfermaria/apartamento · {comp.diariasTerceiro?.uti ?? '?'} de CTI/UTI. As nossas diárias não ficam registradas na cotação — confira no PDF do médico antes de comparar o hospitalar.</li>
-            {comp.nossoSemComponentes && <li style={{ color: '#b54708' }}>A nossa cotação vigente não tem os valores por componente preenchidos — só o total.</li>}
+            <li>Rubricas do terceiro somam {brl(comp.somaRubricasTerceiro)}{comp.totalDeclaradoTerceiro != null
+                ? ` · total do orçamento ${brl(comp.totalDeclaradoTerceiro)}${comp.fonteTotalTerceiro ? ` (${comp.fonteTotalTerceiro})` : ''}`
+                : ' · sem total declarado'}
+              {comp.inconsistenteTerceiro
+                ? <b style={{ color: '#b42318' }}> · INCONSISTENTE: as linhas somam mais que o total — confira no papel antes de usar estes números</b>
+                : comp.naoDetalhadoTerceiro ? <b> · {brl(comp.naoDetalhadoTerceiro)} não detalhados na folha</b> : null}.</li>
+            <li>Diárias do terceiro: {[
+                comp.diariasTerceiro?.enfermaria != null && `${comp.diariasTerceiro.enfermaria} de enfermaria`,
+                comp.diariasTerceiro?.apartamento != null && `${comp.diariasTerceiro.apartamento} de apartamento`,
+                comp.diariasTerceiro?.uti != null && `${comp.diariasTerceiro.uti} de CTI/UTI`,
+                ...(comp.diariasTerceiro?.outras ?? []).map((o) => `${o.qtd} de ${o.tipo}`),
+              ].filter(Boolean).join(' · ') || 'a folha não diz'}{comp.diariasTerceiro && comp.diariasTerceiro.apartamento === undefined
+                ? ' (leitura antiga, sem apartamento separado — use "ler de novo")' : ''}. As nossas diárias não ficam registradas na cotação — confira no PDF do médico antes de comparar o hospitalar.</li>
             {!comp.legivel && <li style={{ color: '#b54708' }}>A IA marcou a folha como difícil de ler: {comp.observacao ?? 'confira na imagem'}.</li>}
             <li className="text-600">Como agrupamos: {comp.regraAgregacao}</li>
             <li className="text-600">Leitura por IA ({comp.modelo}) em {comp.lidoEm ? new Date(comp.lidoEm).toLocaleString('pt-BR') : '?'} — confira os números na imagem antes de citar ao médico.

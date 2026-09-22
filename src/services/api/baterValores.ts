@@ -49,8 +49,14 @@ export interface ComparativoComponentes {
   terceiro: number;
   linhas: { bloco: string; rotulo: string; nosso: number | null; terceiro: number; diferenca: number | null; pct: number | null }[];
   maiorDiferenca: string | null;
-  somaRubricasTerceiro: number; totalDeclaradoTerceiro: number | null; naoDetalhadoTerceiro: number;
-  diariasTerceiro: { enfermaria: number | null; uti: number | null } | null;
+  somaRubricasTerceiro: number; totalDeclaradoTerceiro: number | null; naoDetalhadoTerceiro: number | null;
+  /** true = a soma das linhas passa do total declarado (impossível): a tela não mostra "não detalhado". */
+  inconsistenteTerceiro?: boolean;
+  fonteTotalTerceiro?: string | null; totalLidoIATerceiro?: number | null;
+  diariasTerceiro: {
+    enfermaria: number | null; apartamento?: number | null; uti: number | null;
+    outras?: { tipo: string; qtd: number }[];
+  } | null;
   nossoSemComponentes: boolean;
   rubricas: { descricao: string; valor: number; bloco: string }[];
   legivel: boolean; observacao: string | null; regraAgregacao: string;

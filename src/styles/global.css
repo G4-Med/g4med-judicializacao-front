@@ -439,3 +439,4 @@ body.dark-theme .linha-negado-sem-medico > td { background: rgba(220, 38, 38, 0.
 .bv-comp__notas li { margin-bottom: 2px; }
 .bv-comp__reler { border: 0; background: transparent; color: #175cd3; text-decoration: underline; cursor: pointer; font-size: .78rem; }
 .bv-comp__rubricas { font-size: .78rem; padding-left: 18px; max-height: 160px; overflow: auto; }
+.bv-comp__destaque--aviso { background: #fef3f2; color: #b42318; }
