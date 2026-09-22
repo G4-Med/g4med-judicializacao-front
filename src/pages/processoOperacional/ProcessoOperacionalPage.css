@@ -345,3 +345,21 @@
 .proc-op__dica i { color: #b45309; font-size: 1.05rem; margin-top: .15rem; }
 .proc-op__dica strong { display: block; color: #78350f; margin-bottom: .25rem; }
 .proc-op__dica p { margin: 0; font-size: .87rem; line-height: 1.45; color: #451a03; }
+
+/* Mapa do menu (@R 22/09) — cada área abre e fecha; hover leve; no PDF sai tudo aberto. */
+.proc-op__mapa { margin: 24px 0; }
+.proc-op__mapa-grupo { margin-top: 12px; }
+.proc-op__mapa-grupo h3 { font-size: 0.95rem; color: #0A3D62; margin: 12px 0 6px; text-transform: uppercase; letter-spacing: .04em; }
+.proc-op__area { border: 1px solid #e4e7ec; border-radius: 8px; margin-bottom: 6px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+.proc-op__area:hover { border-color: #00A651; box-shadow: 0 1px 4px rgba(0, 0, 0, .06); }
+.proc-op__area summary { cursor: pointer; padding: 8px 12px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; list-style: none; }
+.proc-op__area summary::-webkit-details-marker { display: none; }
+.proc-op__area summary::before { content: '▸'; color: #667085; }
+.proc-op__area[open] summary::before { content: '▾'; }
+.proc-op__area-oque { color: #475467; font-size: 0.9rem; flex-basis: 100%; padding-left: 16px; }
+.proc-op__area-quem { font-size: 0.75rem; color: #667085; }
+.proc-op__area-corpo { padding: 0 12px 10px 28px; font-size: 0.92rem; }
+.proc-op__area-corpo ol { margin: 6px 0; padding-left: 18px; }
+.proc-op__area-ir { font-weight: 600; color: #00A651; text-decoration: none; }
+.proc-op__novo { background: #00A651; color: #fff; font-size: 0.68rem; font-weight: 700; padding: 1px 6px; border-radius: 10px; }
+@media print { .proc-op__area-ir { display: none; } }

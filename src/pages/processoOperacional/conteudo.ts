@@ -253,6 +253,11 @@ export const PRAZOS: { prazo: string; oQue: string; deQuem: string }[] = [
  *  para manter o processo operacional atualizado"). Cada linha diz O QUE mudou e ONDE — a data é a da entrada no ar. */
 export interface Atualizacao { data: string; onde: string; oQue: string }
 export const ATUALIZACOES: Atualizacao[] = [
+  { data: '22/09/2026', onde: 'Menu → 3,1 Bater valores', oQue: 'Só entram orçamentos de terceiros VALIDADOS na Conferência (1,3). "Ver orçamento" abre a folha e "Comparar por componente" separa honorários, OPME e diárias/taxas hospitalares lado a lado com o nosso.' },
+  { data: '22/09/2026', onde: 'Menu → 1,3 Conferência de orçamentos', oQue: 'Nova área: cada documento achado como orçamento de terceiro é validado ou descartado por uma pessoa; só o validado chega ao médico e à comparação.' },
+  { data: '22/09/2026', onde: 'Menu → Rotina dos dados do Estado', oQue: 'Nova área: as 5 etapas dos pagamentos do Estado com a situação de cada uma e o histórico das rodadas.' },
+  { data: '22/09/2026', onde: 'Início → Acessos à plataforma', oQue: 'Admin e Gerente veem quem está on-line, a última ação efetiva de cada pessoa (e há quanto tempo) e as ações dela ao clicar.' },
+  { data: '22/09/2026', onde: 'Central de E-mails', oQue: 'Colunas Fase do pedido e Status; e-mail que contradiz a fase do pedido fica em vermelho e não é enviado sem confirmação.' },
   { data: '21/09/2026', onde: 'Análise Jurídica → Salvar a decisão', oQue: 'Ao enviar Cotar, Não Cotar ou Pendência jurídica abre sempre a "Conferência antes de enviar" com as pendências do pedido. Para Cotar, o único obrigatório é "Orçamentos citados nos autos" (preencher ali ou clicar em "Não há orçamento nos autos"). A observação não é obrigatória — é o recado para o Fabrício. Nada mais trava sem dizer o que falta.' },
   { data: '21/09/2026', onde: 'Menu → 1,2 E-mails e ofícios', oQue: 'Ponto de corte: só conta como NOVO o que chegou a partir de 01/09/2026. Tudo que é anterior foi marcado como VISTO (aparece no filtro "Tratados") — a fila começa limpa para a equipe jurídica.' },
   { data: '21/09/2026', onde: 'Menu → 1,2 E-mails e ofícios', oQue: 'Coluna "Idade": há quantos dias a mensagem chegou (hoje, ontem, N dias) — verde até 2 dias, âmbar até 7, cinza depois.' },
@@ -382,4 +387,119 @@ export const DICAS: { titulo: string; texto: string; icone: string }[] = [
       'Sem motivo, o sistema não salva — e não é burocracia: o motivo é o que permite saber depois ' +
       'quantos pedidos perdemos por falta de médico e quantos por decisão nossa.',
   },
+];
+
+/** MAPA DO MENU — o que é cada área, para que serve e como usar (@R 22/09 19:3x: "atualizar o processo
+ *  operacional com as novas areas para saber o que é cada nova area que temos ali no menu e com um tutorial
+ *  para que serve e o que é"). Uma entrada por item do menu (menuConfigClean.ts); `novo` = data em que entrou
+ *  no ar, só para as áreas de setembro/2026. Texto de operação, não de sistema: sem nome de campo nem de rota. */
+export interface AreaMenu {
+  grupo: 'Acompanhar' | 'Processo SES-MG' | 'Apoio' | 'Admin';
+  nome: string;
+  rota: string;
+  oQueE: string;
+  paraQue: string;
+  tutorial: string[];
+  quem?: string;
+  novo?: string;
+  /** abre em outro aplicativo pelo próprio menu — sem link daqui */
+  externo?: boolean;
+}
+
+export const AREAS_MENU: AreaMenu[] = [
+  // ── Acompanhar ─────────────────────────────────────────────────────────────
+  { grupo: 'Acompanhar', nome: 'Início', rota: '/home',
+    oQueE: 'O painel do dia: quantos pedidos esperam ação em cada fase, como estamos no mês e a saúde dos dados do Estado.',
+    paraQue: 'Saber em 30 segundos onde está o gargalo antes de abrir qualquer fila.',
+    tutorial: ['Olhe "Aguardando ação": cada fase mostra quantos pedidos esperam — clique no nome da fase para abrir a fila dela.',
+      '"Como estamos" (clique para abrir) traz o mês por coorte, o SLA e o botão "Comparar todos os meses".',
+      'O quadro "Dados do Estado" abre a Rotina dos dados do Estado.',
+      'Admin e Gerente veem "Acessos à plataforma" no topo: quem está on-line, a última ação efetiva de cada um (clique na pessoa para ver as ações) e os logins do mês.'] },
+  { grupo: 'Acompanhar', nome: 'Funil', rota: '/funil',
+    oQueE: 'Quantos pedidos passam de uma fase para a outra, no mês e na vida toda.',
+    paraQue: 'Ver onde perdemos pedidos e se a conversão está melhorando.',
+    tutorial: ['Abre no mês atual; troque o mês no seletor.', 'Cada % é "passaram ÷ chegaram" naquela fase.', 'A fase 6 é a conversão dos decididos no mês.'] },
+  { grupo: 'Acompanhar', nome: 'Funil Comercial G4MED', rota: '/funil-comercial', externo: true,
+    oQueE: 'O funil de vendas para clientes (hospitais e médicos parceiros), em outro aplicativo.',
+    paraQue: 'Acompanhar oportunidades comerciais — é a "agenda" da reunião com o Fabrício.',
+    tutorial: ['Clique no menu: abre em outra aba, já logado com o seu usuário.'] },
+  { grupo: 'Acompanhar', nome: 'SLA', rota: '/sla', oQueE: 'Os prazos de cada fase medidos pedido a pedido.',
+    paraQue: 'Achar os pedidos que estouraram o prazo.', tutorial: ['Ordene pela coluna de dias para ver os mais atrasados primeiro.'] },
+  { grupo: 'Acompanhar', nome: 'Notificações', rota: '/notificacoes-historico', oQueE: 'O histórico dos avisos que o sistema enviou.',
+    paraQue: 'Conferir se um aviso saiu e quando.', tutorial: ['Filtre por período ou pelo paciente.'] },
+  { grupo: 'Acompanhar', nome: 'Base de Processos', rota: '/base-processos',
+    oQueE: 'Todos os pedidos numa tabela só, com a fase em que cada um está ("Onde está") e quem o moveu por último.',
+    paraQue: 'Achar qualquer pedido e agir nele sem saber em que fila ele está.',
+    tutorial: ['Busque pelo nome, CNJ ou número do pedido.', 'O menu de ações da linha (Cotar, Ref. Preço, Enviar SES, Enviar Perda) muda conforme a fase do pedido.',
+      'O botão Ficha abre tudo do pedido: anexos, e-mails, anotações internas e histórico de alterações.'] },
+  { grupo: 'Acompanhar', nome: 'Processamento', rota: '/processamento',
+    oQueE: 'A fila de leitura das peças do processo (inteiro teor) e o batimento do leitor no servidor.',
+    paraQue: 'Saber se uma peça já foi lida pela máquina ou se travou.',
+    tutorial: ['O cartão do leitor diz VIVO, ATENÇÃO ou PARADO, com a causa.', 'Uma peça com erro pode ser refeita pelo botão "Reprocessar" na Ficha do pedido.'] },
+  { grupo: 'Acompanhar', nome: 'Rotina dos dados do Estado', rota: '/rotina-dados-estado', novo: '22/09/2026',
+    oQueE: 'As 5 etapas que trazem os pagamentos do Estado para dentro do sistema: portal do Estado → coleta → carga → pagamentos → régua dos pedidos.',
+    paraQue: 'Saber se o "pago pelo Estado" que aparece nas telas está atualizado — e, se não estiver, em qual etapa parou.',
+    tutorial: ['Cada etapa mostra o que faz, quando roda, a última execução e se está OK, em atenção ou parada.',
+      'Se o portal do Estado está publicando arquivos vazios, a etapa 1 fica PARADA e nada abaixo dela é culpa nossa.',
+      'Se a fonte está à frente da produção, a etapa 4 diz quantos registros faltam carregar — esse gargalo é nosso.',
+      'Embaixo ficam as últimas rodadas, para ver desde quando está assim.'] },
+  { grupo: 'Acompanhar', nome: 'Acervo de preços', rota: '/orcamentos-terceiros',
+    oQueE: 'Todos os orçamentos de terceiros já vistos nos processos, com o documento de origem.',
+    paraQue: 'Consultar quanto outros prestadores cotaram para procedimentos parecidos.',
+    tutorial: ['Busque pelo procedimento.', 'O link abre direto na folha do orçamento (ou no processo e página).'] },
+  { grupo: 'Acompanhar', nome: 'Central de E-mails', rota: '/central-emails',
+    oQueE: 'Os e-mails que saem para a SES (orçamento, perda, aguardando documentos) e os que ficaram na fila.',
+    paraQue: 'Ver o que foi enviado, editar antes de enviar e corrigir o que ficou preso.',
+    tutorial: ['A aba Respostas mostra a fase e o status do pedido ao lado de cada e-mail.',
+      'Linha em vermelho = contradição (ex.: e-mail de perda para um pedido que voltou para o orçamento). O envio trava até alguém confirmar.',
+      '"Ver e-mail" mostra o texto; "Editar antes de enviar" vale para o que ainda está na fila.'] },
+  // ── Processo SES-MG ────────────────────────────────────────────────────────
+  { grupo: 'Processo SES-MG', nome: 'Análise Jurídica', rota: '/juridico',
+    oQueE: 'A triagem de cada pedido novo: cotar, não cotar ou pendência jurídica.', paraQue: 'É a porta de entrada — nada anda sem esta decisão.',
+    tutorial: ['Abra o pedido, confira o CNJ e as peças.', 'Ao salvar, a "Conferência antes de enviar" mostra o que falta; para Cotar, só "Orçamentos citados nos autos" é obrigatório.'] },
+  { grupo: 'Processo SES-MG', nome: '1,1 Pendências jurídicas', rota: '/juridico?aba=pendencias', novo: '20/09/2026',
+    oQueE: 'Pedidos devolvidos ao jurídico por outra fase, com um bilhete do que falta (peça, médico, contato, verificação).',
+    paraQue: 'Resolver o que trava o orçamento sem perder o pedido de vista.',
+    tutorial: ['As paradas há mais de 2 dias aparecem primeiro.', 'Responda o bilhete: o pedido volta sozinho à fase de onde veio.', '"Li" marca que você viu a resposta.'] },
+  { grupo: 'Processo SES-MG', nome: '1,2 E-mails e ofícios', rota: '/emails-juridico', novo: '21/09/2026',
+    oQueE: 'O que chega por e-mail e NÃO vira pedido automaticamente: intimações, ofícios, respostas de prestador.',
+    paraQue: 'Nenhum e-mail da Justiça ou da SES fica sem dono.',
+    tutorial: ['Mais recentes primeiro; o selo NOVO marca o que chegou desde 21/09 e não foi tratado.', 'Abra a íntegra, baixe os anexos e responda por ali (com confirmação).', 'Marque como tratado quando resolver.'] },
+  { grupo: 'Processo SES-MG', nome: '1,3 Conferência de orçamentos', rota: '/conferencia-orcamentos', novo: '22/09/2026',
+    oQueE: 'A checagem humana de cada documento que a máquina achou como "orçamento de terceiro".',
+    paraQue: 'Só orçamento VALIDADO aparece para o médico e entra na comparação do 3,1 — petição e tabela SUS lidas como orçamento ficam de fora.',
+    tutorial: ['A coluna "O que a IA diz que é" é só sugestão.', 'Abra o documento, clique Validar ou Descartar (dá para desfazer).', 'Escolha 20/50/100/200 por página.'] },
+  { grupo: 'Processo SES-MG', nome: 'Selecionar Médico', rota: '/selecionar-medico',
+    oQueE: 'Os pedidos que precisam de um prestador escolhido.', paraQue: 'Achar quem cota o procedimento, pela área.',
+    tutorial: ['Pedido recusado por outro médico aparece no topo com o aviso de quem recusou.', 'O seletor ordena por área; "Adicionar" convida mais de um médico.'] },
+  { grupo: 'Processo SES-MG', nome: 'Orçamento Médico', rota: '/orcamento-medico',
+    oQueE: 'A cobrança do orçamento aos médicos convidados.', paraQue: 'Fazer o orçamento chegar no prazo (24 h para dizer se cota, 96 h para entregar).',
+    tutorial: ['"Copiar" monta a mensagem com o link seguro do caso.', '"Por médico" lista os casos de cada prestador; marque aceitou / recusou (com categoria) / condicionado.', 'Pedido recusado sem médico volta em vermelho como "Médico negou".'] },
+  { grupo: 'Processo SES-MG', nome: '3,1 Bater valores', rota: '/bater-valores', novo: '22/09/2026',
+    oQueE: 'A comparação do nosso orçamento com os orçamentos de terceiros VALIDADOS do mesmo processo.',
+    paraQue: 'Saber, antes de enviar, se estamos acima do menor terceiro — e em qual parte do preço está a diferença.',
+    tutorial: ['Abra o pedido pela lista ou pelo selo "+X% vs menor terceiro" na fase 3.',
+      '"Ver orçamento" abre a folha do terceiro.',
+      '"Comparar por componente": a IA separa Honorários (cirurgião, auxiliares, anestesista, instrumentadora), Materiais/OPME e Diárias e taxas hospitalares, lado a lado com o nosso.',
+      'Se o total escrito no papel não bate com a soma das linhas, a tela avisa — confira no papel antes de citar o número.'] },
+  { grupo: 'Processo SES-MG', nome: 'Protocolar', rota: '/para-protocolar', oQueE: 'Pedidos com orçamento pronto para juntar aos autos.',
+    paraQue: 'Protocolar no prazo do Estado.', tutorial: ['Confira o PDF e registre o protocolo.'] },
+  { grupo: 'Processo SES-MG', nome: 'Protocolados', rota: '/protocolados', oQueE: 'Pedidos já protocolados, até a decisão.',
+    paraQue: 'Acompanhar o processo até o resultado.', tutorial: ['Registre a decisão (ganho ou perda) quando sair.'] },
+  { grupo: 'Processo SES-MG', nome: 'Enviados sem protocolar', rota: '/enviado-ses', oQueE: 'Orçamentos entregues à SES sem protocolo — a bola está com o Estado.',
+    paraQue: 'Aguardar o retorno técnico sem confundir com os protocolados.', tutorial: ['Abre pelo envio mais recente.'] },
+  // ── Apoio ──────────────────────────────────────────────────────────────────
+  { grupo: 'Apoio', nome: 'Manuais (médico e hospital)', rota: '/manuais', novo: '21/09/2026',
+    oQueE: 'Os guias públicos para o médico e para o hospital parceiro, e as propostas comerciais.',
+    paraQue: 'Mandar ao prestador um link em vez de explicar tudo de novo.', tutorial: ['"Copiar link" e cole na conversa; "Salvar em PDF" imprime.'] },
+  { grupo: 'Apoio', nome: 'Clientes', rota: '/clientes', oQueE: 'O cadastro de médicos, hospitais e clínicas.',
+    paraQue: 'Manter quem cota o quê, onde atende e se está ativo.', tutorial: ['Inativar esconde o prestador das listas do sistema (reversível).'] },
+  { grupo: 'Apoio', nome: 'Lixeira', rota: '/lixeira', oQueE: 'Pedidos excluídos.', paraQue: 'Restaurar o que foi apagado por engano.', tutorial: ['Restaurar devolve o pedido à fase em que estava.'] },
+  { grupo: 'Apoio', nome: 'Resultados, Emails e Relatórios', rota: '/painel-resultados',
+    oQueE: 'Painéis de ganhos, lista de e-mails recebidos e relatórios resumido/consolidado.', paraQue: 'Prestar contas e exportar números.',
+    tutorial: ['Cada relatório diz a régua usada (mês do pedido ou mês da decisão).'] },
+  // ── Admin ──────────────────────────────────────────────────────────────────
+  { grupo: 'Admin', nome: 'Usuários, Configurações e Logs', rota: '/usuarios', quem: 'Admin',
+    oQueE: 'Contas e grupos, parâmetros, colunas das tabelas, monitor de integração e o registro de alterações.',
+    paraQue: 'Dar acesso, ajustar o sistema e auditar quem mudou o quê.', tutorial: ['Mudou o grupo de alguém? A pessoa precisa sair e entrar de novo para valer.'] },
 ];

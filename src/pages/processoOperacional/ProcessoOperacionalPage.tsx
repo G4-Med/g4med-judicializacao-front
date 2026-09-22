@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { ETAPAS, DONOS, PRAZOS, REGRAS, PORQUE, FONTE, DICAS, ATUALIZACOES } from './conteudo';
+import { Link } from 'react-router-dom';
+import { ETAPAS, DONOS, PRAZOS, REGRAS, PORQUE, FONTE, DICAS, ATUALIZACOES, AREAS_MENU } from './conteudo';
+import type { AreaMenu } from './conteudo';
 import type { Etapa } from './conteudo';
 import './ProcessoOperacionalPage.css';
 
@@ -18,6 +20,15 @@ import './ProcessoOperacionalPage.css';
  *   de cada passo — não num apêndice. Quem lê "prazo de 96 horas" lê junto o
  *   motivo, e é o motivo que faz cumprir sem fiscal.
  */
+/** Mesmo número que o menu mostra (menuConfigClean deriva de ETAPAS pela rota) — nunca escrito à mão. */
+function nomeComNumero(a: AreaMenu): string {
+  const e = ETAPAS.find((x) => x.rota === a.rota);
+  if (!e) return a.nome;
+  return Number.isInteger(e.numero) ? `${e.numero}. ${a.nome}` : `${String(e.numero).replace('.', ',')} ${a.nome}`;
+}
+
+const GRUPOS_MENU: AreaMenu['grupo'][] = ['Acompanhar', 'Processo SES-MG', 'Apoio', 'Admin'];
+
 export function ProcessoOperacionalPage() {
   // `abertas` é um CONJUNTO, não um id só: o "abrir todas" é o modo de leitura
   // corrida (e o que o PDF precisa — seção fechada não sai impressa).
@@ -53,6 +64,7 @@ export function ProcessoOperacionalPage() {
    */
   const baixarPdf = () => {
     setAbertas(new Set(etapasVisiveis.map((e) => e.id)));
+    document.querySelectorAll<HTMLDetailsElement>('details.proc-op__area').forEach((d) => { d.open = true; });
     setTimeout(() => window.print(), 250);
   };
 
@@ -111,6 +123,34 @@ export function ProcessoOperacionalPage() {
             </li>
           ))}
         </ol>
+      </section>
+
+      {/* MAPA DO MENU — o que é cada área e como usar (@R 22/09). Uma entrada por item do menu. */}
+      <section className="proc-op__mapa" aria-labelledby="proc-op-mapa">
+        <h2 id="proc-op-mapa">Mapa do menu — o que é cada área e como usar</h2>
+        <p className="proc-op__fluxo-legenda">
+          Clique numa área para ver para que serve e o passo a passo. As marcadas <span className="proc-op__novo">NOVO</span> entraram em setembro/2026.
+        </p>
+        {GRUPOS_MENU.map((g) => (
+          <div key={g} className="proc-op__mapa-grupo">
+            <h3>{g}</h3>
+            {AREAS_MENU.filter((a) => a.grupo === g).map((a) => (
+              <details key={a.rota + a.nome} className="proc-op__area">
+                <summary>
+                  <strong>{nomeComNumero(a)}</strong>
+                  {a.novo && <span className="proc-op__novo" title={`no ar desde ${a.novo}`}>NOVO</span>}
+                  {a.quem && <em className="proc-op__area-quem">{a.quem}</em>}
+                  <span className="proc-op__area-oque">{a.oQueE}</span>
+                </summary>
+                <div className="proc-op__area-corpo">
+                  <p><b>Para que serve:</b> {a.paraQue}</p>
+                  <ol>{a.tutorial.map((t) => <li key={t}>{t}</li>)}</ol>
+                  {!a.externo && <Link to={a.rota} className="proc-op__area-ir">Abrir {a.nome} →</Link>}
+                </div>
+              </details>
+            ))}
+          </div>
+        ))}
       </section>
 
       {/* DICAS — o que a operação mais erra, com a cura em uma linha. */}
