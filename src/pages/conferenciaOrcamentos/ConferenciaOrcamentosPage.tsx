@@ -35,6 +35,8 @@ const VEREDITO: Record<string, { txt: string; cor: string }> = {
   DIVERGENTE: { txt: 'juízes divergem', cor: '#b54708' },
   INDETERMINADO: { txt: 'só 1 juiz respondeu', cor: '#667085' },
 };
+const MOTIVOS_PRONTOS = ['Petição que só cita o valor', 'Decisão/sentença citando valor', 'Nota técnica / NatJus',
+  'Tabela SUS / SIGTAP', 'Laudo, não é orçamento', 'Orçamento repetido (já está em outra linha)', 'Orçamento de outro paciente'];
 const pct = (v: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`);
 
 /** O que o revisor por IA entendeu da folha de origem (@R 22/09: "coluna que indica o que a LLM
@@ -228,7 +230,19 @@ export function ConferenciaOrcamentosPage() {
             onClick={() => descartando && decidir(descartando, 'DESCARTAR', motivo.trim())} />
         </>}>
         {descartando ? <p className="mt-0">#{descartando.pedido} · {descartando.prestador ?? 'prestador não identificado'} · {brl(descartando.valorTotal)}</p> : null}
-        <label htmlFor="conf-motivo" className="block mb-1">Por que não é orçamento? (ex.: "petição citando valor", "nota técnica do SUS")</label>
+        {descartando?.ia?.sugestao === 'DESCARTAR' ? (
+          <div className="mb-2 p-2" style={{ background: '#fff7e6', borderRadius: 6, fontSize: '.85rem' }}>
+            A IA viu: <strong>{descartando.ia.rotulo}</strong>{descartando.ia.motivo ? ` — ${descartando.ia.motivo}` : ''} (já preenchido abaixo; ajuste se quiser)
+          </div>
+        ) : null}
+        {/* @R 22/09 12:00: "ao clicar em descartar já dar a justificativa... para ficar documentada" */}
+        <div className="flex flex-wrap gap-1 mb-2">
+          {MOTIVOS_PRONTOS.map((m) => (
+            <Button key={m} label={m} size="small" outlined={motivo !== m} severity="secondary" style={{ fontSize: '.8rem', padding: '.25rem .5rem' }}
+              onClick={() => setMotivo(m)} />
+          ))}
+        </div>
+        <label htmlFor="conf-motivo" className="block mb-1">Por que não é orçamento? (escolha acima ou escreva)</label>
         <InputTextarea id="conf-motivo" value={motivo} onChange={(e) => setMotivo(e.target.value)} rows={3} className="w-full" autoFocus maxLength={300} />
         <small className="text-600">O motivo ensina a próxima regra do leitor. Mínimo de 5 caracteres.</small>
       </Dialog>
