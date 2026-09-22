@@ -18,12 +18,16 @@ interface Dados {
   procedimento: string | null;
   aviso: string;
   documentos: Documento[];
-  referencias: { categoria: string; valorReferencia: number }[];
+  referencias: { categoria: string; valorReferencia: number; local?: string | null; descricao?: string | null;
+                 data?: string | null; pagina?: number | null }[];
   referenciasNota: string;
+  pagoPeloEstado?: { n: number; media: number; mediana: number; de: string; ate: string; aviso: string } | null;
   expiraEm?: string | null;
 }
 
 const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const dataBR = (iso?: string | null) => (iso ? new Date(`${iso.slice(0, 10)}T12:00:00`).toLocaleDateString('pt-BR') : '');
+const tituloSecao: React.CSSProperties = { fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#5b616e', margin: '4px 4px 8px' };
 
 const cor = {
   fundo: '#f4f5f2', cartao: '#ffffff', texto: '#16181d', suave: '#5b616e', linha: '#e3e5df',
@@ -236,21 +240,46 @@ export function LinkDocumentosPage() {
               </section>
             ))}
 
+            {/* @R 22/09 00:36: estimativa pelo que o Estado já pagou + cada orçamento do processo com
+                local, descrição e valor total. Só aparece se quem copiou escolheu mandar valores. */}
+            {dados.pagoPeloEstado && (
+              <section>
+                <h2 style={tituloSecao}>Estimativa · o que o Estado já pagou</h2>
+                <div style={{ background: cor.cartao, borderRadius: 12, border: `1px solid ${cor.linha}`, padding: '14px 16px',
+                  display: 'flex', flexDirection: 'column', gap: 6, fontVariantNumeric: 'tabular-nums' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <span>Média paga</span><b>{brl(dados.pagoPeloEstado.media)}</b>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <span>Mediana</span><b>{brl(dados.pagoPeloEstado.mediana)}</b>
+                  </div>
+                  <div style={{ fontSize: 13, color: cor.suave, lineHeight: 1.45 }}>
+                    {dados.pagoPeloEstado.n} processo{dados.pagoPeloEstado.n === 1 ? '' : 's'} com procedimento parecido,
+                    pagos entre {dataBR(dados.pagoPeloEstado.de)} e {dataBR(dados.pagoPeloEstado.ate)}. {dados.pagoPeloEstado.aviso}
+                  </div>
+                </div>
+              </section>
+            )}
+
             {dados.referencias.length > 0 && (
               <section>
-                <h2 style={{ fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.06em', color: cor.suave, margin: '4px 4px 8px' }}>
-                  Valores de referência
-                </h2>
-                <div style={{ background: cor.cartao, borderRadius: 12, border: `1px solid ${cor.linha}` }}>
+                <h2 style={tituloSecao}>Orçamentos encontrados no processo</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {dados.referencias.map((r, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '12px 16px',
-                      borderTop: i ? `1px solid ${cor.linha}` : 'none', fontVariantNumeric: 'tabular-nums' }}>
-                      <span>{r.categoria}</span>
-                      <b>{brl(r.valorReferencia)}</b>
+                    <div key={i} style={{ background: cor.cartao, borderRadius: 12, border: `1px solid ${cor.linha}`,
+                      padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+                        <b style={{ fontSize: 16 }}>{r.local || 'Local não identificado no documento'}</b>
+                        <b style={{ fontSize: 17, fontVariantNumeric: 'tabular-nums' }}>{brl(r.valorReferencia)}</b>
+                      </div>
+                      {r.descricao && <div style={{ fontSize: 14, lineHeight: 1.45 }}>{r.descricao}</div>}
+                      <div style={{ fontSize: 12, color: cor.suave }}>
+                        {r.categoria}{r.data ? ` · orçamento de ${dataBR(r.data)}` : ''}{r.pagina ? ` · página ${r.pagina} do processo` : ''}
+                      </div>
                     </div>
                   ))}
                 </div>
-                <div style={{ fontSize: 13, color: cor.suave, margin: '6px 4px 0' }}>{dados.referenciasNota}</div>
+                <div style={{ fontSize: 13, color: cor.suave, margin: '6px 4px 0' }}>{dados.referenciasNota} Valor total de cada orçamento, como consta no processo.</div>
               </section>
             )}
 
