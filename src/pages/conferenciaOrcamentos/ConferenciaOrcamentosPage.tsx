@@ -9,8 +9,8 @@ import { SelectButton } from 'primereact/selectbutton';
 import { Tag } from 'primereact/tag';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import { useOrdenacao } from '../../components/Tabela/useOrdenacao';
-import type { EstadoConferencia, ItemConferencia, ListaConferencia } from '../../services/api/conferenciaOrcamentos';
-import { decidirConferencia, listarConferencia } from '../../services/api/conferenciaOrcamentos';
+import type { EstadoConferencia, ItemConferencia, ListaConferencia, ProgressoRevisaoIa } from '../../services/api/conferenciaOrcamentos';
+import { decidirConferencia, iniciarRevisaoIa, listarConferencia, progressoRevisaoIa } from '../../services/api/conferenciaOrcamentos';
 
 /* Conferência de orçamentos (decisão @R 22/09/2026, "encolher primeiro").
    POR QUE: medido no gabarito da eliza-advogado, 30% do que o leitor chamava de orçamento NÃO era
@@ -46,7 +46,10 @@ function ParecerIa({ ia }: { ia: ItemConferencia['ia'] }) {
     <div style={{ fontSize: '.8rem' }} title={[ia.motivo, `visão ${pct(ia.confianca)} · Jev ${pct(ia.jev)}`, ia.modelo].filter(Boolean).join('\n')}>
       <strong>{ia.rotulo}</strong>{ia.timbrado ? ' · papel timbrado' : ''}
       {ia.emissor ? <div className="text-600">emitido por {ia.emissor}</div> : null}
+      {!ia.emissor && ia.tipo === 'ORCAMENTO' ? <div className="text-600">emissor não identificado na folha</div> : null}
       {v ? <div style={{ color: v.cor }}>{v.txt}</div> : null}
+      {ia.sugestao ? <div style={{ fontWeight: 700, color: ia.sugestao === 'VALIDAR' ? '#067647' : '#b42318' }}>
+        → IA sugere {ia.sugestao === 'VALIDAR' ? 'validar' : 'descartar'}</div> : null}
     </div>
   );
 }
@@ -61,6 +64,9 @@ export function ConferenciaOrcamentosPage() {
   const [descartando, setDescartando] = useState<ItemConferencia | null>(null);
   const [motivo, setMotivo] = useState('');
   const ordenacao = useOrdenacao('pedido', -1);
+  // @R 22/09 ~11:50: "crie o botão, passe, analise o resultado para sempre eu passar nos que precisam"
+  const [ia, setIa] = useState<ProgressoRevisaoIa | null>(null);
+  const [iniciando, setIniciando] = useState(false);
   const ficha = useFichaPedido();
 
   const carregar = useCallback(async () => {
@@ -76,6 +82,29 @@ export function ConferenciaOrcamentosPage() {
     } finally { setCarregando(false); }
   }, [estado, todasFases]);
   useEffect(() => { carregar(); }, [carregar]);
+  // acompanha a rodada da IA: enquanto roda, atualiza a cada 8 s e recarrega a lista ao terminar
+  useEffect(() => {
+    let vivo = true; let timer: ReturnType<typeof setTimeout> | undefined; let estavaRodando = false;
+    const olhar = async () => {
+      try {
+        const { data } = await progressoRevisaoIa();
+        if (!vivo) return;
+        setIa(data);
+        if (estavaRodando && !data.emCurso) carregar();
+        estavaRodando = data.emCurso;
+        if (data.emCurso) timer = setTimeout(olhar, 8000);
+      } catch { /* sem progresso: o botão continua disponível */ }
+    };
+    olhar();
+    return () => { vivo = false; if (timer) clearTimeout(timer); };
+  }, [iniciando, carregar]);
+  const revisarComIa = async (alvo: EstadoConferencia | 'todos') => {
+    setIniciando(true); setErro(null);
+    try { await iniciarRevisaoIa(alvo); } catch (e: unknown) {
+      const r = (e as { response?: { data?: { error?: string } } }).response;
+      setErro(r?.data?.error ?? 'Não foi possível iniciar a revisão da IA.');
+    } finally { setIniciando(false); }
+  };
 
   const decidir = async (it: ItemConferencia, acao: 'VALIDAR' | 'DESCARTAR' | 'DESFAZER', mot?: string) => {
     setEmAcao(it.id); setErro(null);
@@ -112,6 +141,24 @@ export function ConferenciaOrcamentosPage() {
         <Button icon="pi pi-refresh" text size="small" label="Atualizar" onClick={carregar} />
       </div>
 
+      <div className="flex flex-wrap align-items-center gap-2 mb-3 p-2" style={{ background: '#f4f7fb', border: '1px solid #dbe4f0', borderRadius: 8 }}>
+        <i className="pi pi-eye" style={{ color: '#1d4ed8' }} />
+        <strong>Revisar com IA</strong>
+        <span className="text-600" style={{ fontSize: '.85rem' }}>a IA olha a folha de cada orçamento ainda sem parecer (só os que ninguém decidiu):</span>
+        <Button size="small" label="A revisar" loading={iniciando} disabled={!!ia?.emCurso} onClick={() => revisarComIa('REVISAR')} />
+        <Button size="small" outlined label="Descartados" disabled={!!ia?.emCurso || iniciando} onClick={() => revisarComIa('DESCARTADO')} />
+        <Button size="small" outlined label="Os dois" disabled={!!ia?.emCurso || iniciando} onClick={() => revisarComIa('todos')} />
+        {ia?.progresso && (
+          <span style={{ fontSize: '.85rem' }} className={ia.emCurso ? 'text-primary' : 'text-600'}>
+            {ia.emCurso
+              ? <><i className="pi pi-spin pi-spinner" style={{ fontSize: 12 }} /> IA revisou {ia.progresso.feitos} de {ia.progresso.total}…</>
+              : <>Última rodada ({fmt(ia.progresso.fim ?? ia.progresso.inicio)}, por {ia.progresso.por}): {ia.progresso.total} olhados
+                  {Object.entries(ia.progresso.resultado || {}).map(([k, n]) => ` · ${n} ${ROTULO[k as EstadoConferencia]?.toLowerCase() ?? k}`).join('')}
+                  {ia.progresso.erros ? ` · ${ia.progresso.erros} sem folha legível` : ''}</>}
+          </span>
+        )}
+      </div>
+
       {erro ? <div role="alert" className="mb-3 p-2" style={{ background: '#fde8e8', border: '1px solid #f5b5b5', borderRadius: 6 }}>{erro}</div> : null}
 
       {/* @R 22/09: "um numerador para ver mais itens sem passar de página: 200 100 50 20" */}
@@ -144,10 +191,11 @@ export function ConferenciaOrcamentosPage() {
           : <span className="text-500">sem arquivo</span>)} />
         <Column header="Decidir" style={{ width: '15rem' }} body={(r: ItemConferencia) => (
           <div className="flex gap-1 flex-wrap">
-            {r.estado !== 'VALIDADO' ? <Button label="Validar" icon="pi pi-check" size="small" severity="success" outlined
+            {r.estado !== 'VALIDADO' ? <Button label="Validar" icon="pi pi-check" size="small" severity="success" outlined={r.ia?.sugestao !== 'VALIDAR'}
               loading={emAcao === r.id} onClick={() => decidir(r, 'VALIDAR')} /> : null}
-            {r.estado !== 'DESCARTADO' ? <Button label="Descartar" icon="pi pi-times" size="small" severity="danger" outlined
-              disabled={emAcao === r.id} onClick={() => { setDescartando(r); setMotivo(''); }} /> : null}
+            {r.estado !== 'DESCARTADO' ? <Button label="Descartar" icon="pi pi-times" size="small" severity="danger" outlined={r.ia?.sugestao !== 'DESCARTAR'}
+              disabled={emAcao === r.id} onClick={() => { setDescartando(r);
+                setMotivo(r.ia?.sugestao === 'DESCARTAR' ? `IA: ${r.ia.rotulo}${r.ia.motivo ? ` — ${r.ia.motivo}` : ''}`.slice(0, 300) : ''); }} /> : null}
             {r.decididoPorPessoa ? <Button label="Desfazer" icon="pi pi-undo" size="small" text
               disabled={emAcao === r.id} onClick={() => decidir(r, 'DESFAZER')} title="Volta para a decisão do leitor" /> : null}
           </div>)} />

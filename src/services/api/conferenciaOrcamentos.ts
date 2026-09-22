@@ -30,6 +30,8 @@ export interface ItemConferencia {
     tipo: string; rotulo: string; emissor: string | null; timbrado: boolean;
     confianca: number | null; jev: number | null; motivo: string | null;
     veredito: 'NAO_E_ORCAMENTO' | 'ORCAMENTO' | 'DIVERGENTE' | 'INDETERMINADO' | null;
+    /** O que a IA SUGERE (a pessoa decide): só a imagem não descarta sozinha — medido 22/09. */
+    sugestao?: 'DESCARTAR' | 'VALIDAR' | null;
     modelo: string | null; em: string | null;
   } | null;
 }
@@ -47,3 +49,13 @@ export const listarConferencia = (params: { estado?: EstadoConferencia | 'todos'
 export const decidirConferencia = (id: number, acao: 'VALIDAR' | 'DESCARTAR' | 'DESFAZER', motivo?: string) =>
   api.post<{ id: number; estado: EstadoConferencia; visivelAoMedico: boolean }>(
     `/conferencia/orcamentos/${id}/decidir/`, { acao, motivo });
+
+/** Botão "Revisar com IA" (@R 22/09): a IA olha a folha de cada orçamento sem decisão humana, em segundo plano. */
+export interface ProgressoRevisaoIa {
+  progresso: { inicio: string; fim?: string; total: number; feitos: number; erros: number; estado: string; por: string;
+               emCurso: boolean; resultado: Partial<Record<EstadoConferencia, number>> } | null;
+  emCurso: boolean;
+}
+export const progressoRevisaoIa = () => api.get<ProgressoRevisaoIa>('/conferencia/orcamentos/revisar-ia/');
+export const iniciarRevisaoIa = (estado: EstadoConferencia | 'todos', refazer = false) =>
+  api.post('/conferencia/orcamentos/revisar-ia/', { estado, refazer });
