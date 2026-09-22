@@ -493,29 +493,37 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
 .home-hero__fase-link { text-decoration: underline dotted; text-underline-offset: 3px; }
 .home-hero__fases li[role="link"]:hover .home-hero__fase-link { text-decoration-style: solid; }
 
-/* @R 22/09: acessos à plataforma */
-.acessos-bloco { background: #fff; border-radius: 12px; padding: 16px; margin-top: 16px; border: 1px solid #e5e7eb; }
-.acessos-bloco__cab { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-.acessos-bloco__cab h2 { font-size: 18px; margin: 0; }
-.acessos-bloco__agora { color: #334155; }
-.acessos-bloco__dia { margin-left: auto; font-size: 14px; }
-.acessos-bloco__grade { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: .75rem; }
-@media (max-width: 800px) { .acessos-bloco__grade { grid-template-columns: 1fr; } }
-.acessos-bloco h3 { font-size: 14px; margin: 0 0 .35rem; color: #475569; }
-.acessos-bloco ul { margin: 0; padding-left: 1rem; font-size: 14px; max-height: 260px; overflow: auto; }
-.acessos-bloco__mes { display: flex; flex-wrap: wrap; gap: .35rem; }
-.acessos-bloco__mes button { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 6px; padding: 2px 8px; font-size: 13px; cursor: pointer; }
-.acessos-bloco__mes button.ativo { background: #0A3D62; color: #fff; border-color: #0A3D62; }
-.acessos-bloco__ponto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #cbd5e1; margin-right: 6px; }
+/* @R 22/09 18:18 + 18:55: acessos à plataforma — painel que abre/fecha no topo da Início */
+.acessos-bloco { margin-bottom: 16px; }
+.acessos-bloco .home-collapse__toggle:hover .home-panel__title { color: var(--mc-primary, #0A3D62); }
+.acessos-bloco__dia { font-size: 13px; color: #475569; display: flex; align-items: center; gap: 6px; }
+.acessos-bloco__dia input { border: 1px solid #cbd5e1; border-radius: 6px; padding: 3px 6px; font: inherit; }
+.acessos-bloco__grade { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { .acessos-bloco__grade { grid-template-columns: 1fr; } }
+.acessos-bloco__coluna { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.acessos-bloco h3 { font-size: 13px; font-weight: 600; margin: 0 0 8px; color: #0f172a; display: flex; justify-content: space-between; gap: 8px; }
+.acessos-bloco h3 span { color: #64748b; font-weight: 500; }
+.acessos-bloco__lista { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow: auto; }
+.acessos-bloco__pessoa { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 8px; border-radius: 6px; font-size: 13px; transition: background-color .12s ease; }
+.acessos-bloco__pessoa:hover { background: #eef2f7; }
+.acessos-bloco__pessoa small { color: #64748b; margin-left: auto; font-size: 12px; }
+.acessos-bloco__nome { font-weight: 500; color: #0f172a; }
+.acessos-bloco__grupo { font-size: 11px; color: #475569; background: #e2e8f0; border-radius: 999px; padding: 1px 8px; }
+.acessos-bloco__hora { font-variant-numeric: tabular-nums; color: #0A3D62; min-width: 42px; }
+.acessos-bloco__ponto { width: 9px; height: 9px; border-radius: 50%; background: #cbd5e1; flex-shrink: 0; }
 .acessos-bloco__ponto.logado { background: #f59e0b; }
-.acessos-bloco__ponto.ativo { background: #16a34a; }
-.acessos-bloco__vazio, .acessos-bloco__regra { color: #64748b; font-size: 13px; }
-.acessos-bloco__erro { color: #b42318; margin-top: .5rem; }
-
-/* @R 22/09: o quadro "Dados do Estado" abre a área da rotina */
-.home-hero__metric--link { cursor: pointer; border-radius: 8px; }
-.home-hero__metric--link:hover, .home-hero__metric--link:focus-visible { background: rgba(255, 255, 255, 0.08); outline: none; }
-.home-hero__metric--link strong::after { content: ' ›'; }
+.acessos-bloco__ponto.ativo { background: #16a34a; box-shadow: 0 0 0 3px rgba(22, 163, 74, .15); }
+.acessos-bloco__mes-titulo { margin-top: 12px !important; }
+.acessos-bloco__mes { display: flex; flex-wrap: wrap; gap: 6px; }
+.acessos-bloco__mes button { border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; padding: 3px 9px; font-size: 12px; cursor: pointer; transition: all .12s ease; }
+.acessos-bloco__mes button:hover { border-color: #0A3D62; color: #0A3D62; }
+.acessos-bloco__mes button.ativo { background: #0A3D62; color: #fff; border-color: #0A3D62; }
+.acessos-bloco__robos { grid-column: 1 / -1; border-top: 1px dashed #e2e8f0; padding-top: 8px; }
+.acessos-bloco__robos > button { border: 0; background: transparent; color: #475569; font-size: 13px; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+.acessos-bloco__robos > button:hover { background: #eef2f7; color: #0A3D62; }
+.acessos-bloco__robos small { display: block; color: #94a3b8; font-size: 11px; margin: 4px 6px 0; }
+.acessos-bloco__vazio, .acessos-bloco__regra { color: #64748b; font-size: 12px; margin: 8px 0 0; }
+.acessos-bloco__erro { color: #b42318; margin-bottom: .5rem; }
 
 /* @R 22/09 18:27: a pílula "N com valor idêntico" saía com letra BRANCA sobre amarelo (a cor do <span>
    `.home-hero__metric span` (0,1,1) vencia `.home-hero__selo` (0,1,0) — branco e 18px). Seletor mais específico + âmbar claro com texto escuro. */

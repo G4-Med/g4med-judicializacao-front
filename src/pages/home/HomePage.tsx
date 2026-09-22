@@ -678,6 +678,9 @@ export function HomePage() {
 
   return (
     <div className="home-page" id="home-report-export">
+      {/* @R 22/09 18:18 + 18:55: acessos no TOPO, fechado por padrão com o resumo à vista.
+          Só aparece para Admin/Gerente (o servidor recusa os demais com 403). */}
+      <AcessosBloco />
       <section className="home-hero">
         <div className="home-hero__content">
           <span className="home-hero__eyebrow"><Button icon="pi pi-circle-fill"></Button> PAINEL PRINCIPAL · {indicadores.mesAtualLabel}</span>
@@ -794,8 +797,6 @@ export function HomePage() {
 
       <ComoEstamos linhas={orders as any[]} />
 
-      {/* @R 22/09 18:18: quem entrou, quando, e quem está ativo agora. Só aparece para Admin/Gerente (o servidor recusa os demais). */}
-      <AcessosBloco />
 
       <PainelColapsavel
         titulo="Visão mensal x histórico"
