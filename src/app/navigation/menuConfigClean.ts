@@ -82,6 +82,8 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
       { label: '1,3 Conferência de orçamentos', icon: 'pi pi-check-square', path: '/conferencia-orcamentos', screen: 'juridico' },
       { label: 'Selecionar Médico', icon: 'pi pi-angle-right', path: '/selecionar-medico', screen: 'selecionarMedico' },
       { label: 'Orçamento Médico', icon: 'pi pi-angle-right', path: '/orcamento-medico', screen: 'orcamentoMedico' },
+      // @R 22/09/2026 14:24: fase 3.1 — o orçamento para aqui antes de ir à SES; confirma (1 clique) ou registra a revisão do médico
+      { label: '3,1 Bater valores', icon: 'pi pi-angle-double-right', path: '/bater-valores', screen: 'orcamentoMedico' },
       { label: 'Protocolar', icon: 'pi pi-angle-right', path: '/para-protocolar', screen: 'paraProtocolar' },
       { label: 'Protocolados', icon: 'pi pi-angle-right', path: '/protocolados', screen: 'protocolados' },
       // sub-item de Protocolados: caminho IRMÃO, ¬passo seguinte (ver conteudo.ts, 5.1)

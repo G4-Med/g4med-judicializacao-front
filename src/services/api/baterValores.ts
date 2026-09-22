@@ -1,0 +1,57 @@
+import api from './../api';
+
+/** Fase 3.1 "bater valores" (@R 22/09/2026 14:24). Back: backend/bater_valores.py.
+ *  O sistema MOSTRA a diferença entre o nosso orçamento e o menor orçamento de terceiro do
+ *  próprio processo; quem decide é a pessoa. Nunca sugerimos onde cortar (hospital, OPME e
+ *  anestesista são custo de terceiro — só o honorário é negociável, e a decisão é do médico). */
+export type EstadoGatilho = 'COM_CONCORRENTE' | 'INDETERMINADO' | 'SEM_CONCORRENTE';
+export type Saida = 'CONFIRMADO' | 'REVISADO';
+
+export interface DecisaoValor {
+  saida: Saida | 'SEM_RETORNO';
+  motivo: string | null;
+  observacao: string | null;
+  valorNovo: number | null;
+  por: string | null;
+  em: string | null;
+  prazoAte: string | null;
+}
+
+export interface ItemBaterValores {
+  pedido: number;
+  paciente: string | null;
+  procedimento: string | null;
+  fase: string | null;
+  faseExibida: string | null;
+  estado: EstadoGatilho | null;
+  nossoTotal: number | null;
+  menorTerceiro: number | null;
+  acimaPct: number | null;
+  aviso: string | null;
+  decisao: DecisaoValor | null;
+  motivosRevisao: { valor: string; rotulo: string }[];
+}
+
+export interface PainelBaterValores extends ItemBaterValores {
+  terceiros: { id: number; prestador: string | null; valorTotal: number; pagina: number | null;
+               comparavel: boolean; procedimento: string | null }[];
+}
+
+export interface FilaBaterValores {
+  total: number;
+  contagem: Record<EstadoGatilho, number>;
+  itens: ItemBaterValores[];
+}
+
+export interface ResultadoEnvio { enviado: boolean; naFila: boolean; para?: string; motivo?: string }
+
+export const listarBaterValores = (estado?: EstadoGatilho | 'todos') =>
+  api.get<FilaBaterValores>('/orders/bater-valores/', { params: { estado } });
+
+export const painelBaterValores = (pedido: number) =>
+  api.get<PainelBaterValores>(`/orders/${pedido}/bater-valores/`);
+
+export const decidirBaterValores = (pedido: number, corpo: {
+  saida: Saida; motivo?: string; observacao?: string; valorNovo?: number | null;
+}) => api.post<{ id: number; saida: Saida; liberado: boolean; envio: ResultadoEnvio | null }>(
+  `/orders/${pedido}/bater-valores/decidir/`, corpo);

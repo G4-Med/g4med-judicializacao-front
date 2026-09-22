@@ -34,6 +34,7 @@ import { ProcessoOperacionalPage } from '../../pages/processoOperacional/Process
 import { JuridicoPage } from '../../pages/juridico/JuridicoPage';
 import { EmailsJuridicoPage } from '../../pages/emailsJuridico/EmailsJuridicoPage';
 import { ConferenciaOrcamentosPage } from '../../pages/conferenciaOrcamentos/ConferenciaOrcamentosPage';
+import { BaterValoresPage } from '../../pages/baterValores/BaterValoresPage';
 import { OrcamentoMedicoPage } from '../../pages/orcamentoMedico/OrcamentoMedicoPage';
 import { SelecionarMedicoPage } from '../../pages/selecionarMedico/SelecionarMedicoPage';
 import { RelatorioResumidoPage } from '../../pages/relatorios/RelatorioResumidoPage';
@@ -89,6 +90,7 @@ export function AppRoutes() {
         <Route path="/conferencia-orcamentos" element={<ProtectedScreen screen="juridico"><ConferenciaOrcamentosPage /></ProtectedScreen>} />
         <Route path="/selecionar-medico" element={<ProtectedScreen screen="selecionarMedico"><SelecionarMedicoPage /></ProtectedScreen>} />
         <Route path="/orcamento-medico" element={<ProtectedScreen screen="orcamentoMedico"><OrcamentoMedicoPage /></ProtectedScreen>} />
+        <Route path="/bater-valores" element={<ProtectedScreen screen="orcamentoMedico"><BaterValoresPage /></ProtectedScreen>} />
 
         {/* PAINEL DE RESULTADOS (@R 08/09) — 1 rota, 5 abas na ordem do funil.
             As 4 rotas antigas (/resultados, /aguardando-cirurgia, /resultados-financeiros,

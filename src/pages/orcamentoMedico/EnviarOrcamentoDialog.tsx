@@ -540,13 +540,15 @@ export function EnviarOrcamentoDialog({
         enviarAgora: !!arquivoSelecionado,
         segurarEnvioMotivo: grave ? `a leitura do PDF apontou: ${grave.texto}` : '',
       });
-      const ses = (r?.data as { emailSes?: { enviado: boolean; naFila: boolean; para?: string; motivo?: string } | null })?.emailSes;
+      const ses = (r?.data as { emailSes?: { enviado: boolean; naFila: boolean; para?: string; motivo?: string; faseBaterValores?: boolean } | null })?.emailSes;
 
       setArquivoSelecionado(null);
       setValorArquivo(null);
       await handleSuccess();
       // o desfecho REAL do e-mail, nunca "sucesso" genérico: quem anexou precisa saber se a SES recebeu
       if (ses?.enviado) alert(`Orçamento salvo e e-mail ENVIADO à SES (${ses.para ?? 'solicitante'}), com o PDF em anexo.`);
+      // fase 3.1 (@R 22/09): retido para a conferência de valor — ¬é erro, é a parada antes de sair
+      else if (ses?.faseBaterValores) alert(`Orçamento salvo e RETIDO na fase 3,1 Bater valores: ${ses.motivo}. Abra "3,1 Bater valores" no menu para confirmar (o e-mail sai na hora) ou registrar a revisão do médico.`);
       else if (ses) alert(`Orçamento salvo, mas o e-mail à SES NÃO saiu: ${ses.motivo}.${ses.naFila ? ' Ele está na fila da Central de E-mails — confira e envie por lá.' : ''}`);
     } catch (error) {
       console.error('[EnviarOrcamentoDialog] erro ao enviar orçamento por arquivo', error);
