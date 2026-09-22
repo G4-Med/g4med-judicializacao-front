@@ -87,6 +87,10 @@ interface ProcessoOrcamento {
   /** nome do médico, já devolvido pela rota desta fase (_identificacao_por_order) —
    *  antes a tela ia buscá-lo no índice de /orders/listar/, onde ele nunca esteve */
   medico?: string;
+  /** @R 22/09: recusas deste pedido (a mais antiga primeiro) e os 2 filtros rápidos da fase 3 */
+  recusas?: { medico: string | null; categoria: string; categoriaRotulo: string; em: string | null }[];
+  negadoPorMedico?: boolean;
+  semMedico?: boolean;
 }
 
 interface ProcessoOrcamentoRow extends ProcessoOrcamento { sequencial: number; }
@@ -131,6 +135,8 @@ export function OrcamentoMedicoPage() {
   const readOnly = isReadOnly('orcamentoMedico');
   const [loading, setLoading] = useState(false);
   const [processos, setProcessos] = useState<ProcessoOrcamento[]>([]);
+  // @R 22/09: "os dois botões na fase 3 — os que médico negou e os que ficaram sem médico".
+  const [filtroRapido, setFiltroRapido] = useState<'negou' | 'sem' | null>(null);
   const [first, setFirst] = useState(0);
   const [rows, setRows] = useState(50);
   // @R 22/09 12:41: abre em ORDEM DE INCLUSÃO, do mais recente para o mais antigo. O nº do pedido
@@ -259,10 +265,17 @@ export function OrcamentoMedicoPage() {
       };
     });
   }, [dataComSequencial, medicos]);
+  const nNegou = dataComMedico.filter((r: any) => r.negadoPorMedico).length;
+  const nSemMedico = dataComMedico.filter((r: any) => r.semMedico).length;
+  const linhasDaTabela = useMemo(() => (
+    filtroRapido === 'negou' ? dataComMedico.filter((r: any) => r.negadoPorMedico)
+      : filtroRapido === 'sem' ? dataComMedico.filter((r: any) => r.semMedico)
+        : dataComMedico
+  ), [dataComMedico, filtroRapido]);
   // Há pelo menos 1 envio confirmado na fila = a confirmação pela Eliza está viva (ver coluna Pedido ao médico).
   const confirmacaoEnvioAtiva = dataComMedico.some((r: any) => !!r?.ultimaCotacaoEnviadaEm);
 
-  useEffect(() => { setVisibleProcessos(dataComMedico); }, [dataComMedico]);
+  useEffect(() => { setVisibleProcessos(linhasDaTabela); setFirst(0); }, [linhasDaTabela]);
 
   const statusOrcamentoOptions = useMemo(() => {
     const doDado = processos.map((item) => item.statusOrcamento).filter(Boolean) as string[];
@@ -655,6 +668,19 @@ ${blocos}
             )}
           />
         </h2>
+          <div className="filtros-rapidos-recusa" role="group" aria-label="Filtros rápidos de recusa">
+            <Button size="small" icon="pi pi-times-circle" severity="danger"
+              outlined={filtroRapido !== 'negou'} aria-pressed={filtroRapido === 'negou'}
+              label={`Médico negou (${nNegou})`}
+              title="Pedidos em que um médico recusou cotar — os que ainda estão com outro médico e os que ficaram sem nenhum"
+              onClick={() => setFiltroRapido(filtroRapido === 'negou' ? null : 'negou')} />
+            <Button size="small" icon="pi pi-exclamation-triangle" severity="warning"
+              outlined={filtroRapido !== 'sem'} aria-pressed={filtroRapido === 'sem'}
+              label={`Sem médico (${nSemMedico})`}
+              title="Pedidos que ficaram sem médico depois de uma recusa — precisam de outro médico (Trocar médico)"
+              onClick={() => setFiltroRapido(filtroRapido === 'sem' ? null : 'sem')} />
+            {filtroRapido && <Button size="small" text label="Mostrar todos" onClick={() => setFiltroRapido(null)} />}
+          </div>
           <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={dataComMedico} visiveis={visibleProcessos} nome="orcamento-medico" />
             {colunasCfg.botao}
@@ -663,7 +689,7 @@ ${blocos}
           expandedRows={expandidas} onRowToggle={(e) => setExpandidas(e.data)}
           rowExpansionTemplate={(r: any) => <ExpansorPedido linha={r} />}
           aria-label="Pedidos aguardando orçamento médico"
-          value={dataComMedico} dataKey="id" paginator rowsPerPageOptions={[10, 20, 50, 100, 200]} rows={rows} first={first}
+          value={linhasDaTabela} dataKey="id" paginator rowsPerPageOptions={[10, 20, 50, 100, 200]} rows={rows} first={first}
           onValueChange={(value) => setVisibleProcessos(value as typeof dataComMedico)}
           rowClassName={(r: any) => [((rowData: { dias: number }) =>
             rowData.dias > SLA_META_DIAS_ORCAMENTO ? 'linha-fora-sla' : ''
@@ -672,6 +698,8 @@ ${blocos}
             // diferente... pois cada um precisa de um MOLDE para pedir o orçamento".
             // Nesta fase a cor não é enfeite: ela diz qual pedido vai ser escrito.
             (!r?.idMedico || r.idMedico === 1) ? 'linha-sem-medico' : '',
+            // recusado e sem médico = alerta (@R 22/09): o pedido parou e ninguém está cotando
+            (r?.semMedico && r?.negadoPorMedico) ? 'linha-negado-sem-medico' : '',
             (r?.segredo === 'sim') ? 'linha-segredo' : '',
           ].filter(Boolean).join(' ')}
           onPage={(e: DataTablePageEvent) => { setFirst(e.first); setRows(e.rows); }}
@@ -703,6 +731,16 @@ ${blocos}
             body={(r: ProcessoOrcamentoRow) => (
               <span className="orcamento-paciente-cel col-paciente-upper">
                 {nomeComCopiar(r.paciente, r.id)}
+                {r.negadoPorMedico && (() => {
+                  const u = r.recusas?.[r.recusas.length - 1];
+                  const dia = u?.em ? new Date(u.em).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '';
+                  return (
+                    <span className={`selo-recusa${r.semMedico ? ' selo-recusa--sem' : ''}`}
+                      title={(r.recusas ?? []).map((x) => `${x.medico ?? 'médico'} negou${x.em ? ' em ' + new Date(x.em).toLocaleDateString('pt-BR') : ''} · ${x.categoriaRotulo}`).join('\n')}>
+                      {r.semMedico ? 'Sem médico · ' : ''}{u?.medico ?? 'Médico'} negou{dia ? ` ${dia}` : ''}
+                    </span>
+                  );
+                })()}
               </span>
             )}  frozen alignFrozen="left" />
           {colunaOrigem(dataComMedico)}

@@ -49,7 +49,7 @@ export function FichaPrestadorDialog({ medicoId, pedido, onClose }: { medicoId: 
           )}
 
           <section style={{ border: '1px solid #eaecf0', borderRadius: 8, padding: 12 }}>
-            <b>Quanto costuma demorar a responder</b>
+            <b>Tempo até o orçamento entrar no sistema</b>
             <div style={{ marginTop: 4 }}>
               {ficha.tempoResposta.medianaDias !== null
                 ? <>Em geral <b>{ficha.tempoResposta.medianaDias.toLocaleString('pt-BR')} dia(s)</b> <span className="text-600">(mediana de {ficha.tempoResposta.n} casos)</span></>

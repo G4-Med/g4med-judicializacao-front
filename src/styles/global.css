@@ -405,3 +405,14 @@ body.dark-theme .linha-sem-medico.linha-segredo > td {
   white-space: nowrap;
   border: 0;
 }
+
+/* @R 22/09: pedido que o médico NEGOU e ficou SEM médico — alerta na fase 3 (vence o creme do sem-médico). */
+.linha-negado-sem-medico > td,
+.linha-sem-medico.linha-negado-sem-medico > td { background: #fee2e2 !important; }
+.linha-negado-sem-medico:hover > td { background: #fecaca !important; }
+.linha-negado-sem-medico > td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
+body.dark-theme .linha-negado-sem-medico > td { background: rgba(220, 38, 38, 0.22) !important; color: var(--mc-ink, #e6eef6); }
+.filtros-rapidos-recusa { display: flex; gap: .5rem; flex-wrap: wrap; margin: .25rem 0 .5rem; }
+.selo-recusa { display: inline-block; margin-left: .4rem; padding: 0 .4rem; border-radius: 4px; font-size: .72rem;
+  font-weight: 600; background: #fef3c7; color: #92400e; white-space: nowrap; text-transform: none; }
+.selo-recusa--sem { background: #dc2626; color: #fff; }
