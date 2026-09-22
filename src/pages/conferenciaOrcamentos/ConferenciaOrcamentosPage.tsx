@@ -92,7 +92,7 @@ export function ConferenciaOrcamentosPage() {
 
       <DataTable value={dados?.itens ?? []} loading={carregando} size="small" stripedRows paginator rows={25} dataKey="id" {...ordenacao}
         emptyMessage={erro ? 'Lista não carregada.' : (estado === 'REVISAR' ? 'Nada a revisar.' : 'Nenhum orçamento neste filtro.')}>
-        <Column field="pedido" header="Pedido" sortable style={{ width: '6rem' }} body={(r: ItemConferencia) => (
+        <Column field="pedido" header="Pedido" sortable style={{ width: '7rem', whiteSpace: 'nowrap' }} body={(r: ItemConferencia) => (
           <Button label={`#${r.pedido}`} link size="small" onClick={() => ficha.abrir(r.pedido)} />)} />
         <Column field="paciente" header="Paciente" sortable />
         <Column field="fase" header="Fase" sortable style={{ width: '11rem' }} />
