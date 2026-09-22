@@ -5,12 +5,26 @@ import 'primeflex/primeflex.css'
 import '../../styles/medcheck-tokens.css'   // ← ADICIONAR (antes do global.css)
 import '../../styles/global.css'
 import { useEffect } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
+import { registrarPagina } from '../../services/api/atividades'
+import { AREAS_MENU } from '../../pages/processoOperacional/conteudo'
 import { Header } from './Header'
 import { BarraDeCarregamento } from './BarraDeCarregamento'
 import { Menu } from './Menu'                // ← trocar MenuSidebar por Menu
 import { MenuControlProvider, useMenuControl } from './MenuControlContext'
 import { FichaPedidoProvider } from '../../components/FichaPedido/FichaPedidoContext'
+
+// Livro de portaria (@R 22/09): cada tela aberta vai para a auditoria do usuário — a API não vê troca de
+// página no navegador. Nome legível vem do Mapa do menu (mesma fonte do processo operacional).
+function usarRegistroDePagina() {
+  const loc = useLocation()
+  useEffect(() => {
+    const caminho = loc.pathname + loc.search
+    const area = [...AREAS_MENU].sort((a, b) => b.rota.length - a.rota.length)
+      .find((a) => caminho === a.rota || caminho.startsWith(a.rota.split('?')[0] + (a.rota.includes('?') ? '?' : '')))
+    registrarPagina(caminho, area?.nome ?? '')
+  }, [loc.pathname, loc.search])
+}
 
 // Arrastar-para-rolar horizontal nas tabelas (@R 28/08 03:0x: "barra de rolagem
 // lateral e para arrastar para o lado") — delegação global, 1 listener p/ o app.
@@ -91,6 +105,7 @@ function MainLayoutInner() {
   const menu = useMenuControl()
   usarBarraSuperior()
   usarArrastarTabelas()
+  usarRegistroDePagina()
 
   return (
     <div style={{ minHeight: '100vh' }}>

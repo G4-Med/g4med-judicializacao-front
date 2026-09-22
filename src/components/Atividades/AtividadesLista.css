@@ -1,0 +1,19 @@
+.ativ__tipos { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.ativ__tipo { border: 1px solid #e2e8f0; background: #fff; color: #334155; border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; transition: background .12s, border-color .12s; }
+.ativ__tipo:hover { border-color: #00A651; }
+.ativ__tipo span { display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 5px; border-radius: 999px; background: #f1f5f9; font-weight: 700; font-size: 11px; }
+.ativ__tipo--on { background: #0A3D62; color: #fff; border-color: #0A3D62; }
+.ativ__tipo--on span { background: rgba(255,255,255,.2); color: #fff; }
+.ativ__lista { list-style: none; margin: 0; padding: 0; max-height: 360px; overflow-y: auto; }
+.ativ__item { display: grid; grid-template-columns: 92px 86px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 4px; border-bottom: 1px solid #f1f5f9; font-size: 12.5px; }
+.ativ__item:hover { background: #f8fafc; }
+.ativ__item--falha .ativ__acao { color: #b42318; }
+.ativ__hora { color: #0f172a; font-weight: 600; }
+.ativ__selo { color: #fff; font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 6px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ativ__acao { color: #334155; min-width: 0; }
+.ativ__acao em { font-style: normal; font-weight: 600; color: #0f172a; }
+.ativ__acao a { color: #0A3D62; font-weight: 600; }
+.ativ__rota { color: #94a3b8; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+.ativ__vazio, .ativ__nota { color: #64748b; font-size: 12px; }
+@media (max-width: 700px) { .ativ__item { grid-template-columns: 80px 1fr; } .ativ__rota { display: none; } }
+.ativ__pedido { border: 0; background: none; padding: 0; color: #0A3D62; font-weight: 600; cursor: pointer; text-decoration: underline dotted; }

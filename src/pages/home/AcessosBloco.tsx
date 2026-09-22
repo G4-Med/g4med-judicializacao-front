@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AtividadesLista } from '../../components/Atividades/AtividadesLista';
 import { getAcessos, type Acessos, type LoginDia } from '../../services/api/rotinaAcessos';
 import { getLogAuditoria } from '../../services/api/orders';
 
@@ -44,14 +45,17 @@ function LogDoUsuario({ usuario, nome, onFechar, logins }: { usuario: string; no
       .catch(() => setErro(true));
   }, [usuario]);
   return (
-    <div className="acessos-log" role="dialog" aria-label={`Últimas ações de ${nome}`}>
+    <div className="acessos-log" role="dialog" aria-label={`Atividades de ${nome}`}>
       <div className="acessos-log__cab">
-        <strong>Últimas ações de {nome}</strong>
+        <strong>Atividades de {nome}</strong>
         <button type="button" onClick={onFechar} aria-label="Fechar"><i className="pi pi-times" /></button>
       </div>
       {logins.length > 0 && (
         <p className="acessos-log__logins">Entrou hoje às {logins.map((l) => hora(l.em)).join(', ')}</p>
       )}
+      <AtividadesLista usuario={usuario} />
+      <details className="acessos-log__historico">
+        <summary>Mudanças de fase e status (de → para)</summary>
       {erro && <p className="acessos-bloco__erro">Não foi possível ler o histórico agora — isso não quer dizer que não houve ações.</p>}
       {!erro && itens === null && <p className="acessos-bloco__vazio">Carregando…</p>}
       {itens && itens.length === 0 && <p className="acessos-bloco__vazio">Nenhuma alteração registrada por esta pessoa no histórico.</p>}
@@ -66,7 +70,8 @@ function LogDoUsuario({ usuario, nome, onFechar, logins }: { usuario: string; no
           ))}
         </ul>
       )}
-      <p className="acessos-bloco__regra">Mostra as últimas 50 alterações gravadas no histórico (fase, status, campos do pedido). Abrir telas sem alterar nada não fica registrado.</p>
+      </details>
+      <p className="acessos-bloco__regra">Atividades: tudo que a pessoa alterou, abriu (fichas, registros, arquivos), baixou e as páginas por onde passou — registrado desde 22/09/2026. Mudanças de fase: o de → para de cada status.</p>
     </div>
   );
 }

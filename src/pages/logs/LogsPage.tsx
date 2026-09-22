@@ -1,3 +1,4 @@
+import { AtividadesLista } from '../../components/Atividades/AtividadesLista';
 import { useEffect, useState } from 'react';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
@@ -113,6 +114,14 @@ export function LogsPage() {
           <p>Auditoria de cada edição: quem mudou, o quê, quando e de onde veio. Busque pelo nome do paciente para ver tudo que aconteceu com ele.</p>
         </div>
       </div>
+
+      <section className="logs-atividades">
+        <h2>Atividades dos usuários</h2>
+        <p className="logs-atividades__sub">Tudo que cada pessoa alterou, abriu (fichas, registros, arquivos), baixou e as páginas por onde passou. Filtre por usuário e período nos campos abaixo e escolha o tipo.</p>
+        <AtividadesLista usuario={usuario.trim() || undefined} dataInicio={dataInicio || undefined} dataFim={dataFim || undefined}
+          pedido={/^\d+$/.test(orderId.trim()) ? orderId.trim() : undefined} />
+      </section>
+      <h2 className="logs-historico__titulo">Mudanças de fase e status (de → para)</h2>
 
       <div className="logs-filtros">
         <Dropdown

@@ -28,6 +28,12 @@ interface MinhaSessao {
   loginCount: number;
   sessaoDesde: string | null;
   sessaoAtivaProvavel: boolean;
+  sessaoOrigem?: {
+    em: string; ip: string | null; navegador: string | null; navegadorVersao: string | null; sistema: string | null;
+    dispositivo: string | null; localizacaoStatus: string | null; latitude: number | null; longitude: number | null;
+    precisaoM: number | null;
+  } | null;
+  ipAgora?: string | null;
 }
 
 interface NotificacaoCentral {
@@ -308,6 +314,29 @@ export function Header({ onMenuClick }: Props) {
                       <i className="pi pi-circle-fill" style={{ fontSize: '0.55rem', color: 'var(--mc-green-500, #00a651)' }} />
                       <span>Sessão atual desde: {formatarDataHora(minhaSessao.sessaoDesde)}</span>
                     </div>
+                    {/* @R 22/09: localização, IP e navegador da sessão em uso */}
+                    {minhaSessao.sessaoOrigem && (
+                      <>
+                        <div className="mc-perfil__info-row">
+                          <i className="pi pi-desktop" />
+                          <span>{[minhaSessao.sessaoOrigem.dispositivo,
+                            minhaSessao.sessaoOrigem.navegador && `${minhaSessao.sessaoOrigem.navegador}${minhaSessao.sessaoOrigem.navegadorVersao ? ` ${minhaSessao.sessaoOrigem.navegadorVersao}` : ''}`,
+                            minhaSessao.sessaoOrigem.sistema].filter(Boolean).join(' · ') || 'Aparelho não identificado'}</span>
+                        </div>
+                        <div className="mc-perfil__info-row">
+                          <i className="pi pi-globe" />
+                          <span>IP do login: {minhaSessao.sessaoOrigem.ip ?? '—'}{minhaSessao.ipAgora && minhaSessao.ipAgora !== minhaSessao.sessaoOrigem.ip ? ` · agora: ${minhaSessao.ipAgora}` : ''}</span>
+                        </div>
+                        <div className="mc-perfil__info-row">
+                          <i className="pi pi-map-marker" />
+                          {minhaSessao.sessaoOrigem.localizacaoStatus === 'CONCEDIDA' && minhaSessao.sessaoOrigem.latitude != null
+                            ? <a href={`https://www.google.com/maps?q=${minhaSessao.sessaoOrigem.latitude},${minhaSessao.sessaoOrigem.longitude}`} target="_blank" rel="noreferrer">
+                                Localização do login{minhaSessao.sessaoOrigem.precisaoM != null ? ` (±${Math.round(minhaSessao.sessaoOrigem.precisaoM)} m)` : ''} — ver no mapa
+                              </a>
+                            : <span>Localização: {({ NEGADA: 'não autorizada', INDISPONIVEL: 'indisponível', PENDENTE: 'não informada' } as Record<string, string>)[minhaSessao.sessaoOrigem.localizacaoStatus ?? 'PENDENTE'] ?? 'não informada'}</span>}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="mc-perfil__actions">
