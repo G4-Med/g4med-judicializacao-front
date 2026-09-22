@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 import { Column } from 'primereact/column';
@@ -87,7 +87,11 @@ export function ConferenciaOrcamentosPage() {
     } finally { setCarregando(false); }
   }, [estado, todasFases]);
   useEffect(() => { carregar(); }, [carregar]);
-  // acompanha a rodada da IA: enquanto roda, atualiza a cada 8 s e recarrega a lista ao terminar
+  // acompanha a rodada da IA e recarrega a lista quando ELA termina. ⚠ 22/09 (#594, @R): rodada de 1 item
+  // leva 3 s e o processo só grava "começou" depois do 1º GET — a tela lia a rodada ANTERIOR (já parada),
+  // parava de olhar e nunca recarregava. Por isso, após o clique, espera a rodada NOVA aparecer (início
+  // diferente do que havia antes do clique), olha a cada 2 s e recarrega quando ela terminar (teto 90 s).
+  const esperandoRef = useRef<{ inicioAntes: string | null | undefined; ate: number } | null>(null);
   useEffect(() => {
     let vivo = true; let timer: ReturnType<typeof setTimeout> | undefined; let estavaRodando = false;
     const olhar = async () => {
@@ -95,9 +99,13 @@ export function ConferenciaOrcamentosPage() {
         const { data } = await progressoRevisaoIa();
         if (!vivo) return;
         setIa(data);
-        if (estavaRodando && !data.emCurso) carregar();
+        const esp = esperandoRef.current;
+        const nova = !!esp && (data.progresso?.inicio ?? null) !== esp.inicioAntes;
+        if ((estavaRodando || nova) && !data.emCurso) { esperandoRef.current = null; carregar(); }
         estavaRodando = data.emCurso;
-        if (data.emCurso) timer = setTimeout(olhar, 8000);
+        const aguardandoInicio = !!esperandoRef.current && !nova && Date.now() < (esperandoRef.current?.ate ?? 0);
+        if (data.emCurso || aguardandoInicio) timer = setTimeout(olhar, 2000);
+        else if (esperandoRef.current && !nova) esperandoRef.current = null;
       } catch { /* sem progresso: o botão continua disponível */ }
     };
     olhar();
@@ -105,7 +113,9 @@ export function ConferenciaOrcamentosPage() {
   }, [iniciando, carregar]);
   const revisarComIa = async (alvo: EstadoConferencia | 'todos') => {
     setIniciando(true); setErro(null);
+    esperandoRef.current = { inicioAntes: ia?.progresso?.inicio ?? null, ate: Date.now() + 90_000 };
     try { await iniciarRevisaoIa(alvo); } catch (e: unknown) {
+      esperandoRef.current = null;
       const r = (e as { response?: { data?: { error?: string } } }).response;
       setErro(r?.data?.error ?? 'Não foi possível iniciar a revisão da IA.');
     } finally { setIniciando(false); }
