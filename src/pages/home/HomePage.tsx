@@ -514,7 +514,34 @@ export function HomePage() {
       { fase: '5b', nome: 'Enviado à SES (sem protocolo)', qtd: contarFase('Enviado à SES - Sem Protocolo') },
     ];
 
+    /* A VERIFICAR — o Estado pagou e o pedido continua aberto (medido 21/09/2026 em produção,
+       com a MESMA função que alimenta esta tela: 103 pedidos em aberto com sinal
+       PAGO_APOS_O_PEDIDO, R$ 6,86 mi; em 28 o valor pago bate com o nosso orçamento em até 2%).
+       `empenho548.pago` aqui já é o pago DEPOIS do pedido (0 divergências contra pagoAposPedido
+       nos 103). A régua da podeDarBaixa dá 98 — são 5 casos de critério, não erro: esta linha
+       segue a mesma régua das outras telas de empenho. O dado já existia e a tela de conferência já o lista;
+       o que faltava era alguém AVISAR daqui — a Home não tinha nenhum caminho até ela, então a
+       fila crescia sem ninguém ver (mediana de 24 dias sem toque).
+
+       NÃO é "ganho": o favorecido do empenho é sempre o Tribunal (depósito judicial), nunca o
+       prestador — conferido nos 28. Pagamento no processo é SINAL forte de desfecho, e o valor
+       idêntico é o mais forte que temos; quem confirma é a pessoa, na tela de conferência. */
+    const pagoEstadoAberto = pedidosEmAberto.filter(
+      (item: any) => item?.empenho548?.sinal === 'PAGO_APOS_O_PEDIDO'
+    );
+    const valorBate = (item: any) => {
+      const orcado = toNumber(item.valorOrcamento);
+      const pago = toNumber(item?.empenho548?.pago);
+      return orcado > 0 && pago > 0 && Math.abs(pago - orcado) / orcado <= 0.02;
+    };
+    const aVerificar = {
+      qtd: pagoEstadoAberto.length,
+      valorPago: pagoEstadoAberto.reduce((acc, item: any) => acc + toNumber(item?.empenho548?.pago), 0),
+      exatos: pagoEstadoAberto.filter(valorBate).length,
+    };
+
     return {
+      aVerificar,
       cardsMesVida,
       cardsValorQuantidade,
       graficoProcedimentos,
@@ -632,6 +659,21 @@ export function HomePage() {
                   {emailsJur?.vencidosJustica ? <span className="home-hero__selo home-hero__selo--vencido">{emailsJur.vencidosJustica} vencido(s)</span> : null}
                 </span>
                 <b>{emailsJur ? emailsJur.abertosJustica : '--'}</b>
+              </li>
+              {/* O Estado pagou e o pedido continua aberto. Fora da soma das fases: não é uma fase
+                  do funil, é dinheiro esperando conferência humana — e sem esta linha ninguém
+                  chegava à tela que já listava tudo. */}
+              <li key="verificar" className={indicadores.aVerificar.exatos ? 'home-hero__fase--alerta' : ''}
+                title={`O portal do Estado registra pagamento DEPOIS do nosso pedido em ${indicadores.aVerificar.qtd} pedido(s) ainda em aberto — ${formatCurrency(indicadores.aVerificar.valorPago)} no total. Em ${indicadores.aVerificar.exatos} deles o valor pago bate com o nosso orçamento (até 2%), o sinal mais forte de que a cirurgia foi a nossa. O favorecido do empenho é sempre o Tribunal, então isto NÃO é ganho confirmado: quem confirma é você, na tela de conferência.`}
+                style={{ cursor: 'pointer' }} onClick={() => navigate('/painel-resultados?aba=verificar')}>
+                <em>💰</em>
+                <span className="home-hero__fase-nome">
+                  A verificar — o Estado pagou
+                  {indicadores.aVerificar.exatos
+                    ? <span className="home-hero__selo">{indicadores.aVerificar.exatos} com valor idêntico</span>
+                    : null}
+                </span>
+                <b>{loading ? '--' : indicadores.aVerificar.qtd}</b>
               </li>
             </ul>
           </div>
