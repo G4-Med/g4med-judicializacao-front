@@ -26,12 +26,17 @@ function enviarLocalizacaoDoLogin(evento: number, access: string) {
   const mandar = (corpo: Record<string, unknown>) =>
     axios.post(url, { evento, ...corpo }, { headers }).catch(() => undefined);
   if (typeof navigator === 'undefined' || !navigator.geolocation) {
-    mandar({ status: 'INDISPONIVEL' });
+    mandar({ status: 'INDISPONIVEL', motivo: 'SEM_API' });
     return;
   }
   navigator.geolocation.getCurrentPosition(
     (p) => mandar({ status: 'CONCEDIDA', latitude: p.coords.latitude, longitude: p.coords.longitude, precisao: p.coords.accuracy }),
-    (e) => mandar({ status: e.code === e.PERMISSION_DENIED ? 'NEGADA' : 'INDISPONIVEL' }),
+    // o código do erro separa "a pessoa negou" de "a localização do Windows/aparelho está desligada" (22/09: os
+    // 3 logins do @R no computador voltaram indisponível — o motivo diz qual das duas)
+    (e) => mandar({
+      status: e.code === e.PERMISSION_DENIED ? 'NEGADA' : 'INDISPONIVEL',
+      motivo: e.code === e.PERMISSION_DENIED ? 'PERMISSION_DENIED' : e.code === e.TIMEOUT ? 'TIMEOUT' : 'POSITION_UNAVAILABLE',
+    }),
     { enableHighAccuracy: false, timeout: 15000, maximumAge: 300000 },
   );
 }

@@ -19,6 +19,7 @@ import './Header.css'
 import { VersaoDoSistema } from './VersaoDoSistema';
 import { RelogioDoSite } from './RelogioDoSite';
 import { EstadoDaBusca } from './EstadoDaBusca';
+import { descreverLocalizacao, type LocalizacaoIP } from '../../services/api/rotinaAcessos';
 
 interface MinhaSessao {
   username: string;
@@ -31,7 +32,7 @@ interface MinhaSessao {
   sessaoOrigem?: {
     em: string; ip: string | null; navegador: string | null; navegadorVersao: string | null; sistema: string | null;
     dispositivo: string | null; localizacaoStatus: string | null; latitude: number | null; longitude: number | null;
-    precisaoM: number | null;
+    precisaoM: number | null; localizacaoMotivo?: string | null; localizacaoIP?: LocalizacaoIP | null;
   } | null;
   ipAgora?: string | null;
 }
@@ -329,11 +330,12 @@ export function Header({ onMenuClick }: Props) {
                         </div>
                         <div className="mc-perfil__info-row">
                           <i className="pi pi-map-marker" />
-                          {minhaSessao.sessaoOrigem.localizacaoStatus === 'CONCEDIDA' && minhaSessao.sessaoOrigem.latitude != null
-                            ? <a href={`https://www.google.com/maps?q=${minhaSessao.sessaoOrigem.latitude},${minhaSessao.sessaoOrigem.longitude}`} target="_blank" rel="noreferrer">
-                                Localização do login{minhaSessao.sessaoOrigem.precisaoM != null ? ` (±${Math.round(minhaSessao.sessaoOrigem.precisaoM)} m)` : ''} — ver no mapa
-                              </a>
-                            : <span>Localização: {({ NEGADA: 'não autorizada', INDISPONIVEL: 'indisponível', PENDENTE: 'não informada' } as Record<string, string>)[minhaSessao.sessaoOrigem.localizacaoStatus ?? 'PENDENTE'] ?? 'não informada'}</span>}
+                          {(() => {
+                            const loc = descreverLocalizacao(minhaSessao.sessaoOrigem);
+                            return loc.mapa
+                              ? <a href={loc.mapa} target="_blank" rel="noreferrer" title={loc.dica}>{loc.texto} — ver no mapa</a>
+                              : <span title={loc.dica}>{loc.texto}</span>;
+                          })()}
                         </div>
                       </>
                     )}

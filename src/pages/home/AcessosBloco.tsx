@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AtividadesLista } from '../../components/Atividades/AtividadesLista';
-import { getAcessos, type Acessos, type LoginDia } from '../../services/api/rotinaAcessos';
+import { descreverLocalizacao, getAcessos, type Acessos, type LoginDia } from '../../services/api/rotinaAcessos';
 import { getLogAuditoria } from '../../services/api/orders';
 
 /* @R 22/09 18:18: "uma parte que mostra histórico de login por dia, quem logou, horário, e podemos ver dias
@@ -198,24 +198,19 @@ export function AcessosBloco() {
   );
 }
 
-const LOC_TXT: Record<string, string> = {
-  PENDENTE: 'localização: sem resposta', NEGADA: 'localização negada', INDISPONIVEL: 'localização indisponível',
-};
-
 /** #634: de onde e como a pessoa entrou — aparelho, navegador/versão, sistema, IP e (se autorizada) o ponto no mapa. */
 function OrigemLogin({ l }: { l: LoginDia }) {
   const como = [l.dispositivo, l.navegador && `${l.navegador}${l.navegadorVersao ? ` ${l.navegadorVersao}` : ''}`, l.sistema]
     .filter(Boolean).join(' · ');
-  const temPonto = l.localizacaoStatus === 'CONCEDIDA' && l.latitude != null && l.longitude != null;
+  const loc = descreverLocalizacao(l);
   return (
     <span className="acessos-bloco__origem">
       {como || 'aparelho não identificado'}
       {l.ip && <> · IP {l.ip}</>}
       {' · '}
-      {temPonto
-        ? <a href={`https://www.google.com/maps?q=${l.latitude},${l.longitude}`} target="_blank" rel="noreferrer"
-            title={l.precisaoM != null ? `precisão de ~${Math.round(l.precisaoM)} m` : undefined}>ver no mapa</a>
-        : <span className="acessos-bloco__origem-sem">{LOC_TXT[l.localizacaoStatus ?? 'PENDENTE'] ?? 'localização: sem resposta'}</span>}
+      {loc.mapa
+        ? <a href={loc.mapa} target="_blank" rel="noreferrer" title={loc.dica}>{loc.texto}</a>
+        : <span className="acessos-bloco__origem-sem" title={loc.dica}>{loc.texto}</span>}
     </span>
   );
 }
