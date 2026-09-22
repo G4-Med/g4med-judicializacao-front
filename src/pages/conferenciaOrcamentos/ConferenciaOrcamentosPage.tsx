@@ -62,6 +62,9 @@ export function ConferenciaOrcamentosPage() {
   const [erro, setErro] = useState<string | null>(null);
   const [emAcao, setEmAcao] = useState<number | null>(null);
   const [descartando, setDescartando] = useState<ItemConferencia | null>(null);
+  // @R 22/09 11:55: "cliquei em validar e nada aconteceu" — gravava (200), mas a linha só sumia da aba.
+  // Todo clique agora confirma na tela o que aconteceu, para onde foi, e oferece desfazer.
+  const [feito, setFeito] = useState<{ it: ItemConferencia; acao: 'VALIDAR' | 'DESCARTAR' | 'DESFAZER' } | null>(null);
   const [motivo, setMotivo] = useState('');
   const ordenacao = useOrdenacao('pedido', -1);
   // @R 22/09 ~11:50: "crie o botão, passe, analise o resultado para sempre eu passar nos que precisam"
@@ -111,6 +114,7 @@ export function ConferenciaOrcamentosPage() {
     try {
       await decidirConferencia(it.id, acao, mot);
       setDescartando(null); setMotivo('');
+      setFeito({ it, acao });
       await carregar();
     } catch (e: unknown) {
       const r = (e as { response?: { data?: { error?: string } } }).response;
@@ -159,6 +163,22 @@ export function ConferenciaOrcamentosPage() {
         )}
       </div>
 
+      {feito ? (
+        <div role="status" className="mb-3 p-2 flex align-items-center gap-2 flex-wrap"
+          style={{ background: feito.acao === 'VALIDAR' ? '#e8f5ec' : feito.acao === 'DESCARTAR' ? '#fdecec' : '#eef2f7',
+            border: '1px solid #cfd8e3', borderRadius: 6 }}>
+          <i className={feito.acao === 'VALIDAR' ? 'pi pi-check-circle' : feito.acao === 'DESCARTAR' ? 'pi pi-times-circle' : 'pi pi-undo'} />
+          <span>
+            <strong>#{feito.it.pedido} · {brl(feito.it.valorTotal)}</strong>{' '}
+            {feito.acao === 'VALIDAR' ? '— validado: foi para "Validados" e o médico já pode ver este valor.'
+              : feito.acao === 'DESCARTAR' ? '— descartado: foi para "Descartados" e não vai ao médico.'
+              : '— desfeito: voltou para a decisão da máquina.'}
+          </span>
+          {feito.acao !== 'DESFAZER' ? <Button size="small" text label="Desfazer" icon="pi pi-undo" disabled={emAcao === feito.it.id}
+            onClick={() => decidir(feito.it, 'DESFAZER')} /> : null}
+          <Button size="small" text icon="pi pi-times" aria-label="Fechar aviso" onClick={() => setFeito(null)} />
+        </div>
+      ) : null}
       {erro ? <div role="alert" className="mb-3 p-2" style={{ background: '#fde8e8', border: '1px solid #f5b5b5', borderRadius: 6 }}>{erro}</div> : null}
 
       {/* @R 22/09: "um numerador para ver mais itens sem passar de página: 200 100 50 20" */}
