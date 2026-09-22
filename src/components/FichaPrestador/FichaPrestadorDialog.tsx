@@ -38,6 +38,16 @@ export function FichaPrestadorDialog({ medicoId, pedido, onClose }: { medicoId: 
             <div className="text-600" style={{ fontSize: 12, marginTop: 4 }}>{ficha.aviso}</div>
           </div>
 
+          {ficha.pedidoAtual && (
+            <div style={{ borderRadius: 8, padding: '10px 12px', fontWeight: 600,
+              background: ficha.pedidoAtual.temOrcamento ? '#ecfdf3' : '#fffaeb',
+              border: `1px solid ${ficha.pedidoAtual.temOrcamento ? '#abefc6' : '#fedf89'}`,
+              color: ficha.pedidoAtual.temOrcamento ? '#067647' : '#b54708' }}>
+              Pedido #{ficha.pedidoAtual.pedido}: {ficha.pedidoAtual.texto}
+              {ficha.pedidoAtual.valor !== null ? ` (${brl(ficha.pedidoAtual.valor)})` : ''}
+            </div>
+          )}
+
           <section style={{ border: '1px solid #eaecf0', borderRadius: 8, padding: 12 }}>
             <b>Quanto costuma demorar a responder</b>
             <div style={{ marginTop: 4 }}>

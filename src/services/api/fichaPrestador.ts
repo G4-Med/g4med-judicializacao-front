@@ -7,6 +7,8 @@ export interface CotacaoFicha {
   processo: { existe: boolean; menor: number | null; conferido: boolean; texto: string };
 }
 export interface FichaPrestador {
+  /** eliza-urgencia 22/09: a ausência de orçamento no pedido atual é AFIRMADA, não inferida do vazio. */
+  pedidoAtual: { pedido: number; temOrcamento: boolean; valor: number | null; texto: string } | null;
   prestador: { id: number; nome: string; rotulo: string; categoria: string | null; especialidade: string | null };
   cotacoesTotal: number; cotacoes: CotacaoFicha[]; poucasCotacoes: string | null;
   tempoResposta: { n: number; medianaDias: number | null; texto: string | null; fonte: string };
