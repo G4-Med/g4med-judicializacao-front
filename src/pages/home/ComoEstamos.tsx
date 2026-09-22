@@ -193,7 +193,10 @@ const moeda = (v: number) =>
 
 const noPeriodo = (iso: string | null | undefined, dentro: (d: Date) => boolean) => {
   if (!iso) return false;
-  const d = new Date(iso);
+  /* Data pura ("2026-09-01") vira meia-noite LOCAL, não UTC: `new Date("2026-09-01")` é 31/08 às
+     21h em Brasília e jogava os pedidos do dia 1º no mês anterior (22/09: 45 em vez de 48). */
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(iso);
   return !Number.isNaN(d.getTime()) && dentro(d);
 };
 
@@ -285,8 +288,14 @@ function medir(linhas: Linha[], dentro: (d: Date) => boolean, vidaToda = false) 
     // preço rebaixaria a média por ausência de dado, ¬por oportunidade menor
     nComReferencia: recebidos.length,
     mediaOportunidade: recebidos.length ? valorRecebido / recebidos.length : 0,
-    valorEnviado: soma(enviados, (l) => num(l.valorOrcamento)),
-    nEnviados: enviados.length,
+    /* COORTE TAMBÉM AQUI (@R 22/09 14:01: "não pegar um pedido da competência anterior e ver
+       ela na competência atual"). O número grande é dos pedidos que ENTRARAM no período e já
+       têm orçamento; o total por DATA DE ENVIO (que inclui pedidos de meses atrás) continua
+       visível embaixo, porque é ele que responde "quanto saiu de orçamento neste mês". */
+    valorEnviado: entraram.reduce((a, l) => a + (num(l.valorOrcamento) > 0 ? num(l.valorOrcamento) : 0), 0),
+    nEnviados: entraram.filter((l) => num(l.valorOrcamento) > 0).length,
+    valorEnviadoNoPeriodo: soma(enviados, (l) => num(l.valorOrcamento)),
+    nEnviadosNoPeriodo: enviados.length,
     // o que NUNCA aparece numa soma por mês, porque não tem data de envio — declarado
     // para que "soma dos meses + isto = total" feche (@R 18/09: "tem que somar, senão
     // não batem"). Medido: R$ 21.658.350 em 308 orçamentos.
@@ -676,7 +685,12 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
         <div className="ce__card">
           <span className="ce__rotulo">Valor enviado em orçamento</span>
           <strong className="ce__valor">{moeda(foco.valorEnviado)}</strong>
-          <span className="ce__nota">{foco.nEnviados} orçamento{foco.nEnviados === 1 ? '' : 's'}</span>
+          <span className="ce__nota">
+            {foco.nEnviados} de {foco.pedidos} que entraram {lente === 'mes' ? 'no mês' : lente === 'ano' ? 'no ano' : 'na vida toda'}
+            {lente !== 'vida' && foco.nEnviadosNoPeriodo > 0 && (
+              <> · enviados no período: {moeda(foco.valorEnviadoNoPeriodo)} ({foco.nEnviadosNoPeriodo}, inclui pedidos antigos)</>
+            )}
+          </span>
         </div>
 
         <div className="ce__card">

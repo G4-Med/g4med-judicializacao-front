@@ -282,26 +282,27 @@ export function HomePage() {
     const pedidosMes = orders.filter((item) => isSameMonth(agora, item.dataPedido)).length;
     const pedidosVida = orders.length;
 
-    const orcamentosEnviadosMes = orders.filter(
-      (item) =>
-        item.statusOrcamento === STATUS_ORCAMENTO_ENVIADO &&
-        isSameMonth(agora, item.dataStatusOrcamento)
+    /* COORTE DO MÊS (@R 22/09 14:00: "precisamos ver as métricas do mês corrente e não pegar um
+       pedido da competência anterior e ver ela na competência atual"). Os 4 cartões do mês
+       contam os MESMOS pedidos — os que ENTRARAM no mês (dataPedido) — e dizem onde cada um
+       está. Antes cada cartão usava a data do seu evento: "recusados" mostrava 15 em setembro
+       quando só 5 dos 48 que entraram tinham sido perdidos; os outros 10 eram de meses atrás. */
+    const coorteMes = orders.filter((item) => isSameMonth(agora, item.dataPedido));
+    const orcamentosEnviadosMes = coorteMes.filter(
+      (item) => item.statusOrcamento === STATUS_ORCAMENTO_ENVIADO
     ).length;
     const orcamentosEnviadosVida = orders.filter(
       (item) => item.statusOrcamento === STATUS_ORCAMENTO_ENVIADO
     ).length;
 
-    const aguardandoOrcamentoMes = orders.filter(
-      (item) =>
-        item.statusProcesso === STATUS_AGUARDANDO_ORCAMENTO && isSameMonth(agora, item.dataPedido)
+    const aguardandoOrcamentoMes = coorteMes.filter(
+      (item) => item.statusProcesso === STATUS_AGUARDANDO_ORCAMENTO
     ).length;
     const aguardandoOrcamentoVida = orders.filter(
       (item) => item.statusProcesso === STATUS_AGUARDANDO_ORCAMENTO
     ).length;
 
-    const pedidosRecusadosMes = perdas.filter((item) =>
-      isSameMonth(agora, item.dataStatusPerda ?? item.dataPedido)
-    ).length;
+    const pedidosRecusadosMes = coorteMes.filter((item) => item.statusProcesso === 'Perda').length;
     const pedidosRecusadosVida = perdas.length;
 
     /* "EM ABERTO" SÓ CONTA QUEM ESTÁ MESMO EM ALGUMA FASE (@R 17/09: "isso aqui tá
@@ -706,7 +707,7 @@ export function HomePage() {
 
       <PainelColapsavel
         titulo="Visão mensal x histórico"
-        sub="Valor principal do mês atual com apoio do número acumulado de toda a base."
+        sub="Número grande: só os pedidos que ENTRARAM neste mês e onde cada um está hoje (a soma não passa do total do mês). Embaixo, a base inteira."
         className="home-block"
       >
         <div className="home-grid home-grid--four">
@@ -718,7 +719,7 @@ export function HomePage() {
                   <i className={card.icone} />
                 </div>
               </div>
-              <span className="home-card__period">Mês atual</span>
+              <span className="home-card__period" title="Só os pedidos que entraram neste mês — onde cada um está hoje">Entraram no mês</span>
               <div className="home-card__metric">{loading ? '--' : card.valorMes}</div>
               <div className="home-card__meta">
                 <span>Vida toda:</span>
