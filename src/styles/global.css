@@ -420,3 +420,22 @@ body.dark-theme .linha-negado-sem-medico > td { background: rgba(220, 38, 38, 0.
 .selo-31 { display: inline-block; margin-left: .4rem; padding: 0 .4rem; border-radius: 4px; font-size: .72rem;
   font-weight: 700; background: #1d4ed8; color: #fff !important; white-space: nowrap; text-decoration: none; text-transform: none; }
 .selo-31:hover { background: #1e40af; }
+
+/* @R 22/09 18:39 (#629): 3,1 — terceiro validado com imagem e comparativo por componente */
+.bv-terceiro { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 10px; margin-bottom: 6px; font-size: .85rem; }
+.bv-terceiro__linha { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+.bv-terceiro__acoes { display: inline-flex; gap: 10px; align-items: center; }
+.bv-terceiro__acoes a { color: #175cd3; font-weight: 600; }
+.bv-terceiro__acoes button { border: 1px solid #175cd3; background: #fff; color: #175cd3; border-radius: 6px; padding: 2px 10px; cursor: pointer; font-size: .8rem; }
+.bv-terceiro__acoes button:hover:not(:disabled) { background: #175cd3; color: #fff; }
+.bv-terceiro__acoes button:disabled { opacity: .6; cursor: wait; }
+.bv-comp { margin-top: 8px; }
+.bv-comp__destaque { background: #fffaeb; color: #93370d; padding: 6px 8px; border-radius: 6px; margin-bottom: 6px; }
+.bv-comp table { width: 100%; border-collapse: collapse; }
+.bv-comp th, .bv-comp td { border-bottom: 1px solid #f2f4f7; padding: 4px 6px; text-align: right; }
+.bv-comp th:first-child, .bv-comp td:first-child { text-align: left; }
+.bv-comp__acima { color: #b42318; font-weight: 600; }
+.bv-comp__notas { margin: 6px 0; padding-left: 18px; font-size: .78rem; }
+.bv-comp__notas li { margin-bottom: 2px; }
+.bv-comp__reler { border: 0; background: transparent; color: #175cd3; text-decoration: underline; cursor: pointer; font-size: .78rem; }
+.bv-comp__rubricas { font-size: .78rem; padding-left: 18px; max-height: 160px; overflow: auto; }

@@ -37,8 +37,28 @@ export interface ItemBaterValores {
 
 export interface PainelBaterValores extends ItemBaterValores {
   terceiros: { id: number; prestador: string | null; valorTotal: number; pagina: number | null;
-               comparavel: boolean; procedimento: string | null }[];
+               comparavel: boolean; procedimento: string | null;
+               linkAbrir?: string | null; origemAbrir?: 'RECORTE' | 'ARQUIVO' | 'PECA' | null;
+               comparativo?: ComparativoComponentes | null }[];
+  /** @R 22/09 (#629): só VALIDADOS aparecem; os que esperam conferência viram contagem. */
+  aguardandoConferencia?: number;
 }
+
+/** Comparativo por componente (#629) — a IA lê a folha; as contas são do servidor. */
+export interface ComparativoComponentes {
+  terceiro: number;
+  linhas: { bloco: string; rotulo: string; nosso: number | null; terceiro: number; diferenca: number | null; pct: number | null }[];
+  maiorDiferenca: string | null;
+  somaRubricasTerceiro: number; totalDeclaradoTerceiro: number | null; naoDetalhadoTerceiro: number;
+  diariasTerceiro: { enfermaria: number | null; uti: number | null } | null;
+  nossoSemComponentes: boolean;
+  rubricas: { descricao: string; valor: number; bloco: string }[];
+  legivel: boolean; observacao: string | null; regraAgregacao: string;
+  lidoEm: string | null; lidoPor: string | null; modelo: string | null;
+}
+
+export const compararComponentes = (pedido: number, terceiro: number) =>
+  api.post<ComparativoComponentes>(`/orders/${pedido}/bater-valores/componentes/`, { terceiro });
 
 export interface FilaBaterValores {
   total: number;

@@ -11,7 +11,8 @@ import { SelectButton } from 'primereact/selectbutton';
 import { Tag } from 'primereact/tag';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import type { EstadoGatilho, FilaBaterValores, ItemBaterValores, PainelBaterValores, Saida } from '../../services/api/baterValores';
-import { decidirBaterValores, listarBaterValores, painelBaterValores } from '../../services/api/baterValores';
+import { compararComponentes, decidirBaterValores, listarBaterValores, painelBaterValores } from '../../services/api/baterValores';
+import type { ComparativoComponentes } from '../../services/api/baterValores';
 import { EntradaManualDialog } from './EntradaManualDialog';
 
 /* Fase 3.1 "bater valores" (@R 22/09/2026 14:24: "quando recebemos um orçamento e vemos que tem um valor
@@ -151,6 +152,65 @@ export function BaterValoresPage() {
   );
 }
 
+function TerceiroComparavel({ pedido, t }: { pedido: number; t: PainelBaterValores['terceiros'][number] }) {
+  const [comp, setComp] = useState<ComparativoComponentes | null>(t.comparativo ?? null);
+  const [lendo, setLendo] = useState(false);
+  const [aberto, setAberto] = useState(false);
+  const ler = async () => {
+    setLendo(true);
+    try { const r = await compararComponentes(pedido, t.id); setComp(r.data); setAberto(true); }
+    catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      alert(msg ?? 'Não foi possível ler este orçamento agora (erro de rede).');
+    } finally { setLendo(false); }
+  };
+  const dif = (v: number | null) => (v == null ? '—' : `${v > 0 ? '+' : ''}${brl(v)}`);
+  return (
+    <div className="bv-terceiro">
+      <div className="bv-terceiro__linha">
+        <span>{brl(t.valorTotal)} — {t.prestador ?? 'prestador não identificado'}{t.pagina ? ` (p. ${t.pagina})` : ''}
+          {!t.comparavel && <span style={{ color: '#b54708' }}> · pode ser parcial</span>}</span>
+        <span className="bv-terceiro__acoes">
+          {t.linkAbrir
+            ? <a href={t.linkAbrir} target="_blank" rel="noreferrer" title={t.origemAbrir === 'PECA' ? `Abre o processo inteiro na página ${t.pagina ?? '?'}` : 'Abrir a imagem do orçamento'}>
+                <i className="pi pi-image" /> Ver orçamento</a>
+            : <span className="text-600" title="O arquivo de origem não foi guardado">sem arquivo</span>}
+          {comp
+            ? <button type="button" onClick={() => setAberto((v) => !v)}>{aberto ? 'Esconder comparativo' : 'Ver comparativo'}</button>
+            : <button type="button" onClick={ler} disabled={lendo}>{lendo ? 'Lendo a folha…' : 'Comparar por componente'}</button>}
+        </span>
+      </div>
+      {comp && aberto && (
+        <div className="bv-comp">
+          {comp.maiorDiferenca && <div className="bv-comp__destaque">A maior diferença está em <b>{comp.maiorDiferenca}</b>.</div>}
+          <table>
+            <thead><tr><th>Componente</th><th>Nosso</th><th>Terceiro</th><th>Diferença</th></tr></thead>
+            <tbody>
+              {comp.linhas.map((l) => (
+                <tr key={l.bloco}><td>{l.rotulo}</td><td>{l.nosso == null ? '—' : brl(l.nosso)}</td><td>{brl(l.terceiro)}</td>
+                  <td className={l.diferenca != null && l.diferenca > 0 ? 'bv-comp__acima' : ''}>{dif(l.diferenca)}{l.pct != null ? ` (${l.pct > 0 ? '+' : ''}${l.pct.toLocaleString('pt-BR')}%)` : ''}</td></tr>
+              ))}
+            </tbody>
+          </table>
+          <ul className="bv-comp__notas">
+            <li>Rubricas do terceiro somam {brl(comp.somaRubricasTerceiro)}{comp.totalDeclaradoTerceiro != null ? ` · total escrito na folha ${brl(comp.totalDeclaradoTerceiro)}` : ' · a folha não traz total escrito'}
+              {comp.naoDetalhadoTerceiro ? <b> · {brl(comp.naoDetalhadoTerceiro)} não detalhados na folha</b> : null}.</li>
+            <li>Diárias do terceiro: {comp.diariasTerceiro?.enfermaria ?? '?'} de enfermaria/apartamento · {comp.diariasTerceiro?.uti ?? '?'} de CTI/UTI. As nossas diárias não ficam registradas na cotação — confira no PDF do médico antes de comparar o hospitalar.</li>
+            {comp.nossoSemComponentes && <li style={{ color: '#b54708' }}>A nossa cotação vigente não tem os valores por componente preenchidos — só o total.</li>}
+            {!comp.legivel && <li style={{ color: '#b54708' }}>A IA marcou a folha como difícil de ler: {comp.observacao ?? 'confira na imagem'}.</li>}
+            <li className="text-600">Como agrupamos: {comp.regraAgregacao}</li>
+            <li className="text-600">Leitura por IA ({comp.modelo}) em {comp.lidoEm ? new Date(comp.lidoEm).toLocaleString('pt-BR') : '?'} — confira os números na imagem antes de citar ao médico.
+              {' '}<button type="button" className="bv-comp__reler" onClick={ler} disabled={lendo}>{lendo ? 'lendo…' : 'ler de novo'}</button></li>
+          </ul>
+          <details><summary>Rubricas lidas ({comp.rubricas.length})</summary>
+            <ul className="bv-comp__rubricas">{comp.rubricas.map((r, i) => <li key={i}>{r.descricao} — {brl(r.valor)} <small>({r.bloco})</small></li>)}</ul>
+          </details>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DialogDecisao({ painel, onFechar, onDecidido }: {
   painel: PainelBaterValores; onFechar: () => void; onDecidido: () => void;
 }) {
@@ -190,7 +250,7 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
 
   return (
     <Dialog header={`Conferência de valor — pedido #${painel.pedido}`} visible onHide={onFechar}
-      style={{ width: 'min(720px, 96vw)' }}>
+      style={{ width: 'min(880px, 96vw)' }}>
       <div className="mb-3">
         <div><strong>{painel.paciente}</strong></div>
         <div className="text-600" style={{ fontSize: '.85rem' }}>{painel.procedimento}</div>
@@ -212,17 +272,21 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
       )}
       {painel.aviso && <div className="p-2 mb-2" style={{ background: '#fffaeb', color: '#b54708', borderRadius: 6 }}>{painel.aviso}</div>}
 
-      {painel.terceiros.length > 0 && (
-        <div className="mb-3">
-          <div className="text-600 mb-1">Orçamentos de terceiro no processo que ficam abaixo do nosso</div>
-          {painel.terceiros.map((t) => (
-            <div key={t.id} style={{ fontSize: '.85rem' }}>
-              {brl(t.valorTotal)} — {t.prestador ?? 'prestador não identificado'}{t.pagina ? ` (p. ${t.pagina})` : ''}
-              {!t.comparavel && <span style={{ color: '#b54708' }}> · pode ser parcial</span>}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* @R 22/09 18:39 (#629): só os orçamentos VALIDADOS na conferência; cada um abre a imagem e pode ser
+          comparado por componente (a IA lê a folha, o servidor faz as contas). */}
+      <div className="mb-3">
+        <div className="text-600 mb-1">Orçamentos de terceiro validados no processo, abaixo do nosso</div>
+        {painel.terceiros.length === 0 && <div style={{ fontSize: '.85rem' }} className="text-600">Nenhum orçamento validado abaixo do nosso.</div>}
+        {painel.terceiros.map((t) => (
+          <TerceiroComparavel key={t.id} pedido={painel.pedido} t={t} />
+        ))}
+        {!!painel.aguardandoConferencia && (
+          <div style={{ fontSize: '.8rem', color: '#b54708' }} className="mt-1">
+            {painel.aguardandoConferencia} orçamento(s) abaixo do nosso ainda esperam conferência e não entram aqui —{' '}
+            <a href={`/conferencia-orcamentos?pedido=${painel.pedido}`}>conferir na tela 1,3</a>.
+          </div>
+        )}
+      </div>
 
       <div className="p-2 mb-3 text-600" style={{ background: '#f2f4f7', borderRadius: 6, fontSize: '.85rem' }}>
         Não alteramos o valor do médico. Hospital, OPME e anestesista são custo de terceiro; se houver espaço,

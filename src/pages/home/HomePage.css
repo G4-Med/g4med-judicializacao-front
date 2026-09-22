@@ -573,3 +573,15 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
 .home-hero__estado span { font-size: 14px; }
 @media (max-width: 1100px) { .home-hero { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .home-hero__fases { columns: 1; } }
+
+/* @R 22/09 19:25: on-line × última ação efetiva */
+.acessos-bloco__efetiva { flex-basis: 100%; margin-left: 17px; font-size: 11.5px; color: #475569; }
+.acessos-bloco__efetiva b { color: #0f172a; }
+.acessos-bloco__efetiva--parada { color: #b45309; }
+.acessos-bloco__efetiva--parada b { color: #b45309; }
+
+/* @R 22/09 19:22: painel de fases estava truncando os nomes — mais largura e o nome pode quebrar linha */
+.home-hero { grid-template-columns: minmax(0, 0.85fr) minmax(560px, 1.5fr); }
+.home-hero__fases li { grid-template-columns: 30px minmax(0, 1fr) auto; }
+.home-hero__fase-nome { white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 1200px) { .home-hero { grid-template-columns: 1fr; } }

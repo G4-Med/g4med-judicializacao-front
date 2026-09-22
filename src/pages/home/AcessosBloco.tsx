@@ -8,6 +8,16 @@ import { getLogAuditoria } from '../../services/api/orders';
 
 const hora = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—');
 const diaHora = (iso: string | null) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—');
+const minutosDesde = (iso: string | null) => (iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000)) : 0);
+/** "há 3 min" · "há 6 h 12 min" · "há 2 dias" */
+const ha = (iso: string | null) => {
+  if (!iso) return '?';
+  const m = minutosDesde(iso);
+  if (m < 60) return `${m} min`;
+  if (m < 60 * 24) return `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`;
+  const d = Math.floor(m / 1440);
+  return `${d} dia${d > 1 ? 's' : ''}`;
+};
 const hojeIso = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -88,18 +98,28 @@ export function AcessosBloco() {
     ? `${ativos} pessoa(s) ativa(s) agora · ${logados} logada(s) nas últimas 24 h · ${loginsPessoas.length} login(s) de pessoas hoje`
     : erro ? 'não foi possível carregar agora' : 'carregando…';
 
-  const linhaPessoa = (p: Acessos['agora'][number]) => (
-    <li key={p.usuario} className="acessos-bloco__pessoa acessos-bloco__pessoa--clicavel" role="button" tabIndex={0}
-      title="Clique para ver as últimas ações desta pessoa"
-      onClick={() => setLogDe({ usuario: p.usuario, nome: p.nome })}
-      onKeyDown={(e) => { if (e.key === 'Enter') setLogDe({ usuario: p.usuario, nome: p.nome }); }}>
-      <span className={`acessos-bloco__ponto ${p.ativo ? 'ativo' : p.logado ? 'logado' : ''}`}
-        aria-label={p.ativo ? 'ativo' : p.logado ? 'logado' : 'fora'} />
-      <span className="acessos-bloco__nome">{p.nome}</span>
-      {p.grupo && <span className="acessos-bloco__grupo">{p.grupo}</span>}
-      <small>{p.ativo ? `ativo · última ação ${hora(p.ultimaAtividade)}` : p.logado ? `logado desde ${diaHora(p.ultimoLogin)}` : `último login ${diaHora(p.ultimoLogin)}`}</small>
-    </li>
-  );
+  const linhaPessoa = (p: Acessos['agora'][number]) => {
+    const alt = p.ultimaAlteracao;
+    return (
+      <li key={p.usuario} className="acessos-bloco__pessoa acessos-bloco__pessoa--clicavel" role="button" tabIndex={0}
+        title="Clique para ver as últimas ações desta pessoa"
+        onClick={() => setLogDe({ usuario: p.usuario, nome: p.nome })}
+        onKeyDown={(e) => { if (e.key === 'Enter') setLogDe({ usuario: p.usuario, nome: p.nome }); }}>
+        <span className={`acessos-bloco__ponto ${p.ativo ? 'ativo' : p.logado ? 'logado' : ''}`}
+          aria-label={p.ativo ? 'on-line' : p.logado ? 'logado' : 'fora'} />
+        <span className="acessos-bloco__nome">{p.nome}</span>
+        {p.grupo && <span className="acessos-bloco__grupo">{p.grupo}</span>}
+        <small>{p.ativo ? `on-line · página aberta (há ${ha(p.ultimaAtividade)})` : p.logado ? `logado desde ${diaHora(p.ultimoLogin)}` : `último login ${diaHora(p.ultimoLogin)}`}</small>
+        {/* @R 22/09 19:25: página aberta ≠ trabalho feito. A ação EFETIVA é a última alteração gravada. */}
+        <span className={`acessos-bloco__efetiva ${alt && minutosDesde(alt.em) > 120 && p.ativo ? 'acessos-bloco__efetiva--parada' : ''}`}>
+          {alt
+            ? <>última ação efetiva <b>há {ha(alt.em)}</b> ({diaHora(alt.em)}){alt.pedido ? ` · #${alt.pedido}` : ''} · {alt.campo}: {alt.de || '—'} → {alt.para || '—'}
+                {typeof p.alteracoesHoje === 'number' && <> · <b>{p.alteracoesHoje}</b> alteraç{p.alteracoesHoje === 1 ? 'ão' : 'ões'} hoje</>}</>
+            : 'nenhuma alteração gravada no histórico'}
+        </span>
+      </li>
+    );
+  };
 
   return (
     <section className={`home-collapse acessos-bloco ${aberto ? 'home-collapse--open' : ''}`}>
@@ -131,7 +151,7 @@ export function AcessosBloco() {
                   <LogDoUsuario usuario={logDe.usuario} nome={logDe.nome} onFechar={() => setLogDe(null)}
                     logins={(dados.logins ?? []).filter((l) => l.usuario === logDe.usuario)} />
                 )}
-                <p className="acessos-bloco__regra">Clique numa pessoa para ver as últimas ações dela. Ativo = fez alguma ação nos últimos {dados.regras.ativoMinutos} min · Logado = entrou nas últimas {dados.regras.logadoHoras} h.</p>
+                <p className="acessos-bloco__regra">Clique numa pessoa para ver as últimas ações dela. On-line = a página dela fez alguma requisição (inclusive automática) nos últimos {dados.regras.ativoMinutos} min · Ação efetiva = última alteração gravada no histórico · Logado = entrou nas últimas {dados.regras.logadoHoras} h.</p>
               </div>
               <div className="acessos-bloco__coluna">
                 <h3>Quem entrou em {new Date(`${dados.dia}T12:00:00`).toLocaleDateString('pt-BR')} <span>{loginsPessoas.length}</span></h3>

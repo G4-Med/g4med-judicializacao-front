@@ -5,6 +5,9 @@ export interface LoginDia { usuario: string; nome: string; grupo: string | null;
 export interface PessoaAgora {
   usuario: string; nome: string; grupo: string | null;
   ultimoLogin: string | null; ultimaAtividade: string | null; logado: boolean; ativo: boolean;
+  /** @R 22/09 19:25: a última alteração GRAVADA (ação efetiva), ≠ ultimaAtividade (qualquer requisição). */
+  ultimaAlteracao?: { em: string; pedido: number | null; paciente: string | null; campo: string; de: string | null; para: string | null } | null;
+  alteracoesHoje?: number;
 }
 export interface Acessos {
   dia: string; logins: LoginDia[]; mes: { dia: string; logins: number; pessoas: number }[];
