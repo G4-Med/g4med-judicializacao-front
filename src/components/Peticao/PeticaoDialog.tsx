@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -9,6 +9,7 @@ import { salvarBlob } from '../../services/api/orders';
 import {
   getPeticao, salvarPeticao, refazerPeticao, baixarPeticaoDocx, baixarPeticaoPdf,
   type EstadoPeticao, type Paragrafo, type TipoParagrafo, type CampoPeticao,
+  previaFolhasAnexas,
 } from '../../services/api/peticao';
 import timbrado from '../../assets/peticao_timbrado.png';
 import './PeticaoDialog.css';
@@ -81,6 +82,8 @@ function Rico({ texto, valores, campos, onCampo }: {
   );
 }
 
+const AREA_UTIL_PX = 1123 - 140 - 104;   // A4 a 96 dpi menos topo/base do timbrado (= 105/78 pt do PDF)
+
 interface Props { pedido: number | null; rotulo?: string; visivel: boolean; onFechar: () => void }
 
 export function PeticaoDialog({ pedido, rotulo, visivel, onFechar }: Props) {
@@ -99,6 +102,44 @@ export function PeticaoDialog({ pedido, rotulo, visivel, onFechar }: Props) {
   const [ditando, setDitando] = useState(false);
   const reconhecedor = useRef<any>(null);
   const inputsCampo = useRef<Record<string, HTMLInputElement | null>>({});
+  // PAGINAÇÃO REAL da prévia (@R 23/09 11:19): antes a folha era 1 bloco contínuo com o timbrado repetido
+  // como fundo a cada 1123 px — o cabeçalho/rodapé da página 2 caía POR CIMA do texto. Agora cada página é
+  // uma folha, e cada parágrafo vai para a página onde cabe (área útil = mesma do PDF: 105/78 pt de margem).
+  const refsPar = useRef<(HTMLElement | null)[]>([]);
+  const [paginas, setPaginas] = useState<number[][]>([]);
+  useLayoutEffect(() => {
+    const alturas = paras.map((_, i) => {
+      const el = refsPar.current[i];
+      if (!el) return 0;
+      const cs = getComputedStyle(el);
+      return el.offsetHeight + parseFloat(cs.marginTop || '0') + parseFloat(cs.marginBottom || '0');
+    });
+    const pags: number[][] = [[]];
+    let usado = 0;
+    alturas.forEach((h, i) => {
+      if (usado + h > AREA_UTIL_PX && pags[pags.length - 1].length) { pags.push([]); usado = 0; }
+      pags[pags.length - 1].push(i); usado += h;
+    });
+    if (JSON.stringify(pags) !== JSON.stringify(paginas)) setPaginas(pags);
+  });
+  // Folhas que vão junto (e-mail da SES + orçamento), como sairão no arquivo para peticionar.
+  const [anexosUrl, setAnexosUrl] = useState<string | null>(null);
+  const [anexosEstado, setAnexosEstado] = useState<'nada' | 'carregando' | 'ok' | 'erro'>('nada');
+  const [anexosErro, setAnexosErro] = useState('');
+  useEffect(() => {
+    if (!visivel || !pedido || (!comEmail && !comOrc)) { setAnexosEstado('nada'); setAnexosUrl(null); return; }
+    let vivo = true; let url: string | null = null;
+    setAnexosEstado('carregando');
+    previaFolhasAnexas(pedido, { email: comEmail, orcamento: comOrc })
+      .then(r => { if (!vivo) return; url = URL.createObjectURL(r.data as Blob); setAnexosUrl(url); setAnexosEstado('ok'); })
+      .catch(async e => {
+        if (!vivo) return;
+        let msg = 'Não consegui carregar as folhas anexas.';
+        try { const t = await (e?.response?.data as Blob)?.text?.(); const j = t ? JSON.parse(t) : null; if (j?.error) msg = j.error; } catch { /* mantém a genérica */ }
+        setAnexosErro(msg); setAnexosEstado('erro');
+      });
+    return () => { vivo = false; if (url) URL.revokeObjectURL(url); };
+  }, [visivel, pedido, comEmail, comOrc]);
 
   const aplicarEstado = (e: EstadoPeticao) => {
     setEstado(e); setParas(e.paragrafos); setAlterado(false);
@@ -253,9 +294,10 @@ export function PeticaoDialog({ pedido, rotulo, visivel, onFechar }: Props) {
 
           <main className="pt-mesa" onClick={() => setEditando(null)}>
             {aviso && <div className="pt-aviso" onClick={e => { e.stopPropagation(); setAviso(null); }}>{aviso} <b>×</b></div>}
-            <div className="pt-folha" style={{ backgroundImage: `url(${timbrado})` }}>
-              {paras.map((p, i) => editando === i ? (
-                <div key={i} className="pt-edita" onClick={e => e.stopPropagation()}>
+            {(paginas.flat().length === paras.length ? paginas : [paras.map((_, i) => i)]).map((idxs, pg, todas) => (
+              <div key={pg} className="pt-folha" style={{ backgroundImage: `url(${timbrado})` }}>
+                {idxs.map(i => { const p = paras[i]; return (editando === i ? (
+                <div key={i} ref={el => { refsPar.current[i] = el; }} className="pt-edita" onClick={e => e.stopPropagation()}>
                   <div className="pt-barra">
                     <Dropdown value={p.tipo} options={TIPOS} onChange={e => mudarPar(i, 'tipo', e.value)} className="pt-tipo" />
                     <Button icon="pi pi-arrow-up" text rounded title="Subir" onClick={() => mover(i, -1)} />
@@ -270,13 +312,26 @@ export function PeticaoDialog({ pedido, rotulo, visivel, onFechar }: Props) {
                     className={`pt-area pt-p--${p.tipo}`} />
                 </div>
               ) : (
-                <p key={i} className={`pt-p pt-p--${p.tipo}`} onClick={e => { e.stopPropagation(); setEditando(i); }} title="Clique para editar">
+                <p key={i} ref={el => { refsPar.current[i] = el; }} className={`pt-p pt-p--${p.tipo}`} onClick={e => { e.stopPropagation(); setEditando(i); }} title="Clique para editar">
                   {p.texto ? <Rico texto={p.texto} valores={valores} campos={campos} onCampo={focarCampo} /> : ' '}
                 </p>
-              ))}
-              <button className="pt-novo" onClick={e => { e.stopPropagation(); inserir(paras.length - 1); }}>+ parágrafo no fim</button>
+              ))); })}
+                {pg === todas.length - 1 && (
+                  <button className="pt-novo" onClick={e => { e.stopPropagation(); inserir(paras.length - 1); }}>+ parágrafo no fim</button>
+                )}
+                <span className="pt-folha-num">Petição · página {pg + 1} de {todas.length}</span>
+              </div>
+            ))}
+            <div className="pt-anexas">
+              <h4>Folhas que vão junto no arquivo para peticionar</h4>
+              {anexosEstado === 'nada' && <p className="pt-dica">Nenhuma marcada ao lado (e-mail da SES / orçamento).</p>}
+              {anexosEstado === 'carregando' && <p className="pt-dica">Carregando o e-mail da SES e o orçamento…</p>}
+              {anexosEstado === 'erro' && <p className="pt-dica pt-dica--alerta">{anexosErro}</p>}
+              {anexosEstado === 'ok' && anexosUrl && (
+                <iframe title="E-mail da SES e orçamento" src={anexosUrl} className="pt-anexas-pdf" />
+              )}
             </div>
-            <p className="pt-legenda">Prévia contínua da folha — a quebra de páginas real sai no Word e no PDF.</p>
+            <p className="pt-legenda">Prévia paginada como o PDF (mesmas margens do timbrado). No Word a quebra pode variar alguns centímetros.</p>
           </main>
         </div>
       )}

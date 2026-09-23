@@ -504,3 +504,9 @@ body.dark-theme .email-dialog-actions { border-top-color: #1e2d42; }
 .email-fase--contradicao strong { color: #b91c1c; }
 .email-fase__alerta { color: #b91c1c; font-weight: 600; font-size: 11px; }
 .p-datatable .p-datatable-tbody > tr.linha-email-contradicao > td { background: #fef2f2; }
+
+/* Ver · Enviar · Cancelar na mesma linha (@R 23/09) */
+.email-acoes-linha { display: inline-flex; align-items: center; gap: 4px; }
+.email-cancelar p { margin: 0 0 8px; }
+.email-cancelar__ajuda { color: #5b6b7b; font-size: 13px; }
+.email-cancelar__erro { color: #b42318; font-size: 13px; margin-top: 6px; }

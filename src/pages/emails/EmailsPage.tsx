@@ -13,6 +13,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { Dialog } from 'primereact/dialog';
 import { FilterMatchMode } from 'primereact/api';
 import {
+  cancelarEmailPendente,
   enviarEmailDireto,
   getAnexosOrder,
   getConfiguracoesEmails,
@@ -137,6 +138,11 @@ export function EmailsPage() {
   const [sortField, setSortField] = useState<string | undefined>('dias');
   const [sortOrder, setSortOrder] = useState<1 | 0 | -1 | null | undefined>(1);
   const [enviandoId, setEnviandoId] = useState<number | null>(null);
+  // Cancelar da fila (@R 23/09 11:17): o registro fica, com quem/quando/motivo — só sai da fila de envio.
+  const [cancelando, setCancelando] = useState<EmailPendenteTableRow | null>(null);
+  const [motivoCancelar, setMotivoCancelar] = useState('');
+  const [cancelandoEnvio, setCancelandoEnvio] = useState(false);
+  const [erroCancelar, setErroCancelar] = useState('');
   const [selectedEmails, setSelectedEmails] = useState<EmailPendenteTableRow[]>([]);
   const [enviandoMassa, setEnviandoMassa] = useState(false);
   const [emailDialogVisible, setEmailDialogVisible] = useState(false);
@@ -552,15 +558,56 @@ export function EmailsPage() {
     />
   );
 
+  const confirmarCancelar = async () => {
+    if (!cancelando) return;
+    if (motivoCancelar.trim().length < 5) { setErroCancelar('Escreva o motivo (pelo menos 5 letras).'); return; }
+    setCancelandoEnvio(true); setErroCancelar('');
+    try {
+      await cancelarEmailPendente(cancelando.id, motivoCancelar.trim());
+      setCancelando(null); setMotivoCancelar('');
+      await carregarDados();
+    } catch (e) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setErroCancelar(msg || 'Não consegui cancelar — nada foi alterado. Tente de novo.');
+    } finally {
+      setCancelandoEnvio(false);
+    }
+  };
+
   const enviarBodyTemplate = (rowData: EmailPendenteTableRow) => (
-    <Button
-      label={enviandoId === rowData.id ? 'Enviando...' : 'Enviar Email'}
-      icon="pi pi-send"
-      size="small"
-      loading={enviandoId === rowData.id}
-      disabled={enviandoId !== null}
-      onClick={() => void abrirDialogEmail(rowData)}
-    />
+    <div className="email-acoes-linha">
+      <Button
+        icon="pi pi-eye"
+        rounded
+        text
+        size="small"
+        aria-label="Ver o e-mail"
+        tooltip="Ver o e-mail (destinatário, assunto, texto e anexos) antes de enviar"
+        tooltipOptions={{ position: 'top' }}
+        disabled={enviandoId !== null}
+        onClick={() => void abrirDialogEmail(rowData)}
+      />
+      <Button
+        label={enviandoId === rowData.id ? 'Enviando...' : 'Enviar Email'}
+        icon="pi pi-send"
+        size="small"
+        loading={enviandoId === rowData.id}
+        disabled={enviandoId !== null}
+        onClick={() => void abrirDialogEmail(rowData)}
+      />
+      <Button
+        icon="pi pi-ban"
+        rounded
+        text
+        severity="danger"
+        size="small"
+        aria-label="Cancelar o e-mail"
+        tooltip="Cancelar: o e-mail não sai e some da fila (o registro fica com o motivo)"
+        tooltipOptions={{ position: 'top' }}
+        disabled={enviandoId !== null}
+        onClick={() => { setCancelando(rowData); setMotivoCancelar(''); setErroCancelar(''); }}
+      />
+    </div>
   );
 
   const filterElement = (options: any, placeholder: string) => (
@@ -758,14 +805,41 @@ export function EmailsPage() {
 
           {!readOnly && (
             <Column
-              header="Enviar Email"
+              header="Ver · Enviar · Cancelar"
               body={enviarBodyTemplate}
-              style={{ minWidth: '11rem' }}
+              style={{ minWidth: '15rem' }}
               bodyStyle={{ textAlign: 'center' }}
             />
           )}
         </DataTable>
       </div>
+
+      <Dialog
+        header="Cancelar este e-mail?"
+        visible={!!cancelando}
+        modal
+        onHide={() => { if (!cancelandoEnvio) setCancelando(null); }}
+        style={{ width: '32rem', maxWidth: '95vw' }}
+        footer={
+          <div>
+            <Button label="Voltar" text onClick={() => setCancelando(null)} disabled={cancelandoEnvio} />
+            <Button label="Cancelar e-mail" icon="pi pi-ban" severity="danger" loading={cancelandoEnvio}
+              onClick={() => void confirmarCancelar()} />
+          </div>
+        }
+      >
+        {cancelando && (
+          <div className="email-cancelar">
+            <p><strong>{cancelando.paciente}</strong> · {tipoEmailLabel[cancelando.tipoEmail] ?? cancelando.tipoEmail}</p>
+            <p className="email-cancelar__ajuda">O e-mail NÃO sai e some da fila. Nada é apagado: fica registrado quem
+              cancelou, quando e por quê.</p>
+            <label htmlFor="motivo-cancelar">Motivo</label>
+            <InputTextarea id="motivo-cancelar" value={motivoCancelar} rows={3} autoResize style={{ width: '100%' }}
+              onChange={(e) => setMotivoCancelar(e.target.value)} placeholder="ex.: paciente em negociação de valor" />
+            {erroCancelar && <p className="email-cancelar__erro">{erroCancelar}</p>}
+          </div>
+        )}
+      </Dialog>
 
       <Dialog
         header="Enviar Email"

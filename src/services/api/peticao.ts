@@ -38,3 +38,8 @@ export const baixarPeticaoPdf = (pedido: number, o: { somente?: boolean; email?:
   const q = o.somente ? '?somente=peticao' : `?email=${o.email === false ? 0 : 1}&orcamento=${o.orcamento === false ? 0 : 1}`;
   return api.get(`/orders/${pedido}/peticao/pdf/${q}`, { responseType: 'blob' });
 };
+
+/** Só as folhas que vão JUNTO (e-mail da SES + orçamento), para mostrar abaixo da petição na área de edição (@R 23/09). */
+export const previaFolhasAnexas = (pedido: number, o: { email: boolean; orcamento: boolean }) =>
+  api.get(`/orders/${pedido}/peticao/pdf/?somente=anexos&email=${o.email ? 1 : 0}&orcamento=${o.orcamento ? 1 : 0}`,
+    { responseType: 'blob' });
