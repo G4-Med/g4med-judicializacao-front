@@ -37,6 +37,7 @@ import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repe
 import { colunaAnexosSES } from '../../components/AnexosSES/anexosSES';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
+import { PeticaoDialog } from '../../components/Peticao/PeticaoDialog';
 
 interface ParaProtocolar {
   id: number;
@@ -126,6 +127,8 @@ export function ParaProtocolarPage() {
   const [visibleProcessos, setVisibleProcessos] = useState<ParaProtocolarTableRow[]>([]);
 
   const [editDialogVisible, setEditDialogVisible] = useState(false);
+  // #641: área da advogada — petição de juntada pronta (abre dos 2 diálogos do pedido)
+  const [peticaoPedido, setPeticaoPedido] = useState<{ id: number; rotulo: string } | null>(null);
   const [protocolarDialogVisible, setProtocolarDialogVisible] = useState(false);
   const [naoProtocolarDialogVisible, setNaoProtocolarDialogVisible] = useState(false);
 
@@ -941,6 +944,9 @@ const handleConfirmarProtocolacao = async () => {
 </DataTable>
       </div>
 
+      <PeticaoDialog pedido={peticaoPedido?.id ?? null} rotulo={peticaoPedido?.rotulo}
+        visivel={!!peticaoPedido} onFechar={() => setPeticaoPedido(null)} />
+
       <Dialog
         header="Editar Processo"
         visible={editDialogVisible}
@@ -951,6 +957,11 @@ const handleConfirmarProtocolacao = async () => {
       >
         {registroEditando && (
           <div className="pp-form-grid">
+            <div className="field field-span-4" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button label="Petição pronta (advogada)" icon="pi pi-file-edit" severity="help"
+                onClick={() => setPeticaoPedido({ id: registroEditando.id, rotulo: `pedido #${registroEditando.id}` })} />
+            </div>
+
             <div className="field field-span-2">
               <label>Paciente</label>
               <InputText
@@ -1143,6 +1154,11 @@ const handleConfirmarProtocolacao = async () => {
       >
         {registroProtocolando && (
           <div className="pp-form-grid">
+            <div className="field field-span-4" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <Button label="Petição pronta (advogada)" icon="pi pi-file-edit" severity="help"
+                onClick={() => setPeticaoPedido({ id: registroProtocolando.id, rotulo: `pedido #${registroProtocolando.id}` })} />
+            </div>
+
             <div className="field field-span-2">
               <label>Paciente</label>
               <InputText value={registroProtocolando.paciente} disabled />
