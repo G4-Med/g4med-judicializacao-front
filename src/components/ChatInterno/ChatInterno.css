@@ -54,3 +54,15 @@
 @media (max-width: 720px) { .chat-slot-pilula { display: none; } }
 /* botões de navegação e "Anexar pedido" alinhados à esquerda (medido na tela 23/09: esticados, texto longe da seta) */
 .chat-lista > .p-button, .chat-conversa > .p-button, .chat-compositor > .p-button-text, .chat-msgs > .p-button { align-self: flex-start; }
+
+/* Quem está online (@R 23/09) — ícone 👥 ao lado do 💬 */
+.presenca-dot { background: #00a651; }
+.presenca-painel { min-width: 240px; }
+.presenca-titulo { font-weight: 600; color: #0a3d62; margin-bottom: 6px; }
+.presenca-linha { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0;
+  padding: 6px 4px; border-radius: 6px; cursor: pointer; text-align: left; font: inherit; color: #1f2d3d; }
+.presenca-linha:hover { background: #f5fbf8; }
+.presenca-bola { width: 9px; height: 9px; border-radius: 50%; background: #cbd5e1; flex: none; }
+.presenca-bola--on { background: #00a651; box-shadow: 0 0 0 3px #e6f7ef; }
+.presenca-nome { flex: 1; }
+.presenca-rodape { font-size: 11px; color: #94a3b8; margin-top: 6px; border-top: 1px solid #e3eaef; padding-top: 6px; }

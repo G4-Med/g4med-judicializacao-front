@@ -13,10 +13,16 @@
  *  - a pílula não mostra o texto (o centro do cabeçalho é público — F14);
  *  - aba visível consulta a cada 30 s; aba em 2º plano a cada 2 min e mostra "(N)" no título da aba (F13 + A3);
  *  - 403 = usuário fora do chat → o componente some.
+ *
+ * QUEM ESTÁ ONLINE (@R 23/09 11:04): ícone 👥 ao lado do 💬 com quantos colegas do chat estão com a
+ * plataforma aberta (mesma régua do painel de Acessos: requisição nos últimos 10 min). Clique lista os
+ * colegas (verde = online) e abre a conversa. Reusa GET mensagens/contatos/ — sem rota nova.
+ * O chat é só rapha, carol, valeria e fabricio (regra no servidor, PARTICIPANTES_CHAT).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from 'primereact/button';
 import { Sidebar } from 'primereact/sidebar';
+import { OverlayPanel } from 'primereact/overlaypanel';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputText } from 'primereact/inputtext';
 import {
@@ -30,6 +36,7 @@ import './ChatInterno.css';
 const RESUMO_MS = 30000;
 const RESUMO_OCULTA_A_CADA = 4;        // aba em 2º plano: 1 a cada 4 ticks = 2 min
 const CONVERSA_MS = 10000;
+const PRESENCA_MS = 60000;            // quem está online: 1 min com a aba visível
 type Carga<T> = { estado: 'carregando' } | { estado: 'erro' } | { estado: 'ok'; dados: T };
 type Tela = { tipo: 'lista' } | { tipo: 'nova' } | { tipo: 'conversa'; uid: number; nome: string };
 type Pendente = { clienteId: string; texto: string; pedido: PedidoBusca | null; estado: 'enviando' | 'falhou' };
@@ -128,6 +135,7 @@ export function ChatInterno() {
 
   return (
     <>
+      <PresencaEquipe onAbrir={abrirConversa} />
       {icone}
       {pilula && <div className="chat-slot-pilula">{pilula}</div>}
       <Sidebar visible={aberto} position="right" onHide={() => setAberto(false)} className="chat-sidebar"
@@ -144,6 +152,55 @@ export function ChatInterno() {
         )}
       </Sidebar>
     </>
+  );
+}
+
+function PresencaEquipe({ onAbrir }: { onAbrir: (uid: number, nome: string) => void }) {
+  const [c, setC] = useState<Carga<ContatoChat[]>>({ estado: 'carregando' });
+  const painel = useRef<OverlayPanel>(null);
+  const carregar = useCallback(async (doTimer = false) => {
+    if (doTimer && !visivel()) return;
+    try { const { data } = await getContatosChat(); setC({ estado: 'ok', dados: data }); }
+    catch (e) { if (status(e) !== 401) setC({ estado: 'erro' }); }   // erro → "?" (nunca "ninguém online")
+  }, []);
+  useEffect(() => {
+    void carregar();
+    const id = window.setInterval(() => { void carregar(true); }, PRESENCA_MS);
+    const onVis = () => { if (visivel()) void carregar(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', onVis); };
+  }, [carregar]);
+  const online = c.estado === 'ok' ? c.dados.filter((p) => p.plataformaAberta) : [];
+  const lista = c.estado === 'ok'
+    ? [...c.dados].sort((a, b) => Number(b.plataformaAberta) - Number(a.plataformaAberta) || a.nome.localeCompare(b.nome))
+    : [];
+  return (
+    <div className="mc-notif">
+      <Button icon="pi pi-users" text rounded className="mc-iconbtn" aria-label="Quem está online"
+        title="Quem está online" onClick={(e) => { void carregar(); painel.current?.toggle(e); }} />
+      {c.estado === 'erro'
+        ? <span className="mc-iconbtn__dot chat-dot--erro" title="Não consegui ver quem está online">?</span>
+        : online.length > 0 && <span className="mc-iconbtn__dot presenca-dot">{online.length}</span>}
+      <OverlayPanel ref={painel} className="presenca-painel">
+        <div className="presenca-titulo">Quem está online</div>
+        {c.estado === 'carregando' && <div className="chat-info">carregando…</div>}
+        {c.estado === 'erro' && (
+          <div className="chat-info chat-info--erro">Não consegui carregar. <button type="button" className="chat-link"
+            onClick={() => void carregar()}>tentar de novo</button></div>
+        )}
+        {c.estado === 'ok' && lista.length === 0 && <div className="chat-info">Nenhum colega no chat.</div>}
+        {lista.map((p) => (
+          <button key={p.id} type="button" className="presenca-linha" title="Abrir conversa"
+            onClick={() => { painel.current?.hide(); onAbrir(p.id, p.nome); }}>
+            <span className={`presenca-bola${p.plataformaAberta ? ' presenca-bola--on' : ''}`} aria-hidden />
+            <span className="presenca-nome">{p.nome}</span>
+            <span className={`chat-presenca${p.plataformaAberta ? ' chat-presenca--on' : ''}`}>
+              {p.plataformaAberta ? 'online' : 'fora'}</span>
+          </button>
+        ))}
+        <div className="presenca-rodape">online = usou a plataforma nos últimos 10 min</div>
+      </OverlayPanel>
+    </div>
   );
 }
 
