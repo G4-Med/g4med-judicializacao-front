@@ -106,6 +106,7 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
   {
     label: 'Relatórios',
     icon: 'pi pi-file-pdf',
+    emReforma: true,   // @R 23/09 15:40: "nem clicável" — o grupo inteiro, não só os filhos
     children: [
       // @R 23/09 15:37: "em construção, eu ainda vou modificar — não dar para acessar via menu"
       { label: 'Relatório Resumido', icon: 'pi pi-angle-right', path: '/relatorios/resumido', screen: 'relatorioResumido', emReforma: true },
@@ -159,6 +160,9 @@ export function buildMenuItems({
     if (isGroup(item)) {
       const visibleChildren = item.children.filter((child) => canView(child.screen));
       if (!visibleChildren.length) return [];
+      if ((item as any).emReforma) {
+        return [{ label: `${item.label} (em construção)`, icon: 'pi pi-wrench', disabled: true, className: 'menu-em-reforma' } as MenuItem];
+      }
 
       return [
         {
