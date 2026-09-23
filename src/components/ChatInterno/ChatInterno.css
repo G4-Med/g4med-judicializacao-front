@@ -52,3 +52,5 @@
 .chat-anexar { display: flex; flex-direction: column; gap: 4px; }
 .chat-link { background: none; border: 0; padding: 0 4px; color: #0a7a3d; text-decoration: underline; cursor: pointer; font: inherit; }
 @media (max-width: 720px) { .chat-slot-pilula { display: none; } }
+/* botões de navegação e "Anexar pedido" alinhados à esquerda (medido na tela 23/09: esticados, texto longe da seta) */
+.chat-lista > .p-button, .chat-conversa > .p-button, .chat-compositor > .p-button-text, .chat-msgs > .p-button { align-self: flex-start; }
