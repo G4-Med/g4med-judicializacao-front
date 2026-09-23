@@ -4,7 +4,7 @@ import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 import { InputNumber } from 'primereact/inputnumber';
 import { FichaPrestadorDialog } from '../../components/FichaPrestador/FichaPrestadorDialog';
-import { adicionarEspecialidadeDestino, previaLinkDocumentos, gerarLinkDocumentos, gerarRelatorioMedico, registrarCotacaoPedida, montarCotacaoMedico } from '../../services/api/orders';
+import { adicionarEspecialidadeDestino, previaLinkDocumentos, gerarLinkDocumentos, gerarRelatorioMedico, registrarCotacaoPedida, montarCotacaoMedico, conferirCompatibilidade, type ParecerCompat } from '../../services/api/orders';
 
 /* ═══ COPIAR O PEDIDO COM O LINK SEGURO (@R 21/09 18:27 → 18:45) ═══
    ⟦"registrar quem abriu, e o momento que o item foi aberto ... o link ali não pode ser baixado"⟧
@@ -186,6 +186,25 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   }, [pedido]);
 
   const refs: any[] = previa?.referencias || [];
+  // COBRE A CIRURGIA? (@R 23/09 12:54): a IA lê a folha de cada orçamento e compara com o procedimento
+  // PEDIDO. Parecer guardado vem na prévia; o que falta é conferido ao abrir (1 vez por procedimento).
+  const [compat, setCompat] = useState<Record<string, ParecerCompat>>({});
+  const [compatEstado, setCompatEstado] = useState<'nada' | 'conferindo' | 'ok' | 'erro'>('nada');
+  const conferir = async (forcar = false) => {
+    if (!pedido) return;
+    setCompatEstado('conferindo');
+    try { const { data } = await conferirCompatibilidade(pedido.id, forcar); setCompat(data.itens || {}); setCompatEstado('ok'); }
+    catch { setCompatEstado('erro'); }
+  };
+  useEffect(() => {
+    if (!pedido || !refs.length) return;
+    const guardados: Record<string, ParecerCompat> = {};
+    refs.forEach((x) => { if (x.compatibilidade) guardados[String(x.idFolha ?? x.id)] = x.compatibilidade; });
+    setCompat(guardados);
+    if (refs.some((x) => !x.compatibilidade)) void conferir(); else setCompatEstado('ok');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previa]);
+  const incompativeis = refs.filter((x) => compat[String(x.idFolha ?? x.id)]?.compativel === 'NAO').map((x) => x.id as number);
   const docs: any[] = previa?.listaDocumentos || [];
   const docsVao = docs.filter((d) => !docsFora.has(d.id)).length;
   // só a referência que o médico PODE ver (conferida) conta como "vai"
@@ -331,6 +350,28 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
             ) : <div style={{ color: '#92400e' }}>Nenhum documento clínico neste pedido ainda. O link abre vazio.</div>}
           </section>
 
+          <section style={{ border: '1px solid #c2ecd7', background: '#f5fbf8', borderRadius: 8, padding: '8px 12px' }}>
+            <div style={{ fontSize: 12, color: '#5b6b7b', textTransform: 'uppercase', letterSpacing: '.04em' }}>Cirurgia pedida</div>
+            <div style={{ fontWeight: 600, color: '#0a3d62' }}>{pedido?.procedimento || '—'}</div>
+            {refs.length > 0 && (
+              <div style={{ fontSize: 12, marginTop: 4, color: '#1f2d3d' }}>
+                {compatEstado === 'conferindo' && <>A IA está conferindo se cada orçamento abaixo cobre esta cirurgia…</>}
+                {compatEstado === 'erro' && <span style={{ color: '#b42318' }}>Não consegui conferir agora — confira na folha antes de incluir.
+                  {' '}<button type="button" onClick={() => void conferir()} style={{ background: 'none', border: 0, color: '#0a7a3d', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>tentar de novo</button></span>}
+                {compatEstado === 'ok' && (
+                  <>A IA conferiu os orçamentos contra esta cirurgia (coluna "Cobre a cirurgia?").
+                    {incompativeis.some((id) => !refsFora.has(id)) && (
+                      <> <button type="button" onClick={() => setRefsFora((f) => new Set([...f, ...incompativeis]))}
+                        style={{ background: 'none', border: 0, color: '#b42318', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>
+                        desmarcar os {incompativeis.length} que não cobrem</button></>
+                    )}
+                    {' '}<button type="button" onClick={() => void conferir(true)} style={{ background: 'none', border: 0, color: '#5b6b7b', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>conferir de novo</button>
+                  </>
+                )}
+              </div>
+            )}
+          </section>
+
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
             <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
               <Checkbox inputId="incluirValores" checked={comValores} onChange={(e) => setComValores(!!e.checked)}
@@ -354,6 +395,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
                       <th style={{ padding: '4px 6px' }}>Tipo</th>
                       <th style={{ padding: '4px 6px', textAlign: 'right' }}>Valor real</th>
                       <th style={{ padding: '4px 6px', textAlign: 'right' }}>Médico vê</th>
+                      <th style={{ padding: '4px 6px' }}>Cobre a cirurgia?</th>
                       <th style={{ padding: '4px 6px' }}>Origem</th>
                     </tr>
                   </thead>
@@ -396,6 +438,21 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
                           )
                             : <span style={{ color: '#9ca3af' }} title={bloqueada ? x.ocultoAoMedico : undefined}>
                                 {bloqueada ? 'não vai (não conferido)' : 'não vai'}</span>}
+                        </td>
+                        <td style={{ padding: '4px 6px', maxWidth: 220 }}>
+                          {(() => {
+                            const c = compat[String(x.idFolha ?? x.id)];
+                            if (!c) return <span style={{ color: '#9ca3af', fontSize: 12 }}>{compatEstado === 'conferindo' ? 'conferindo…' : '—'}</span>;
+                            const cor = ({ SIM: '#0a7a3d', PARCIAL: '#b45309', NAO: '#b42318' } as Record<string, string>)[c.compativel] || '#5b6b7b';
+                            const rot = ({ SIM: 'Sim', PARCIAL: 'Em parte', NAO: 'Não', ILEGIVEL: 'Ilegível', FOLHA_INDISPONIVEL: 'Sem folha', ERRO: 'Erro' } as Record<string, string>)[c.compativel] || c.compativel;
+                            return (
+                              <div title={c.motivo || ''} style={{ fontSize: 12 }}>
+                                <b style={{ color: cor }}>{rot}</b>
+                                {c.oQueCobre && <div style={{ color: '#5b6b7b' }}>lê: {c.oQueCobre}</div>}
+                                {c.motivo && c.compativel !== 'SIM' && <div style={{ color: '#5b6b7b' }}>{c.motivo}</div>}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td style={{ padding: '4px 6px' }}>
                           {x.linkAbrir

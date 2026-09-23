@@ -639,3 +639,11 @@ export interface FiltroTextoResposta {
 }
 export const filtrarTextoIA = (texto: string, ids: number[]) =>
   api.post<FiltroTextoResposta>('/ia/filtrar-texto/', { texto, ids });
+
+/** @R 23/09 12:54: a IA confere se cada orçamento listado no Copiar COBRE a cirurgia pedida.
+ *  Reusa o parecer guardado para o mesmo procedimento; forcar refaz. Só aponta, não muda o link. */
+export interface ParecerCompat { compativel: 'SIM' | 'PARCIAL' | 'NAO' | 'ILEGIVEL' | 'FOLHA_INDISPONIVEL' | 'ERRO';
+  oQueCobre?: string | null; motivo?: string | null }
+export const conferirCompatibilidade = (orderId: number, forcar = false) =>
+  api.post<{ procedimentoPedido: string; itens: Record<string, ParecerCompat>; restantes: number }>(
+    `/orders/${orderId}/link-documentos/compatibilidade/`, { forcar });
