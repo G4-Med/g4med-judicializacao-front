@@ -1227,6 +1227,8 @@ ${blocos}
             candidatos={linha?.cotacaoConcorrente ?? []}
             readOnly={readOnly}
             onMudou={carregarDados}
+            idMedicoPedido={linha?.idMedico ?? linha?.medicoId ?? null}
+            medicos={medicos.map((m: any) => ({ id: m.id, nome: m.nomeSistema || m.nomeCompleto }))}
             onCopiarPedido={linha ? () => copiarParaWhatsapp(linha, (p, r) => setCopiaComLink({ p, recarregar: r }), carregarDados) : undefined}
           />
         );

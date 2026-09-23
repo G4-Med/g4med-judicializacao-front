@@ -48,3 +48,21 @@ export const enviarMensagem = (corpo: { para: number; texto: string; pedidoId: n
 export const marcarLidas = (ids: number[]) => api.post<{ marcadas: number }>('/mensagens/lidas/', { ids });
 // POST, não GET: o termo pode ser nome de paciente e a URL vai para o log do servidor.
 export const buscarPedidoChat = (q: string) => api.post<PedidoBusca[]>('/mensagens/buscar-pedido/', { q });
+
+/** Resumo do chat por IA que vira quadro de tarefas (@R 23/09 15:13/15:14). */
+export type PeriodoResumo = 'dia' | 'semana' | 'mes';
+export interface TarefaQuadro { tarefa: string; responsavel: string; prazo: string; pedidos: number[] }
+export interface PontoQuadro { assunto: string; levantadoPor: string; situacao: string; comQuem: string; proximoPasso: string; pedidos: number[] }
+export interface ConteudoQuadro {
+  vazio?: boolean; resumo?: string; periodo: PeriodoResumo; desde?: string; com?: string; foco?: string;
+  pontos?: PontoQuadro[]; tarefas?: TarefaQuadro[]; emQuePonto?: { nome: string; situacao: string }[];
+  analisadas?: number; total?: number; cortadas?: number;
+}
+export interface QuadroTarefas {
+  id: number; criadoEm: string; periodo: PeriodoResumo; foco: string | null; criadoPor: string; com: string;
+  meu: boolean; nTarefas: number; resumo: string; conteudo?: ConteudoQuadro;
+}
+export const resumirConversa = (uid: number, periodo: PeriodoResumo, foco: string) =>
+  api.post<ConteudoQuadro & { id?: number; criadoEm?: string }>(`/mensagens/resumir/${uid}/`, { periodo, foco });
+export const getQuadrosTarefas = () => api.get<QuadroTarefas[]>('/mensagens/quadros/');
+export const excluirQuadroTarefas = (id: number) => api.delete(`/mensagens/quadros/${id}/`);

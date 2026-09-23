@@ -42,6 +42,7 @@ import { RelatorioResumidoPage } from '../../pages/relatorios/RelatorioResumidoP
 import { RelatorioConsolidadoPage } from '../../pages/relatorios/RelatorioConsolidadoPage';
 import { EmailsPage } from '../../pages/emails/EmailsPage';
 import { CustoIAPage } from '../../pages/custoIA/CustoIAPage';
+import { QuadroTarefasPage } from '../../pages/quadroTarefas/QuadroTarefasPage';
 import { ConfiguracoesEmailsPage } from '../../pages/configuracoesEmails/ConfiguracoesEmailsPage';
 import { ConfiguracoesColunasPage } from '../../pages/configuracoesColunas/ConfiguracoesColunasPage';
 import { MonitorIntegracaoPage } from '../../pages/monitorIntegracao/MonitorIntegracaoPage';
@@ -120,6 +121,7 @@ export function AppRoutes() {
         <Route path="/orcamentos-terceiros" element={<ProtectedScreen screen="orcamentosTerceiros"><OrcamentosTerceirosPage /></ProtectedScreen>} />
         <Route path="/central-emails" element={<ProtectedScreen screen="centralEmails"><CentralEmailsPage /></ProtectedScreen>} />
         <Route path="/custo-ia" element={<ProtectedScreen screen="custoIA"><CustoIAPage /></ProtectedScreen>} />
+        <Route path="/quadro-tarefas" element={<ProtectedScreen screen="quadroTarefas"><QuadroTarefasPage /></ProtectedScreen>} />
       </Route>
     </Routes>
   );

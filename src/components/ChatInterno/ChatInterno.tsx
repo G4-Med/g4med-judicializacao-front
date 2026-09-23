@@ -31,6 +31,7 @@ import {
   type PedidoNaMensagem, type ResumoMensagens,
 } from '../../services/api/mensagens';
 import { useFichaPedido } from '../FichaPedido/FichaPedidoContext';
+import { DialogResumirConversa } from '../QuadroTarefas/QuadroTarefas';
 import './ChatInterno.css';
 
 const RESUMO_MS = 30000;
@@ -273,6 +274,7 @@ function Conversa({ uid, abrirFicha, onVoltar, onLeu }: {
   const [pedido, setPedido] = useState<PedidoBusca | null>(null);
   const [pendentes, setPendentes] = useState<Pendente[]>([]);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+  const [resumirAberto, setResumirAberto] = useState(false);   // botão de IA (@R 23/09 15:13)
   const fimRef = useRef<HTMLDivElement | null>(null);
   const filaLidas = useRef<Map<number, number>>(new Map());   // id → tentativas
   const vistos = useRef<Set<number>>(new Set());
@@ -370,7 +372,14 @@ function Conversa({ uid, abrirFicha, onVoltar, onLeu }: {
   const msgs = [...antigas, ...(c.estado === 'ok' ? c.dados : [])];
   return (
     <div className="chat-conversa">
-      <Button label="Conversas" icon="pi pi-arrow-left" text size="small" onClick={onVoltar} />
+      <div className="chat-conversa__topo">
+        <Button label="Conversas" icon="pi pi-arrow-left" text size="small" onClick={onVoltar} />
+        <Button label="Resumir com IA" icon="pi pi-sparkles" size="small" outlined className="chat-ia-btn"
+          title="A IA resume a conversa (último dia, semana ou mês), diz em que ponto cada um está e monta as tarefas"
+          onClick={() => setResumirAberto(true)} />
+      </div>
+      <DialogResumirConversa uid={uid} nome={info?.nome ?? ''} visible={resumirAberto}
+        onHide={() => setResumirAberto(false)} abrirPedido={abrirFicha} />
       <div className="chat-msgs">
         {temMais && <Button label="Mensagens anteriores" text size="small" onClick={() => void carregarAntigas()} />}
         {c.estado !== 'ok' && <EstadoCarga c={c as Carga<unknown[]>} vazio="" tentar={() => void carregar()} />}

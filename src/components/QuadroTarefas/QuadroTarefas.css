@@ -1,0 +1,33 @@
+/* Quadro de tarefas (@R 23/09) — tokens do tema com fallback */
+.qt { display: flex; flex-direction: column; gap: .85rem; }
+.qt-meta { margin: 0; font-size: .8rem; color: var(--text-color-secondary, #6b7280); }
+.qt-alerta { color: #b45309; }
+.qt-bloco { border: 1px solid var(--surface-border, #e5e7eb); border-radius: 10px; padding: .75rem .9rem; background: var(--surface-card, #fff); }
+.qt-bloco h4 { margin: 0 0 .5rem; font-size: .92rem; display: flex; align-items: center; gap: .4rem; }
+.qt-bloco-topo { display: flex; justify-content: space-between; align-items: center; gap: .5rem; margin-bottom: .35rem; }
+.qt-bloco-topo h4 { margin: 0; }
+.qt-resumo { background: var(--surface-ground, #f8fafc); }
+.qt-resumo p { margin: 0; line-height: 1.5; }
+.qt-pessoas { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .5rem; }
+.qt-pessoa { display: flex; flex-direction: column; gap: .15rem; padding: .5rem .6rem; border-radius: 8px; background: var(--surface-ground, #f8fafc); font-size: .85rem; }
+.qt-tarefas { margin: 0; padding-left: 1.25rem; display: flex; flex-direction: column; gap: .5rem; }
+.qt-tarefa { display: block; font-weight: 500; }
+.qt-tarefa-meta, .qt-ponto-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; font-size: .78rem; color: var(--text-color-secondary, #6b7280); }
+.qt-pontos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .55rem; }
+.qt-ponto-topo { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; font-size: .88rem; }
+.qt-sit { font-size: .7rem; border-radius: 999px; padding: .05rem .5rem; background: #e5e7eb; color: #374151; white-space: nowrap; }
+.qt-sit--ok { background: #dcfce7; color: #166534; }
+.qt-sit--pend { background: #fee2e2; color: #991b1b; }
+.qt-sit--esp { background: #fef3c7; color: #92400e; }
+.qt-pedidos { display: inline-flex; gap: .25rem; margin-left: .2rem; }
+.qt-pedido { font-size: .72rem; border: 1px solid var(--primary-color, #1f7a4d); color: var(--primary-color, #1f7a4d); background: transparent;
+  border-radius: 999px; padding: 0 .4rem; cursor: pointer; }
+span.qt-pedido { cursor: default; }
+.qt-vazio { margin: 0; color: var(--text-color-secondary, #6b7280); font-size: .85rem; }
+.qt-rodape { margin: 0; font-size: .72rem; color: var(--text-color-secondary, #6b7280); display: flex; gap: .3rem; align-items: center; }
+.qt-form { display: flex; flex-direction: column; gap: .55rem; }
+.qt-form label { font-weight: 600; font-size: .88rem; }
+.qt-opcional { font-weight: 400; color: var(--text-color-secondary, #6b7280); }
+.qt-ajuda { margin: 0; font-size: .78rem; color: var(--text-color-secondary, #6b7280); }
+.qt-erro { margin: 0; color: #b91c1c; font-size: .85rem; }
+.qt-botoes { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .75rem; }

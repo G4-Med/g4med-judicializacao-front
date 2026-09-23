@@ -66,3 +66,7 @@
 .presenca-bola--on { background: #00a651; box-shadow: 0 0 0 3px #e6f7ef; }
 .presenca-nome { flex: 1; }
 .presenca-rodape { font-size: 11px; color: #94a3b8; margin-top: 6px; border-top: 1px solid #e3eaef; padding-top: 6px; }
+
+/* botão de IA no topo da conversa (@R 23/09 15:13) */
+.chat-conversa__topo { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.chat-ia-btn.p-button { font-size: .78rem; padding: .3rem .6rem; }

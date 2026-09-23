@@ -260,6 +260,10 @@ export const aplicarSugestaoIA = (sugestaoId: number, idMedico: number) =>
 export const listarCandidatosCotacao = (orderId: number) =>
   api.get(`/orders/${orderId}/candidatos-cotacao/`);
 
+/** Troca um convidado errado por outro médico, ou torna-o o médico do pedido (@R 23/09 14:11). */
+export const trocarConvidadoCotacao = (orderId: number, candId: number, body: { idMedico?: number; principal?: boolean }) =>
+  api.post(`/orders/${orderId}/candidatos-cotacao/${candId}/trocar/`, body);
+
 export const convidarCandidatoCotacao = (
   orderId: number,
   idMedico: number,

@@ -36,7 +36,8 @@ export type ScreenKey =
   | 'lixeira'
   | 'orcamentosTerceiros'
   | 'centralEmails'
-  | 'custoIA';
+  | 'custoIA'
+  | 'quadroTarefas';
 
 export type ReportKey = 'relatorioResumido' | 'relatorioConsolidado';
 
@@ -80,6 +81,7 @@ export const GROUP_PERMISSIONS: Record<UserGroup, GroupPermissionConfig> = {
       'orcamentosTerceiros',
       'centralEmails',
       'custoIA',
+      'quadroTarefas',
     ],
     edit: [
       'lixeira',
@@ -136,6 +138,7 @@ export const GROUP_PERMISSIONS: Record<UserGroup, GroupPermissionConfig> = {
       'centralEmails',
       'configuracoesEmails',
       'custoIA',
+      'quadroTarefas',
     ],
     // Gerente era 100% somente-leitura por padrão — mas na prática precisa agir na
     // tela de orçamento médico (enviar orçamento, solicitar exames, recusar o
@@ -170,6 +173,7 @@ export const GROUP_PERMISSIONS: Record<UserGroup, GroupPermissionConfig> = {
       'orcamentosTerceiros',
       'centralEmails',
       'configuracoesEmails',
+      'quadroTarefas',   // chat é só rapha/carol/valeria/fabricio; o servidor devolve 403 aos demais
     ],
     // @R 18/09: o Instituto passa a VER e EDITAR as etapas 2 e 3 (pedido da Carol — um pedido
     // dela parou na etapa 2 e ela nao alcancava a tela para corrigir). O backend foi liberado
@@ -261,6 +265,7 @@ export const SCREEN_PATHS: Record<ScreenKey, string> = {
   orcamentosTerceiros: '/orcamentos-terceiros',
   centralEmails: '/central-emails',
   custoIA: '/custo-ia',
+  quadroTarefas: '/quadro-tarefas',
 };
 
 export const SCREEN_ORDER: ScreenKey[] = [
@@ -290,6 +295,7 @@ export const SCREEN_ORDER: ScreenKey[] = [
   'orcamentosTerceiros',
   'centralEmails',
   'custoIA',
+  'quadroTarefas',
 ];
 
 export const DEFAULT_GROUP: UserGroup = 'SECRETARIA';

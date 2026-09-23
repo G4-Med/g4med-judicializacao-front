@@ -23,3 +23,10 @@
 .cc-motivo label { font-size: .82rem; opacity: .8; }
 .cc-nota { font-size: .82rem; opacity: .8; margin-top: .9rem; }
 .cc-vazio { font-size: .9rem; opacity: .85; }
+
+/* troca de convidado (@R 23/09 14:11) */
+.cc-item__principal { background: #e0ecff; color: #1e3a8a; }
+.cc-item__correcao { display: flex; gap: .25rem; flex-wrap: wrap; margin-top: .15rem; }
+.cc-item__troca { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; margin: .4rem 0; padding: .5rem;
+  border: 1px dashed var(--surface-border, #cbd5e1); border-radius: 8px; background: var(--surface-ground, #f8fafc); }
+.cc-item__troca-dd { min-width: 16rem; flex: 1; }

@@ -24,7 +24,8 @@ import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { Tag } from 'primereact/tag';
-import { convidarCandidatoCotacao, elegerVencedorCotacao } from '../../services/api/orders';
+import { Dropdown } from 'primereact/dropdown';
+import { convidarCandidatoCotacao, elegerVencedorCotacao, trocarConvidadoCotacao } from '../../services/api/orders';
 import './CotacaoConcorrente.css';
 
 export interface CandidatoCotacao {
@@ -97,6 +98,8 @@ export function DialogCotacaoConcorrente({
   readOnly,
   onMudou,
   onCopiarPedido,
+  idMedicoPedido,
+  medicos,
 }: {
   visible: boolean;
   onHide: () => void;
@@ -107,10 +110,55 @@ export function DialogCotacaoConcorrente({
   readOnly?: boolean;
   onMudou: () => Promise<void> | void;
   onCopiarPedido?: () => void;
+  /** médico do pedido HOJE (o "principal"): trocar este convidado troca o médico do pedido */
+  idMedicoPedido?: number | null;
+  /** lista para escolher o médico novo na troca (@R 23/09 14:11) */
+  medicos?: { id: number; nome: string }[];
 }) {
   const [salvando, setSalvando] = useState<number | null>(null);
   const [valores, setValores] = useState<Record<number, number | null>>({});
   const [motivo, setMotivo] = useState('');
+  const [trocando, setTrocando] = useState<number | null>(null);   // id do convidado com a troca aberta
+  const [novoMedico, setNovoMedico] = useState<number | null>(null);
+
+  const jaConvidados = new Set(candidatos.map((c) => c.idMedico));
+  const opcoesMedico = (medicos ?? []).filter((m) => m.id !== 1 && !jaConvidados.has(m.id))
+    .map((m) => ({ label: m.nome, value: m.id }));
+
+  // Trocar convidado ERRADO (@R 23/09 14:11). Se é o médico do pedido, o pedido troca de médico junto
+  // — mesma regra do lápis: o orçamento volta a "Solicitado ao Médico" e a recusa do anterior some.
+  const confirmarTroca = async (c: CandidatoCotacao) => {
+    if (!orderId || !novoMedico) return;
+    const nomeNovo = opcoesMedico.find((o) => o.value === novoMedico)?.label ?? 'o médico escolhido';
+    const principal = idMedicoPedido != null && c.idMedico === idMedicoPedido;
+    if (principal && !window.confirm(`${c.nomeMedico} é o MÉDICO DO PEDIDO.\n\nTrocar por ${nomeNovo} muda o médico do pedido `
+      + 'para ele: o orçamento volta a "Solicitado ao Médico" e a resposta/recusa anterior some.\n\nConfirmar?')) return;
+    setSalvando(c.idMedico);
+    try {
+      await trocarConvidadoCotacao(orderId, c.id, { idMedico: novoMedico });
+      setTrocando(null); setNovoMedico(null);
+      await onMudou();
+    } catch (e: any) {
+      alert(e?.response?.data?.error ?? 'Não foi possível trocar o convidado.');
+    } finally {
+      setSalvando(null);
+    }
+  };
+
+  const tornarPrincipal = async (c: CandidatoCotacao) => {
+    if (!orderId) return;
+    if (!window.confirm(`Tornar ${c.nomeMedico} o médico do pedido?\n\nO nome na coluna Médico muda para ele, e o `
+      + 'orçamento volta a "Solicitado ao Médico".')) return;
+    setSalvando(c.idMedico);
+    try {
+      await trocarConvidadoCotacao(orderId, c.id, { principal: true });
+      await onMudou();
+    } catch (e: any) {
+      alert(e?.response?.data?.error ?? 'Não foi possível trocar o médico do pedido.');
+    } finally {
+      setSalvando(null);
+    }
+  };
 
   const respondidos = candidatos.filter(
     (c) => c.situacao === 'RESPONDEU' && c.valorRespondido != null);
@@ -223,6 +271,10 @@ export function DialogCotacaoConcorrente({
               <li key={c.id} className={c.vencedor ? 'cc-item cc-item--vencedor' : 'cc-item'}>
                 <div className="cc-item__topo">
                   <span className="cc-item__nome">{c.nomeMedico}</span>
+                  {idMedicoPedido != null && c.idMedico === idMedicoPedido && (
+                    <Tag value="médico do pedido" icon="pi pi-user" className="cc-item__principal"
+                      title="É o médico que aparece na coluna Médico. Trocar este convidado troca o médico do pedido." />
+                  )}
                   <Tag value={rot.texto} severity={rot.severity} />
                   {ehMenor && respondidos.length > 1 && !c.vencedor && (
                     <Tag value="menor valor" severity="info" icon="pi pi-arrow-down" />
@@ -247,6 +299,28 @@ export function DialogCotacaoConcorrente({
                     escolhido por {c.escolhidoPor ?? '—'}
                     {c.escolhidoEm ? ` em ${new Date(c.escolhidoEm).toLocaleString('pt-BR')}` : ''}
                     {c.motivoEscolha ? ` · ${c.motivoEscolha}` : ''}
+                  </div>
+                )}
+
+                {!readOnly && trocando === c.id && (
+                  <div className="cc-item__troca">
+                    <Dropdown value={novoMedico} options={opcoesMedico} onChange={(e) => setNovoMedico(e.value)}
+                      placeholder="Trocar por qual médico?" filter className="cc-item__troca-dd" autoFocus />
+                    <Button label="Confirmar troca" size="small" icon="pi pi-check" disabled={!novoMedico}
+                      loading={salvando === c.idMedico} onClick={() => confirmarTroca(c)} />
+                    <Button label="Cancelar" size="small" text onClick={() => { setTrocando(null); setNovoMedico(null); }} />
+                  </div>
+                )}
+
+                {!readOnly && trocando !== c.id && (
+                  <div className="cc-item__correcao">
+                    <Button label="Trocar convidado" size="small" text icon="pi pi-sync"
+                      title="O convidado está errado? Troque por outro médico"
+                      onClick={() => { setTrocando(c.id); setNovoMedico(null); }} disabled={salvando != null} />
+                    {idMedicoPedido != null && c.idMedico !== idMedicoPedido && (
+                      <Button label="Tornar médico do pedido" size="small" text icon="pi pi-user"
+                        onClick={() => tornarPrincipal(c)} disabled={salvando != null} />
+                    )}
                   </div>
                 )}
 
