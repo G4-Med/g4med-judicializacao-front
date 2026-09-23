@@ -107,8 +107,9 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
     label: 'Relatórios',
     icon: 'pi pi-file-pdf',
     children: [
-      { label: 'Relatório Resumido', icon: 'pi pi-angle-right', path: '/relatorios/resumido', screen: 'relatorioResumido' },
-      { label: 'Relatório Consolidado', icon: 'pi pi-angle-right', path: '/relatorios/consolidado', screen: 'relatorioConsolidado' },
+      // @R 23/09 15:37: "em construção, eu ainda vou modificar — não dar para acessar via menu"
+      { label: 'Relatório Resumido', icon: 'pi pi-angle-right', path: '/relatorios/resumido', screen: 'relatorioResumido', emReforma: true },
+      { label: 'Relatório Consolidado', icon: 'pi pi-angle-right', path: '/relatorios/consolidado', screen: 'relatorioConsolidado', emReforma: true },
     ],
   },
   {
@@ -164,7 +165,12 @@ export function buildMenuItems({
           label: item.label,
           icon: item.icon,
           className: visibleChildren.some((child) => child.path === currentPath) ? 'menu-active-item' : '',
-          items: visibleChildren.map((child) => ({
+          items: visibleChildren.map((child) => ((child as any).emReforma ? {
+            label: `${child.label} (em construção)`,
+            icon: 'pi pi-wrench',
+            disabled: true,
+            className: 'menu-em-reforma',
+          } : {
             label: comContador(rotularComNumeroDaRegra(child.label, child.path), child.path),
             icon: child.icon,
             command: () => go(child.path),
