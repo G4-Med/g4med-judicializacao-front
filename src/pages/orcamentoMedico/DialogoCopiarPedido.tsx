@@ -3,7 +3,7 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 import { FichaPrestadorDialog } from '../../components/FichaPrestador/FichaPrestadorDialog';
-import { adicionarEspecialidadeDestino, previaLinkDocumentos, gerarLinkDocumentos, gerarRelatorioMedico, registrarCotacaoPedida } from '../../services/api/orders';
+import { adicionarEspecialidadeDestino, previaLinkDocumentos, gerarLinkDocumentos, gerarRelatorioMedico, registrarCotacaoPedida, montarCotacaoMedico } from '../../services/api/orders';
 
 /* ═══ COPIAR O PEDIDO COM O LINK SEGURO (@R 21/09 18:27 → 18:45) ═══
    ⟦"registrar quem abriu, e o momento que o item foi aberto ... o link ali não pode ser baixado"⟧
@@ -501,4 +501,47 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
       )}
     </Dialog>
   );
+}
+
+/** Copiar mensagem: travas ANTES de abrir o diálogo (segredo de justiça, pedido sem CNJ, especialidade
+ *  do prestador). Usada pela fase 3 e, desde 23/09, logo após confirmar o médico na fase 2. */
+export const prepararCopiaPedido = async (
+  // qualquer linha de fila com id/paciente/procedimento/area (fase 2 e fase 3 usam formatos próximos)
+  rowData: any,
+  abrirDialogo: (p: PedidoParaCopiar, recarregar?: () => void) => void,
+  recarregar?: () => void,
+) => {
+  /* SEGREDO DE JUSTIÇA NÃO VAI A PRESTADOR (mandato @R via eliza-urgencia, 20/09 02:08): 7 pedidos em
+     segredo foram disparados a canais de prestador nesta madrugada. O servidor também recusa
+     (409 segredo_de_justica em cotacao-pedida e solicitar-cotacao-medico); aqui barramos ANTES de
+     copiar, porque o texto copiado já é o vazamento. */
+  // as filas trazem o segredo em `segredo` ('sim'|'possivel'|'nao'); algumas também em statusJuridico —
+  // olhar os DOIS (23/09: na fase 2 só existe o primeiro, e a trava passaria calada).
+  if ((rowData.statusJuridico || '').trim().toLowerCase() === 'segredo de justiça' || rowData.segredo === 'sim') {
+    alert('Este processo está em SEGREDO DE JUSTIÇA e não pode ser enviado a prestador.\n\nNada foi copiado. Se o segredo caiu, desmarque em "Segredo de Justiça" antes.');
+    return;
+  }
+  const cnjDaLinha = ((rowData as any).cnj ?? (rowData as any).nprocesso ?? '').toString().trim();
+  if (!cnjDaLinha && !window.confirm('Este pedido está SEM número de processo (CNJ).\n\nEnviar ao prestador mesmo assim?')) return;
+  /* #505 (20/09): a especialidade do pedido bate com o cadastro do prestador? O servidor
+     compara (especialidade, subespecialidade, lista e grupos de WhatsApp) e devolve o aviso.
+     Caso fundador: #1238, cabeça e pescoço enviado ao Santa Rita, que não opera isso — a
+     recusa só apareceu depois. É AVISO com confirmação, não bloqueio: o cadastro é texto
+     livre e incompleto; quem opera decide. Se a API falhar, o Copiar segue (ajuda ≠ gate). */
+  try {
+    const av: any = await montarCotacaoMedico(rowData.id)
+    const avisosEsp: string[] = (av?.data?.avisos || []).filter((a: string) => a.startsWith('Especialidade'))
+    if (avisosEsp.length && !window.confirm(avisosEsp.join('\n\n') + '\n\nCopiar mesmo assim?')) return
+  } catch { /* aviso é ajuda, não gate */ }
+  /* O TEXTO E OS DOCUMENTOS AGORA SAEM PELO DIÁLOGO DO LINK SEGURO (@R 21/09 18:27): em vez de N
+     links públicos do R2, 1 link da G4MED que registra cada abertura e não deixa baixar — e quem
+     copia vê antes os valores (real × deflacionado) e escolhe se vão. A lista branca de tipos, a
+     ordem clínica e a frase da SES moraram aqui até hoje e foram para DialogoCopiarPedido.tsx
+     (texto) e backend/link_documentos.py (lista branca, servidor). */
+  const m = rowData as any
+  abrirDialogo({
+    id: rowData.id, paciente: rowData.paciente, idade: rowData.idade, procedimento: rowData.procedimento,
+    area: rowData.area, subarea: rowData.subarea,
+    idMedico: m.idMedico ?? m.medicoId ?? m.medico_id ?? null, medico: m.nomeMedico ?? m.medico ?? null,
+  }, recarregar)
 }

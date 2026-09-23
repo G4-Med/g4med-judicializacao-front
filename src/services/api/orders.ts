@@ -211,6 +211,8 @@ export interface SugestaoIAResposta {
   idMedico: number | null;
   nomeMedico: string | null;
   justificativa: string;
+  /** o que é o procedimento e quem costuma fazer — descrição GERAL da IA (@R 23/09); null no fallback */
+  sobreProcedimento?: { oQueE: string; quemFaz: string } | null;
   confianca: 'alta' | 'media' | 'baixa';
   isFallback: boolean;
   /** a ORDEM, ¬um nome: os adequados do melhor para o menos indicado (@R 17/09, SPEC 3.1) */

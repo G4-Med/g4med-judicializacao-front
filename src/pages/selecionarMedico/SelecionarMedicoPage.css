@@ -502,3 +502,8 @@ body.dark-theme .ia-candidato__jacotou { color: #94a3b8; }
 /* Faixa de preço lida das peças — mesma aparência da fase 3 (@R 18/09). */
 .om-orcpeca { display: inline-flex; gap: .35rem; align-items: baseline; font-size: .85rem; }
 .om-orcpeca__n { font-size: .72rem; opacity: .6; }
+
+/* Sobre o procedimento (@R 23/09) */
+.ia-sobre-proc { background: #f5fbf8; border: 1px solid #c2ecd7; border-radius: 8px; padding: 8px 12px; }
+.ia-sobre-proc p { margin: 4px 0; font-size: 13px; color: #1f2d3d; }
+.ia-sobre-proc__nota { font-size: 11px; color: #5b6b7b; font-style: italic; }

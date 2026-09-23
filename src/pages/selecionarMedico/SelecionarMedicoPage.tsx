@@ -28,6 +28,7 @@ import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
 import { ModalMedico } from '../../components/TrocarMedico/CelulaMedico';
+import { DialogoCopiarPedido, prepararCopiaPedido, type PedidoParaCopiar } from '../orcamentoMedico/DialogoCopiarPedido';
 import './SelecionarMedicoPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
@@ -136,6 +137,13 @@ export function SelecionarMedicoPage() {
   const [iaSugestao, setIaSugestao] = useState<SugestaoIAResposta | null>(null);
   const [iaOrderId, setIaOrderId] = useState<number | null>(null);
   const [iaAplicando, setIaAplicando] = useState(false);
+  // CICLO selecionar → copiar → marcar → mandar (@R 23/09 12:18): confirmado o médico, o Copiar da
+  // fase 3 abre na hora, com os mesmos itens (link seguro, pagamentos, relatório IA) e as mesmas travas.
+  const [copiaPedido, setCopiaPedido] = useState<PedidoParaCopiar | null>(null);
+  const abrirCopiar = (row: any, idMedico: number, nomeMedico?: string | null) => {
+    void prepararCopiaPedido({ ...row, idMedico, nomeMedico: nomeMedico ?? row?.nomeMedico ?? null },
+      (p) => setCopiaPedido(p), () => { void carregarDados(); });
+  };
   // O PEDIDO que gerou a sugestão (@R 17/09: "mostrar na tela qual é o procedimento").
   // Sem ele, o modal pede para confirmar um médico sem dizer PARA QUÊ — e quem confirma
   // às cegas confirma errado. A linha já está na mão de quem clicou; guardá-la custa nada.
@@ -453,8 +461,11 @@ export function SelecionarMedicoPage() {
           `cotação de: ${nomes}. Peça o orçamento assim mesmo — só o registro falhou.`,
         );
       }
+      const linhaIa = iaPedido;
+      const nomeEscolhido = medicosOptions.find((m) => m.value === escolhido)?.label ?? null;
       fecharIaDialog();
       await carregarDados();
+      if (linhaIa) abrirCopiar(linhaIa, escolhido, nomeEscolhido);
     } catch (error: any) {
       console.error('Erro ao aplicar sugestão IA:', error);
       alert(error?.response?.data?.detail ?? 'Erro ao aplicar a sugestão.');
@@ -465,6 +476,8 @@ export function SelecionarMedicoPage() {
 
   return (
     <div className="selecionar-medico-page">
+      <DialogoCopiarPedido pedido={copiaPedido} onClose={() => setCopiaPedido(null)}
+        onCopiado={() => { void carregarDados(); }} />
       <PrimeiraVisitaInfo etapaId="selecionar-medico" />
       <div className="page-header">
         <CabecalhoFase nome="Selecionar Médico" screen="selecionarMedico"
@@ -772,7 +785,11 @@ export function SelecionarMedicoPage() {
           medicos={medicosCrus}
           aberto={dialogVisible}
           aoFechar={() => setDialogVisible(false)}
-          aoTrocar={async () => { await carregarDados(); setProcessoSelecionado(null); }}
+          aoTrocar={async (info) => {
+            const linha = processoSelecionado;
+            await carregarDados(); setProcessoSelecionado(null);
+            if (linha && info?.idMedico) abrirCopiar(linha, info.idMedico, info.nomeMedico);
+          }}
         />
       )}
 
@@ -860,6 +877,17 @@ export function SelecionarMedicoPage() {
                     </button>
                   )}
                 </div>
+              </div>
+            )}
+            {/* O QUE É E QUEM FAZ (@R 23/09 12:21): antes dos nomes, uma explicação curta do
+                procedimento — quem opera a tela nem sempre sabe o que é "pilão tibial". É texto
+                GERAL da IA (sem números, sem o paciente) e vem marcado como tal. */}
+            {iaSugestao.sobreProcedimento && (
+              <div className="ia-sugestao-dialog__bloco ia-sobre-proc">
+                <div className="ia-sugestao-dialog__label">Sobre o procedimento</div>
+                <p><strong>O que é:</strong> {iaSugestao.sobreProcedimento.oQueE}</p>
+                <p><strong>Quem costuma fazer:</strong> {iaSugestao.sobreProcedimento.quemFaz}</p>
+                <span className="ia-sobre-proc__nota">descrição geral gerada pela IA — não substitui a avaliação do médico</span>
               </div>
             )}
             {/* A ORDEM, ¬um nome (@R 17/09: "central inteligente para atuar na escolha

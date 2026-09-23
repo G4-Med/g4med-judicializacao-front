@@ -5,8 +5,8 @@ import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgenci
 import { CelulaMedico } from '../../components/TrocarMedico/CelulaMedico';
 import { CelulaCotacaoConcorrente, DialogCotacaoConcorrente } from '../../components/CotacaoConcorrente/CotacaoConcorrente';
 import { FaixaDaPeca } from '../../components/CotacaoConcorrente/FaixaDaPeca';
-import { registrarCotacaoPedida, montarCotacaoMedico, darPerdaNoOrcamento } from '../../services/api/orders';
-import { DialogoCopiarPedido, type PedidoParaCopiar } from './DialogoCopiarPedido';
+import { registrarCotacaoPedida, darPerdaNoOrcamento } from '../../services/api/orders';
+import { DialogoCopiarPedido, prepararCopiaPedido, type PedidoParaCopiar } from './DialogoCopiarPedido';
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
@@ -494,43 +494,9 @@ const abrirDetalhe = (rowData: ProcessoOrcamentoRow) => {
 // variável `let` de módulo escrita por um useEffect e ZERADA no cleanup do unmount — se o
 // clique acontecesse depois de um unmount (navegação/HMR/remount) virava `null?.(...)`,
 // sem erro nem aviso. "Clico em Copiar e não acontece nada" era exatamente essa assinatura.
-const copiarParaWhatsapp = async (
-  rowData: ProcessoOrcamentoRow,
-  abrirDialogo: (p: PedidoParaCopiar, recarregar?: () => void) => void,
-  recarregar?: () => void,
-) => {
-  /* SEGREDO DE JUSTIÇA NÃO VAI A PRESTADOR (mandato @R via eliza-urgencia, 20/09 02:08): 7 pedidos em
-     segredo foram disparados a canais de prestador nesta madrugada. O servidor também recusa
-     (409 segredo_de_justica em cotacao-pedida e solicitar-cotacao-medico); aqui barramos ANTES de
-     copiar, porque o texto copiado já é o vazamento. */
-  if ((rowData.statusJuridico || '').trim().toLowerCase() === 'segredo de justiça') {
-    alert('Este processo está em SEGREDO DE JUSTIÇA e não pode ser enviado a prestador.\n\nNada foi copiado. Se o segredo caiu, desmarque em "Segredo de Justiça" antes.');
-    return;
-  }
-  const cnjDaLinha = ((rowData as any).cnj ?? (rowData as any).nprocesso ?? '').toString().trim();
-  if (!cnjDaLinha && !window.confirm('Este pedido está SEM número de processo (CNJ).\n\nEnviar ao prestador mesmo assim?')) return;
-  /* #505 (20/09): a especialidade do pedido bate com o cadastro do prestador? O servidor
-     compara (especialidade, subespecialidade, lista e grupos de WhatsApp) e devolve o aviso.
-     Caso fundador: #1238, cabeça e pescoço enviado ao Santa Rita, que não opera isso — a
-     recusa só apareceu depois. É AVISO com confirmação, não bloqueio: o cadastro é texto
-     livre e incompleto; quem opera decide. Se a API falhar, o Copiar segue (ajuda ≠ gate). */
-  try {
-    const av: any = await montarCotacaoMedico(rowData.id)
-    const avisosEsp: string[] = (av?.data?.avisos || []).filter((a: string) => a.startsWith('Especialidade'))
-    if (avisosEsp.length && !window.confirm(avisosEsp.join('\n\n') + '\n\nCopiar mesmo assim?')) return
-  } catch { /* aviso é ajuda, não gate */ }
-  /* O TEXTO E OS DOCUMENTOS AGORA SAEM PELO DIÁLOGO DO LINK SEGURO (@R 21/09 18:27): em vez de N
-     links públicos do R2, 1 link da G4MED que registra cada abertura e não deixa baixar — e quem
-     copia vê antes os valores (real × deflacionado) e escolhe se vão. A lista branca de tipos, a
-     ordem clínica e a frase da SES moraram aqui até hoje e foram para DialogoCopiarPedido.tsx
-     (texto) e backend/link_documentos.py (lista branca, servidor). */
-  const m = rowData as any
-  abrirDialogo({
-    id: rowData.id, paciente: rowData.paciente, idade: rowData.idade, procedimento: rowData.procedimento,
-    area: rowData.area, subarea: rowData.subarea,
-    idMedico: m.idMedico ?? m.medicoId ?? m.medico_id ?? null, medico: m.nomeMedico ?? m.medico ?? null,
-  }, recarregar)
-}
+// A preparação do Copiar (travas de segredo, CNJ e especialidade) mora em DialogoCopiarPedido.tsx desde
+// 23/09: a tela Selecionar Médico abre o MESMO Copiar logo após confirmar o médico (@R 23/09 12:18).
+const copiarParaWhatsapp = prepararCopiaPedido;
 
 // mesma classe de bug do DialogoCopiarPedido.tsx (achado @R 21/09 23:27): execCommand('copy')
 // tem retorno booleano de sucesso e estava sendo IGNORADO — a função "dava certo" mesmo
