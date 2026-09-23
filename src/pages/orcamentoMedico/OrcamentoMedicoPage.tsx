@@ -116,6 +116,17 @@ function calcularIdade(dataNascimento: string | null): number {
 }
 
 
+/** "DR. BRUNO FAJARDO DO NASCIMENTO" → "Dr. Bruno Fajardo do Nascimento" (siglas curtas como IBG seguem maiúsculas). */
+const MINUSC = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
+function nomeBonito(n: string) {
+  return n.toLowerCase().split(/\s+/).map((p, i) => {
+    const orig = n.split(/\s+/)[i] || '';
+    if (i > 0 && MINUSC.has(p)) return p;
+    if (/^[A-Z]{2,4}$/.test(orig) && !['DR', 'DRA'].includes(orig) && !['SAUDE', 'RITA', 'VITA', 'CARE'].includes(orig)) return orig;
+    return p.charAt(0).toUpperCase() + p.slice(1);
+  }).join(' ');
+}
+
 export function OrcamentoMedicoPage() {
   const navigate = useNavigate();
   // @R 19/09: lápis na coluna Status → modal com o leque da FASE (ver, trocar, criar)
@@ -140,8 +151,9 @@ export function OrcamentoMedicoPage() {
   const [loading, setLoading] = useState(false);
   const [processos, setProcessos] = useState<ProcessoOrcamento[]>([]);
   // @R 22/09: "os dois botões na fase 3 — os que médico negou e os que ficaram sem médico".
-  // 'medico:<nome>' = só os pedidos em que pedimos orçamento àquele médico (@R 23/09 13:44)
-  const [filtroRapido, setFiltroRapido] = useState<'negou' | 'sem' | 'naoPedido' | 'pedido' | `medico:${string}` | null>(null);
+  // situação (pílulas) e profissional (seletor) são filtros INDEPENDENTES que se combinam (@R 23/09 15:24)
+  const [filtroRapido, setFiltroRapido] = useState<'negou' | 'sem' | 'naoPedido' | 'pedido' | null>(null);
+  const [filtroProf, setFiltroProf] = useState<string | null>(null);
   // @R 22/09 18:22: "um indicador no pedido na fase 3 para dizer que ele está lá [na 3,1], no nome, e poder clicar"
   const [na31, setNa31] = useState<Map<number, { origem?: string; estado: string | null; acimaPct: number | null }>>(new Map());
   const [first, setFirst] = useState(0);
@@ -284,7 +296,7 @@ export function OrcamentoMedicoPage() {
   const nPedido = dataComMedico.length - nNaoPedido;
   const medicosPedidos = useMemo(() => {
     const cont = new Map<string, number>();
-    dataComMedico.filter(foiPedido).forEach((r: any) => {
+    dataComMedico.forEach((r: any) => {
       const nome = (r.medico || '').trim() || 'Sem médico';
       cont.set(nome, (cont.get(nome) || 0) + 1);
     });
@@ -297,11 +309,10 @@ export function OrcamentoMedicoPage() {
       : filtroRapido === 'sem' ? dataComMedico.filter((r: any) => r.semMedico)
         : filtroRapido === 'naoPedido' ? dataComMedico.filter((r: any) => !foiPedido(r))
           : filtroRapido === 'pedido' ? dataComMedico.filter(foiPedido)
-            : filtroRapido?.startsWith('medico:')
-              ? dataComMedico.filter((r: any) => foiPedido(r) && ((r.medico || '').trim() || 'Sem médico') === filtroRapido.slice(7))
-              : dataComMedico;
-    return filtroIA ? base.filter((r: any) => filtroIA.ids.has(r.id)) : base;
-  }, [dataComMedico, filtroRapido, filtroIA]);
+            : dataComMedico;
+    const porProf = filtroProf ? base.filter((r: any) => ((r.medico || '').trim() || 'Sem médico') === filtroProf) : base;
+    return filtroIA ? porProf.filter((r: any) => filtroIA.ids.has(r.id)) : porProf;
+  }, [dataComMedico, filtroRapido, filtroProf, filtroIA]);
   // Há pelo menos 1 envio confirmado na fila = a confirmação pela Eliza está viva (ver coluna Pedido ao médico).
   const confirmacaoEnvioAtiva = dataComMedico.some((r: any) => !!r?.ultimaCotacaoEnviadaEm);
 
@@ -650,6 +661,45 @@ ${blocos}
 
       {/* Filtro inteligente em cartão PRÓPRIO, acima da tabela (@R 23/09 13:40: "separado da tabela") */}
       <FiltroInteligente idsNaTela={dataComMedico.map((r: any) => r.id)} ativo={filtroIA} onMudar={setFiltroIA} chaveSalvos="filtros_ia_orcamento_medico" />
+      {/* Filtros rápidos em cartão próprio (@R 23/09 15:24: "separado da tabela ... melhor de escolher o profissional") */}
+      <section className="om-rapidos" aria-label="Filtros rápidos">
+        <div className="om-rapidos__linha">
+          <span className="om-rapidos__rotulo">Situação</span>
+          <div className="om-pilulas" role="group" aria-label="Situação do pedido ao médico">
+            {([
+              [null, 'Todos', dataComMedico.length, 'pi pi-list', ''],
+              ['naoPedido', 'Ainda não pedimos', nNaoPedido, 'pi pi-inbox', 'Ninguém copiou ainda a mensagem de pedido de orçamento ao médico'],
+              ['pedido', 'Já pedimos', nPedido, 'pi pi-send', 'A mensagem de pedido já foi copiada ao médico ao menos uma vez'],
+              ['negou', 'Médico negou', nNegou, 'pi pi-times-circle', 'Um médico recusou cotar — os que estão com outro médico e os que ficaram sem nenhum'],
+              ['sem', 'Sem médico', nSemMedico, 'pi pi-exclamation-triangle', 'Ficaram sem médico depois de uma recusa — use Trocar médico'],
+            ] as const).map(([chave, rotulo, n, icone, dica]) => {
+              const ativo = filtroRapido === chave;
+              return (
+                <button key={rotulo} type="button" aria-pressed={ativo} title={dica || undefined}
+                  className={`om-pilula${ativo ? ' om-pilula--ativa' : ''}${chave === 'negou' || chave === 'sem' ? ' om-pilula--alerta' : ''}`}
+                  onClick={() => setFiltroRapido(ativo && chave !== null ? null : chave)}>
+                  <i className={icone} /> {rotulo} <span className="om-pilula__n">{n}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="om-rapidos__linha">
+          <span className="om-rapidos__rotulo">Profissional</span>
+          <Dropdown value={filtroProf} onChange={(e) => setFiltroProf(e.value ?? null)} showClear filter
+            filterPlaceholder="Buscar profissional" placeholder={`Todos os profissionais (${medicosPedidos.length})`}
+            className="om-rapidos__prof" panelClassName="om-rapidos__painel"
+            options={medicosPedidos.map(([nome, n]) => ({ label: nomeBonito(nome), value: nome, n }))}
+            itemTemplate={(o: any) => (<div className="om-prof-item"><span>{o.label}</span><span className="om-pilula__n">{o.n}</span></div>)}
+            valueTemplate={(o: any, props: any) => o
+              ? <span className="om-prof-valor"><i className="pi pi-user" /> {o.label} <span className="om-pilula__n">{o.n}</span></span>
+              : <span>{props.placeholder}</span>} />
+          {(filtroRapido || filtroProf) && (
+            <Button size="small" text icon="pi pi-filter-slash" label="Limpar filtros"
+              onClick={() => { setFiltroRapido(null); setFiltroProf(null); }} />
+          )}
+        </div>
+      </section>
       <div className="card">
         <h2 className="mc-tabela-titulo">
           <i className="pi pi-table" />Pedidos aguardando orçamento médico
@@ -666,46 +716,6 @@ ${blocos}
             )}
           />
         </h2>
-          <div className="filtros-rapidos-recusa" role="group" aria-label="Filtros rápidos de recusa">
-            <Button size="small" icon="pi pi-times-circle" severity="danger"
-              outlined={filtroRapido !== 'negou'} aria-pressed={filtroRapido === 'negou'}
-              label={`Médico negou (${nNegou})`}
-              title="Pedidos em que um médico recusou cotar — os que ainda estão com outro médico e os que ficaram sem nenhum"
-              onClick={() => setFiltroRapido(filtroRapido === 'negou' ? null : 'negou')} />
-            <Button size="small" icon="pi pi-exclamation-triangle" severity="warning"
-              outlined={filtroRapido !== 'sem'} aria-pressed={filtroRapido === 'sem'}
-              label={`Sem médico (${nSemMedico})`}
-              title="Pedidos que ficaram sem médico depois de uma recusa — precisam de outro médico (Trocar médico)"
-              onClick={() => setFiltroRapido(filtroRapido === 'sem' ? null : 'sem')} />
-            <span className="filtros-rapidos-sep" aria-hidden="true" />
-            <Button size="small" icon="pi pi-inbox" severity="secondary"
-              outlined={filtroRapido !== 'naoPedido'} aria-pressed={filtroRapido === 'naoPedido'}
-              label={`Ainda não pedimos (${nNaoPedido})`}
-              title="Pedidos em que ninguém copiou ainda a mensagem de pedido de orçamento ao médico"
-              onClick={() => setFiltroRapido(filtroRapido === 'naoPedido' ? null : 'naoPedido')} />
-            <Button size="small" icon="pi pi-send" severity="info"
-              outlined={filtroRapido !== 'pedido'} aria-pressed={filtroRapido === 'pedido'}
-              label={`Já pedimos (${nPedido})`}
-              title="Pedidos em que a mensagem de pedido de orçamento já foi copiada ao médico ao menos uma vez"
-              onClick={() => setFiltroRapido(filtroRapido === 'pedido' ? null : 'pedido')} />
-            {filtroRapido && <Button size="small" text label="Mostrar todos" onClick={() => setFiltroRapido(null)} />}
-          </div>
-          {medicosPedidos.length > 0 && (
-            <div className="filtros-rapidos-medicos" role="group" aria-label="Pedidos por médico a quem pedimos">
-              <span className="filtros-rapidos-medicos__rotulo"><i className="pi pi-user" /> Pedimos a:</span>
-              {medicosPedidos.map(([nome, n]) => {
-                const chave = `medico:${nome}` as const;
-                const ativo = filtroRapido === chave;
-                return (
-                  <button key={nome} type="button" className={`filtro-medico${ativo ? ' filtro-medico--ativo' : ''}`}
-                    aria-pressed={ativo} title={`Só os pedidos em que pedimos orçamento a ${nome}`}
-                    onClick={() => setFiltroRapido(ativo ? null : chave)}>
-                    {nome} <span className="filtro-medico__n">{n}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
           <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={dataComMedico} visiveis={visibleProcessos} nome="orcamento-medico" />
             {colunasCfg.botao}

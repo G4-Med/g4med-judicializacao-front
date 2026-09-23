@@ -454,3 +454,27 @@ body.dark-theme .linha-negado-sem-medico > td { background: rgba(220, 38, 38, 0.
 .bv-comp__reler { border: 0; background: transparent; color: #175cd3; text-decoration: underline; cursor: pointer; font-size: .78rem; }
 .bv-comp__rubricas { font-size: .78rem; padding-left: 18px; max-height: 160px; overflow: auto; }
 .bv-comp__destaque--aviso { background: #fef3f2; color: #b42318; }
+
+/* Filtros rápidos da fase 3 em cartão próprio (@R 23/09 15:24) */
+.om-rapidos { background: var(--surface-card, #fff); border: 1px solid var(--surface-border, #e5e7eb); border-radius: 12px;
+  padding: .75rem 1rem; margin-bottom: 1rem; display: flex; flex-direction: column; gap: .6rem; }
+.om-rapidos__linha { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.om-rapidos__rotulo { width: 6.5rem; flex-shrink: 0; font-size: .72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--text-color-secondary, #6b7280); }
+.om-pilulas { display: flex; flex-wrap: wrap; gap: .4rem; }
+.om-pilula { display: inline-flex; align-items: center; gap: .4rem; border: 1px solid var(--surface-border, #d1d5db);
+  background: var(--surface-card, #fff); color: var(--text-color, #1f2937); border-radius: 999px; padding: .3rem .75rem;
+  font-size: .82rem; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.om-pilula i { font-size: .8rem; opacity: .75; }
+.om-pilula:hover { border-color: var(--primary-color, #1f7a4d); }
+.om-pilula:focus-visible { outline: 2px solid var(--primary-color, #1f7a4d); outline-offset: 2px; }
+.om-pilula__n { font-variant-numeric: tabular-nums; font-size: .72rem; font-weight: 600; background: var(--surface-ground, #f1f5f9);
+  border-radius: 999px; padding: .05rem .45rem; min-width: 1.4rem; text-align: center; }
+.om-pilula--ativa { background: var(--primary-color, #1f7a4d); border-color: var(--primary-color, #1f7a4d); color: #fff; }
+.om-pilula--ativa i { opacity: 1; }
+.om-pilula--ativa .om-pilula__n { background: rgba(255,255,255,.25); color: #fff; }
+.om-pilula--alerta:not(.om-pilula--ativa) .om-pilula__n { background: #fef3c7; color: #92400e; }
+.om-rapidos__prof { min-width: 20rem; max-width: 100%; }
+.om-prof-item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; width: 100%; }
+.om-prof-valor { display: inline-flex; align-items: center; gap: .4rem; }
+@media (max-width: 640px) { .om-rapidos__rotulo { width: 100%; } .om-rapidos__prof { min-width: 0; width: 100%; } }
