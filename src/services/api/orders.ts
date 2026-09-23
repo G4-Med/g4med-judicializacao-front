@@ -164,10 +164,12 @@ export const promoverOrcamentoVersao = (orderId: number, versaoId: number) =>
 export const reenviarOrcamentoVersao = (orderId: number, versaoId: number) =>
   api.post(`/orders/${orderId}/orcamento-versoes/${versaoId}/reenviar/`, {});
 
-export const uploadAnexoOrder = (orderId: number, file: File, tipo: string) => {
+export const uploadAnexoOrder = (orderId: number, file: File, tipo: string, opcoes?: { substituir?: boolean }) => {
   const form = new FormData();
   form.append('file', file);
   form.append('tipo', tipo);
+  // #639: substituir=1 tira os orçamentos anteriores do PDF enviado (viram "substituído", não são apagados).
+  if (opcoes?.substituir) form.append('substituir', '1');
   return api.post(`/orders/${orderId}/anexos/upload/`, form, {
     headers: { 'Content-Type': 'multipart/form-data' }
   });

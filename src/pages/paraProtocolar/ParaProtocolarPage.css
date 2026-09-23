@@ -463,3 +463,24 @@ body.dark-theme .pp-form-grid .radio-item:hover { background: rgba(0, 166, 81, 0
 /* O rótulo do Recusar não quebra: a coluna de ações é estreita e uma quebra empurra a
    altura de TODA a linha, desalinhando a tabela inteira. */
 .pp-btn-recusar .p-button-label { white-space: nowrap; }
+
+/* #639 — modal Editar Processo */
+.pp-email-integra {
+  white-space: pre-wrap; word-break: break-word; margin: 0;
+  max-height: 45vh; overflow: auto; padding: 12px 14px;
+  border: 1px solid var(--mc-border-2); border-radius: 8px; background: #fafbfc;
+  font-family: inherit; font-size: 0.92rem; line-height: 1.5; color: #1f2937;
+}
+.pp-selo-valido {
+  margin-left: 8px; padding: 2px 8px; border-radius: 999px; font-size: 0.72rem;
+  text-transform: none; letter-spacing: 0; background: #dcfce7; color: #166534; font-weight: 600;
+}
+.pp-trocar-orcamento { display: flex; align-items: center; gap: 10px; cursor: pointer; text-transform: none; letter-spacing: 0; }
+.pp-trocar-orcamento small { color: var(--mc-muted); font-size: 0.8rem; }
+.pp-anexos-email { display: flex; flex-wrap: wrap; gap: 8px; }
+.pp-anexo-email {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 8px;
+  border: 1px solid #e5e7eb; background: #fff; color: #374151; font-size: 0.88rem; cursor: pointer;
+}
+.pp-anexo-email:hover, .pp-anexo-email:focus-visible { background: #f3f4f6; }
+.pp-erro-inline { color: #b91c1c; font-size: 0.88rem; }

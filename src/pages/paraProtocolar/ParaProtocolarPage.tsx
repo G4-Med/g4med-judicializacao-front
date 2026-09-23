@@ -8,7 +8,8 @@ import type {
 } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
-import { getParaProtocolar, salvarProtocolar, uploadAnexoOrder, getOrders, getMedicosCompleto, getAnexosOrder, getOrcamentoConsolidado, getEmailRecebimentoPdf, atualizarOrder } from '../../services/api/orders';
+import { getParaProtocolar, salvarProtocolar, uploadAnexoOrder, getOrders, getMedicosCompleto, getAnexosOrder, getOrcamentoConsolidado, getEmailRecebimentoPdf, atualizarOrder, getFichaPedido, getConteudoEmail, salvarBlob } from '../../services/api/orders';
+import { baixarAnexoEmailOriginal } from '../../services/api/emailsJuridico';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -92,6 +93,10 @@ export function ParaProtocolarPage() {
   const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [anexosOrcamento, setAnexosOrcamento] = useState<any[]>([]);
   const [loadingAnexosOrcamento, setLoadingAnexosOrcamento] = useState(false);
+  // #639: anexos que VIERAM no e-mail que originou o pedido (lidos do .eml guardado) + troca do orçamento.
+  const [anexosEmailOrigem, setAnexosEmailOrigem] = useState<{ anexoId: number; nome: string; n: number }[] | null>(null);
+  const [erroAnexosEmail, setErroAnexosEmail] = useState<string | null>(null);
+  const [trocandoOrcamento, setTrocandoOrcamento] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewTipo, setPreviewTipo] = useState<'pdf' | 'imagem' | 'outro'>('outro');
@@ -494,6 +499,7 @@ export function ParaProtocolarPage() {
             .then((res: any) => setAnexosOrcamento(res.data.anexos ?? []))
             .catch(() => setAnexosOrcamento([]))
             .finally(() => setLoadingAnexosOrcamento(false));
+          carregarAnexosEmailOrigem(rowData.id);
           setEditDialogVisible(true);
         }}
       />
@@ -569,6 +575,53 @@ export function ParaProtocolarPage() {
         className="p-column-filter"
       />
     );
+  };
+
+  /* #639 (@R 22/09): "se tiver anexo que veio junto com o email mostrar". A Ficha já sabe quais
+     e-mails originaram o pedido; o servidor abre o .eml guardado e devolve os nomes dos anexos. */
+  const carregarAnexosEmailOrigem = async (orderId: number) => {
+    setAnexosEmailOrigem(null);
+    setErroAnexosEmail(null);
+    try {
+      const ficha: any = await getFichaPedido(orderId);
+      const originais: { anexoId: number }[] = ficha.data?.emails?.originais ?? [];
+      const lista: { anexoId: number; nome: string; n: number }[] = [];
+      for (const o of originais) {
+        const r: any = await getConteudoEmail(orderId, o.anexoId);
+        (r.data?.anexos ?? []).forEach((nome: string, i: number) => lista.push({ anexoId: o.anexoId, nome, n: i + 1 }));
+      }
+      setAnexosEmailOrigem(lista);
+    } catch (e: any) {
+      // Falha de leitura NÃO pode parecer "o e-mail não tinha anexo".
+      setErroAnexosEmail(e?.response?.data?.detail ?? 'Não consegui ler os anexos do e-mail agora.');
+      setAnexosEmailOrigem([]);
+    }
+  };
+
+  /* "Atualizar anexo" era um botão morto (só console.log). Agora troca o orçamento de verdade — e
+     AVISA antes, porque o download e o e-mail à SES juntam TODOS os orçamentos do pedido num PDF só:
+     sem substituir, o arquivo novo iria somado ao velho. */
+  const trocarOrcamento = async (arquivo: File | null | undefined) => {
+    if (!arquivo || !registroEditando) return;
+    const atuais = anexosOrcamento
+      .map((a: any) => a.nomeLegivel || (a.linkImagem || '').split('/').pop())
+      .filter(Boolean);
+    const aviso = atuais.length
+      ? `Este arquivo vai SUBSTITUIR o orçamento atual do pedido #${registroEditando.id}:\n\n• ${atuais.join('\n• ')}\n\n`
+        + 'O anterior fica guardado no histórico, mas deixa de ir no PDF baixado e no e-mail.\n\n'
+        + `Novo arquivo: ${arquivo.name}\n\nConfirmar a substituição?`
+      : `O pedido #${registroEditando.id} ainda não tem orçamento. Anexar "${arquivo.name}" como o orçamento do pedido?`;
+    if (!window.confirm(aviso)) return;
+    setTrocandoOrcamento(true);
+    try {
+      await uploadAnexoOrder(registroEditando.id, arquivo, 'ORCAMENTO', { substituir: true });
+      const res: any = await getAnexosOrder(registroEditando.id, 'ORCAMENTO');
+      setAnexosOrcamento(res.data.anexos ?? []);
+    } catch (e: any) {
+      alert(e?.response?.data?.error ?? 'Não foi possível trocar o orçamento. Nada foi alterado.');
+    } finally {
+      setTrocandoOrcamento(false);
+    }
   };
 
   const updateRegistroEditando = (field: keyof ParaProtocolarTableRow, value: any) => {
@@ -954,7 +1007,13 @@ const handleConfirmarProtocolacao = async () => {
             </div>
 
             <div className="field field-span-4">
-              <label>Orçamento do Pedido</label>
+              <label>Orçamento do Pedido
+                {!loadingAnexosOrcamento && anexosOrcamento.length > 0 && (
+                  <span className="pp-selo-valido" title="É este arquivo que vai no PDF baixado e no e-mail à SES.">
+                    {anexosOrcamento.length === 1 ? 'válido — é este que vai' : `válidos — os ${anexosOrcamento.length} vão juntos em 1 PDF`}
+                  </span>
+                )}
+              </label>
 
               {loadingAnexosOrcamento && (
                 <span style={{ fontSize: '0.9rem', color: '#888' }}>
@@ -1017,23 +1076,52 @@ const handleConfirmarProtocolacao = async () => {
             </div>
 
             <div className="field field-span-4">
-              <label>Observações</label>
-              <InputTextarea
-                value={registroEditando.observacoes}
-                onChange={(e) => updateRegistroEditando('observacoes', e.target.value)}
-                rows={14}
-                style={{ width: '100%', fontSize: '0.95rem', lineHeight: 1.5 }}
-              />
+              {!readOnly && (
+                <label className="pp-trocar-orcamento">
+                  <input type="file" accept=".pdf,image/*" hidden disabled={trocandoOrcamento}
+                    onChange={(e) => { trocarOrcamento(e.target.files?.[0]); e.target.value = ''; }} />
+                  <span className="p-button p-button-outlined p-button-sm">
+                    <i className={trocandoOrcamento ? 'pi pi-spin pi-spinner' : 'pi pi-upload'} style={{ marginRight: 6 }} />
+                    {anexosOrcamento.length ? 'Substituir o orçamento' : 'Anexar orçamento'}
+                  </span>
+                  <small>{anexosOrcamento.length ? 'Pede confirmação; o anterior fica no histórico.' : 'O arquivo vira o orçamento do pedido.'}</small>
+                </label>
+              )}
             </div>
 
-            <div className="field field-span-2 field-button">
-              <label>&nbsp;</label>
-              <Button
-                label="Atualizar Anexo"
-                icon="pi pi-upload"
-                outlined
-                onClick={() => console.log('Atualizar anexo', registroEditando)}
-              />
+            {/* #639: era um campo editável de UMA linha (a regra .p-inputtext {height:42px} pegava o
+                textarea) e o Salvar nem enviava este texto — editar aqui não gravava nada. É o e-mail
+                que chegou: vira leitura, no tamanho inteiro. */}
+            <div className="field field-span-4">
+              <label>E-mail da solicitação (como chegou)</label>
+              {registroEditando.observacoes
+                ? <pre className="pp-email-integra">{registroEditando.observacoes}</pre>
+                : <span style={{ fontSize: '0.9rem', color: '#aaa' }}>Sem texto de e-mail neste pedido.</span>}
+            </div>
+
+            <div className="field field-span-4">
+              <label>Anexos que vieram com o e-mail</label>
+              {anexosEmailOrigem === null && (
+                <span style={{ fontSize: '0.9rem', color: '#888' }}>
+                  <i className="pi pi-spin pi-spinner" style={{ marginRight: 6 }} />Lendo o e-mail original…
+                </span>
+              )}
+              {erroAnexosEmail && <span className="pp-erro-inline">{erroAnexosEmail}</span>}
+              {anexosEmailOrigem && anexosEmailOrigem.length === 0 && !erroAnexosEmail && (
+                <span style={{ fontSize: '0.9rem', color: '#aaa' }}>O e-mail não trouxe anexos (ou o pedido não veio por e-mail).</span>
+              )}
+              {anexosEmailOrigem && anexosEmailOrigem.length > 0 && (
+                <div className="pp-anexos-email">
+                  {anexosEmailOrigem.map((a) => (
+                    <button key={`${a.anexoId}-${a.n}`} type="button" className="pp-anexo-email" onClick={async () => {
+                      try { const { data } = await baixarAnexoEmailOriginal(registroEditando.id, a.anexoId, a.n); salvarBlob(data, a.nome); }
+                      catch { alert('Não consegui baixar este anexo agora.'); }
+                    }}>
+                      <i className="pi pi-paperclip" /> {a.nome} <i className="pi pi-download" />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
