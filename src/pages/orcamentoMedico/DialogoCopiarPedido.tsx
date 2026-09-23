@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
+import { InputNumber } from 'primereact/inputnumber';
 import { FichaPrestadorDialog } from '../../components/FichaPrestador/FichaPrestadorDialog';
 import { adicionarEspecialidadeDestino, previaLinkDocumentos, gerarLinkDocumentos, gerarRelatorioMedico, registrarCotacaoPedida, montarCotacaoMedico } from '../../services/api/orders';
 
@@ -143,6 +144,9 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   // @R 22/09 10:49: "marcar o que quer mandar no link... poder desmarcar algo que ele não queira mandar".
   // Guarda o que foi DESMARCADO (padrão = vai tudo, como antes). O servidor recusa id de outro pedido.
   const [docsFora, setDocsFora] = useState<Set<number>>(new Set());
+  // @R 23/09 12:51: o valor que o médico vê pode ser ajustado por quem copia ("coerente com o que acho").
+  // Só guarda o que difere do calculado; o servidor valida (orçamento do pedido, valor > 0) e registra.
+  const [ajustes, setAjustes] = useState<Record<number, number>>({});
   const [refsFora, setRefsFora] = useState<Set<number>>(new Set());
   // @R 22/09 ~11:10: "um check que vamos mandar os últimos pagamentos, os 5... e podemos desmarcar os
   // valores para enviar só os corretos". Padrão: NÃO vai (como antes); ligando, vão os 5 e desmarca-se.
@@ -229,6 +233,8 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
           pagamentosIncluidos: enviarPag ? pagVao.map((p) => p.id) : [],
           resumoId: enviarRel && rel ? rel.id : null,
           historicoIncluido: enviarHist && cotacoesAnt.length > 0,
+          valoresAjustados: comValores ? Object.fromEntries(Object.entries(ajustes)
+            .filter(([id]) => !refsFora.has(Number(id)))) : {},
         });
       } catch (e: any) {
         alert(`${e?.response?.data?.error || 'Não foi possível gerar o link seguro.'}\n\nNada foi copiado.`);
@@ -365,7 +371,29 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
                         <td style={{ padding: '4px 6px' }}>{x.categoria}</td>
                         <td style={{ padding: '4px 6px', textAlign: 'right' }}>{brl(x.valorOriginal)}</td>
                         <td style={{ padding: '4px 6px', textAlign: 'right', fontWeight: 600 }}>
-                          {vai ? brl(x.valorReferencia)
+                          {vai ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                              <InputNumber value={ajustes[x.id] ?? x.valorReferencia} mode="currency" currency="BRL" locale="pt-BR"
+                                inputStyle={{ width: '8.5rem', textAlign: 'right', padding: '2px 6px', fontWeight: 600 }}
+                                aria-label={`Valor que o médico vê — ${x.categoria}`}
+                                onValueChange={(e) => {
+                                  const v = e.value;
+                                  setAjustes((a) => {
+                                    const n = { ...a };
+                                    if (v == null || Math.abs(v - x.valorReferencia) < 0.01) delete n[x.id]; else n[x.id] = v;
+                                    return n;
+                                  });
+                                }} />
+                              {ajustes[x.id] != null && (
+                                <span style={{ fontSize: 11, color: '#b45309' }}>
+                                  ajustado · calculado {brl(x.valorReferencia)}{' '}
+                                  <button type="button" onClick={() => setAjustes((a) => { const n = { ...a }; delete n[x.id]; return n; })}
+                                    style={{ background: 'none', border: 0, color: '#0a7a3d', textDecoration: 'underline', cursor: 'pointer', padding: 0, font: 'inherit' }}>
+                                    voltar</button>
+                                </span>
+                              )}
+                            </div>
+                          )
                             : <span style={{ color: '#9ca3af' }} title={bloqueada ? x.ocultoAoMedico : undefined}>
                                 {bloqueada ? 'não vai (não conferido)' : 'não vai'}</span>}
                         </td>
