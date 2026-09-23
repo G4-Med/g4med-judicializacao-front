@@ -14,6 +14,7 @@ import type { EstadoGatilho, FilaBaterValores, ItemBaterValores, PainelBaterValo
 import { compararComponentes, decidirBaterValores, listarBaterValores, painelBaterValores } from '../../services/api/baterValores';
 import type { ComparativoComponentes } from '../../services/api/baterValores';
 import { EntradaManualDialog } from './EntradaManualDialog';
+import { registrarRespostaCotacao, salvarOrcamentoMedico, uploadAnexoOrder } from '../../services/api/orders';
 
 /* Fase 3.1 "bater valores" (@R 22/09/2026 14:24: "quando recebemos um orçamento e vemos que tem um valor
    menor no próprio processo, nós tentamos bater o processo").
@@ -231,12 +232,48 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
   const [obs, setObs] = useState('');
   const [salvando, setSalvando] = useState(false);
 
+  const [pdf, setPdf] = useState(painel.pdfOrcamento ?? null);
+  const [enviandoPdf, setEnviandoPdf] = useState(false);
+  const arquivoRef = useRef<HTMLInputElement | null>(null);
+
   const revisando = saida === 'REVISADO';
-  const pode = !salvando && (!revisando || (!!motivo && !!valorNovo && valorNovo > 0));
+  const recusando = saida === 'RECUSADO' || saida === 'PERDA';
+  // @R 22/09 21:22: confirmar exige o PDF do orçamento (vai anexo à SES) e recusar exige o porquê em texto
+  const faltaPdf = saida === 'CONFIRMADO' && !!painel.temEmailRetido && !pdf;
+  const pode = !salvando && !enviandoPdf && !faltaPdf
+    && (!revisando || (!!motivo && !!valorNovo && valorNovo > 0))
+    && (!recusando || obs.trim().length >= 10);
+
+  const anexarPdf = async (arquivo: File | undefined) => {
+    if (!arquivo) return;
+    if (pdf && !window.confirm(`Este PDF vai SUBSTITUIR o orçamento atual (${pdf.nome}) como o que segue para a SES. Continuar?`)) return;
+    setEnviandoPdf(true);
+    try {
+      await uploadAnexoOrder(painel.pedido, arquivo, 'ORCAMENTO');
+      setPdf({ id: 0, nome: arquivo.name, em: new Date().toISOString() });
+    } catch {
+      alert('Não consegui anexar o PDF agora. Tente de novo.');
+    } finally {
+      setEnviandoPdf(false);
+      if (arquivoRef.current) arquivoRef.current.value = '';
+    }
+  };
 
   const decidir = async () => {
+    // As recusas passam PRIMEIRO pela rota própria (a mesma da tela da fase 3): a recusa do médico devolve o
+    // pedido a Selecionar médico; a perda gera a negativa à SES na Central. Só depois a 3,1 registra a saída.
+    if (saida === 'RECUSADO' && !window.confirm('O médico recusa baixar o valor: o pedido sai dele e VOLTA para Selecionar médico (fase 2). O e-mail de orçamento parado é cancelado. Confirmar?')) return;
+    if (saida === 'PERDA' && !window.confirm('Perda na cotação por não atingir o valor: o pedido vai para Perda e a negativa à SES fica na Central de E-mails para envio. O e-mail de orçamento parado é cancelado. Confirmar?')) return;
     setSalvando(true);
     try {
+      if (saida === 'RECUSADO') {
+        await registrarRespostaCotacao(painel.pedido, 'RECUSOU', obs, 'PRECO');
+      }
+      if (saida === 'PERDA') {
+        await salvarOrcamentoMedico(painel.pedido, {
+          acao: 'nao_faco', parecer: obs, motivoPerdaCategoria: 'VALOR_NAO_ATINGIDO', confirmarPerdaComOutrosCotando: true,
+        });
+      }
       const r = await decidirBaterValores(painel.pedido, {
         saida, motivo: motivo ?? undefined, observacao: obs || undefined, valorNovo: revisando ? valorNovo : undefined,
       });
@@ -247,6 +284,12 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
         else if (envio) alert(`Valor confirmado, mas o e-mail NÃO saiu: ${envio.motivo}. Ele está na Central de E-mails.`);
         else if (painel.jaFoiSES) alert('Valor confirmado e registrado. O pedido já tinha ido à SES e continua na fase atual.');
         else alert('Valor confirmado. Não havia e-mail de orçamento retido — envie pela tela de Orçamento Médico.');
+      } else if (saida === 'RECUSADO') {
+        alert('Recusa registrada: o pedido voltou para Selecionar médico (fase 2)'
+          + (r.data.emailCancelado ? ' e o e-mail de orçamento parado foi cancelado.' : '.'));
+      } else if (saida === 'PERDA') {
+        alert('Perda registrada (valor não atingido). A negativa à SES está na Central de E-mails'
+          + (r.data.emailCancelado ? '; o e-mail de orçamento parado foi cancelado.' : '.'));
       } else {
         alert('Revisão registrada. Agora suba a nova versão com o valor que o médico mandou (Orçamento Médico → versões) — é ela que vai à SES.');
       }
@@ -304,25 +347,47 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
         ele está no honorário — e a decisão é do médico. Se ele mandou valor novo, registre abaixo.
       </div>
 
-      <SelectButton className="mb-3" value={saida} onChange={(e) => e.value && setSaida(e.value)} options={[
-        { label: 'Confirmar o valor (envia agora)', value: 'CONFIRMADO' },
+      <div className="text-600 mb-1" style={{ fontSize: '.8rem' }}>Aceitar o valor</div>
+      <SelectButton className="mb-2" value={saida} onChange={(e) => e.value && setSaida(e.value)} options={[
+        { label: 'Confirmar o valor → vai à SES e segue para 4. Protocolar', value: 'CONFIRMADO' },
         { label: 'O médico revisou', value: 'REVISADO' },
       ]} />
+      <div className="text-600 mb-1" style={{ fontSize: '.8rem' }}>Recusar o valor</div>
+      <SelectButton className="mb-3" value={saida} onChange={(e) => e.value && setSaida(e.value)} options={[
+        { label: 'Médico recusou → volta a Selecionar médico', value: 'RECUSADO' },
+        { label: 'Perda: valor não atingido', value: 'PERDA' },
+      ]} />
+
+      {saida === 'CONFIRMADO' && (
+        <div className="p-2 mb-2" style={{ border: '1px solid #e4e7ec', borderRadius: 6, fontSize: '.85rem' }}>
+          <div className="text-600 mb-1">Orçamento que vai anexo à SES</div>
+          {pdf
+            ? <div><i className="pi pi-file-pdf" style={{ color: '#f97316' }} /> {pdf.nome}</div>
+            : <div style={{ color: '#b42318' }}>Nenhum PDF de orçamento anexado — anexe antes de confirmar.</div>}
+          <input ref={arquivoRef} type="file" accept="application/pdf" hidden onChange={(e) => anexarPdf(e.target.files?.[0])} />
+          <Button className="mt-2" size="small" outlined icon="pi pi-upload" loading={enviandoPdf}
+            label={pdf ? 'Trocar o PDF do orçamento' : 'Anexar o PDF do orçamento'} onClick={() => arquivoRef.current?.click()} />
+          {!painel.temEmailRetido && <div className="text-600 mt-1">Não há e-mail de orçamento parado para este pedido: a confirmação só fica registrada.</div>}
+        </div>
+      )}
 
       <div className="flex flex-column gap-2">
-        <Dropdown value={motivo} onChange={(e) => setMotivo(e.value)} showClear
+        {!recusando && <Dropdown value={motivo} onChange={(e) => setMotivo(e.value)} showClear
           options={painel.motivosRevisao} optionLabel="rotulo" optionValue="valor"
-          placeholder={revisando ? 'Motivo da revisão (obrigatório)' : 'Motivo (opcional)'} />
+          placeholder={revisando ? 'Motivo da revisão (obrigatório)' : 'Motivo (opcional)'} />}
         {revisando && (
           <InputNumber value={valorNovo} onValueChange={(e) => setValorNovo(e.value ?? null)} mode="currency"
             currency="BRL" locale="pt-BR" placeholder="Valor que o MÉDICO mandou" />
         )}
-        <InputTextarea value={obs} onChange={(e) => setObs(e.target.value)} rows={2} placeholder="Observação (opcional)" />
+        <InputTextarea value={obs} onChange={(e) => setObs(e.target.value)} rows={recusando ? 3 : 2}
+          placeholder={recusando ? 'Por que (obrigatório, mín. 10 letras) — ex.: o médico não baixa o honorário' : 'Observação (opcional)'} />
       </div>
 
       <div className="flex justify-content-end gap-2 mt-3">
         <Button label="Cancelar" text onClick={onFechar} />
-        <Button label={revisando ? 'Registrar revisão' : 'Confirmar e enviar'} icon="pi pi-check" loading={salvando}
+        <Button label={saida === 'REVISADO' ? 'Registrar revisão' : saida === 'RECUSADO' ? 'Registrar recusa'
+          : saida === 'PERDA' ? 'Dar perda' : 'Confirmar e enviar'}
+          icon={recusando ? 'pi pi-times' : 'pi pi-check'} severity={recusando ? 'danger' : undefined} loading={salvando}
           disabled={!pode} onClick={decidir} />
       </div>
     </Dialog>

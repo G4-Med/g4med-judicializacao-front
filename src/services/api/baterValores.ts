@@ -5,7 +5,8 @@ import api from './../api';
  *  próprio processo; quem decide é a pessoa. Nunca sugerimos onde cortar (hospital, OPME e
  *  anestesista são custo de terceiro — só o honorário é negociável, e a decisão é do médico). */
 export type EstadoGatilho = 'COM_CONCORRENTE' | 'INDETERMINADO' | 'SEM_CONCORRENTE';
-export type Saida = 'CONFIRMADO' | 'REVISADO';
+// @R 22/09 21:22: ao recusar o valor, 2 saídas da fase — o médico recusa (volta a Selecionar médico) ou perda
+export type Saida = 'CONFIRMADO' | 'REVISADO' | 'RECUSADO' | 'PERDA';
 
 export interface DecisaoValor {
   saida: Saida | 'SEM_RETORNO';
@@ -36,6 +37,10 @@ export interface ItemBaterValores {
 }
 
 export interface PainelBaterValores extends ItemBaterValores {
+  /** o PDF que vai anexo à SES ao confirmar (o último ORCAMENTO do pedido) — null = falta anexar */
+  pdfOrcamento?: { id: number; nome: string; em: string } | null;
+  /** há e-mail de orçamento parado esperando esta decisão */
+  temEmailRetido?: boolean;
   terceiros: { id: number; prestador: string | null; valorTotal: number; pagina: number | null;
                comparavel: boolean; procedimento: string | null;
                linkAbrir?: string | null; origemAbrir?: 'RECORTE' | 'ARQUIVO' | 'PECA' | null;
@@ -82,7 +87,7 @@ export const painelBaterValores = (pedido: number) =>
 
 export const decidirBaterValores = (pedido: number, corpo: {
   saida: Saida; motivo?: string; observacao?: string; valorNovo?: number | null;
-}) => api.post<{ id: number; saida: Saida; liberado: boolean; envio: ResultadoEnvio | null }>(
+}) => api.post<{ id: number; saida: Saida; liberado: boolean; envio: ResultadoEnvio | null; emailCancelado?: number | null }>(
   `/orders/${pedido}/bater-valores/decidir/`, corpo);
 
 /** Entrada MANUAL (@R 22/09): qualquer pedido, qualquer fase, com motivo. A fase do pedido não muda. */
