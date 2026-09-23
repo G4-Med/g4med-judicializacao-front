@@ -50,7 +50,7 @@ const isGroup = (item: MenuConfigItem): item is MenuGroupConfig => 'children' in
 
 export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
   { label: 'Processo Operacional', icon: 'pi pi-book', path: '/processo-operacional', screen: 'processoOperacional' },
-  { label: 'Manuais (médico e hospital)', icon: 'pi pi-file', path: '/manuais', screen: 'processoOperacional' },
+  { label: 'Documentos', icon: 'pi pi-folder', path: '/documentos', screen: 'processoOperacional' },   // @R 23/09 16:53: manuais · proposta comercial · jurídicos
   { label: 'Home', icon: 'pi pi-home', path: '/home', screen: 'home' },
   { label: 'Dashboard', icon: 'pi pi-chart-bar', path: '/dashboard', screen: 'dashboard', emReforma: true },
   { label: 'Funil', icon: 'pi pi-filter', path: '/funil', screen: 'funil' },

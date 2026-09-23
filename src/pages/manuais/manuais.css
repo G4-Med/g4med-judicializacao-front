@@ -41,11 +41,45 @@
 }
 .manual-tabela th { background: #f7f7f4; font-weight: 700; }
 
+.manual-voltar {
+  background: transparent; color: #fff; border: none; padding: 8px 4px; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.manual-voltar:focus-visible { outline: 2px solid var(--m-amarelo); outline-offset: 2px; }
+.manual-topo-esq { display: flex; align-items: center; gap: 14px; }
+.manual-impresso { display: none; }
+
+/* IMPRESSÃO / SALVAR EM PDF (@R 23/09 16:52: "o manual não apareceu para impressão correto e cuidado com a
+   quebra de página"). Página NOMEADA: as regras @page sem nome de outras telas (Processo Operacional põe
+   margem 0) não alcançam o manual. Quebras: título nunca fica sozinho no pé da página, item de lista e
+   linha de tabela não se partem, parágrafo não deixa 1 linha órfã. */
+@page manual {
+  size: A4;
+  margin: 16mm 15mm 18mm;
+  @bottom-center { content: "G4MED · página " counter(page) " de " counter(pages); font-size: 9pt; color: #5b616e; }
+}
 @media print {
+  .manual-pagina { page: manual; min-height: 0; background: #fff; }
   .manual-topo { display: none; }
-  .manual-pagina, .manual-corpo { background: #fff; }
-  .manual-corpo { max-width: none; padding: 0; font-size: 12pt; }
-  .manual-corpo h2 { break-after: avoid; }
+  .manual-impresso {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    border-bottom: 2pt solid #0d0d0f; padding-bottom: 6pt; margin-bottom: 10pt; font-size: 10pt; color: #5b616e;
+  }
+  .manual-impresso .manual-marca { color: #0d0d0f; font-size: 13pt; }
+  .manual-impresso .manual-marca b { color: #0d0d0f; }
+  .manual-para { max-width: none; padding: 0 0 6pt; background: #fff; }
+  .manual-corpo { max-width: none; padding: 0; font-size: 11pt; line-height: 1.5; background: #fff; }
+  .manual-corpo h1 { font-size: 18pt; margin: 0 0 8pt; }
+  .manual-corpo h2 { font-size: 13.5pt; margin: 16pt 0 6pt; padding-top: 0; border-top: none; }
+  .manual-corpo h3 { font-size: 12pt; margin: 12pt 0 4pt; }
+  .manual-corpo h1, .manual-corpo h2, .manual-corpo h3 { break-after: avoid; break-inside: avoid; }
+  .manual-corpo p, .manual-corpo li { orphans: 3; widows: 3; }
+  .manual-corpo li { break-inside: avoid; }
+  .manual-corpo hr { break-after: avoid; }
+  .manual-corpo hr + p { break-before: avoid; }
   .manual-tabela { overflow: visible; }
+  .manual-tabela table { font-size: 10pt; }
+  .manual-tabela thead { display: table-header-group; }
   .manual-tabela tr { break-inside: avoid; }
+  .manual-tabela th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

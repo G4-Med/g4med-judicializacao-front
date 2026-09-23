@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import medico from './conteudo/MANUAL_MEDICO.md?raw';
 import hospital from './conteudo/MANUAL_HOSPITAL.md?raw';
 import { markdownParaHtml } from './markdownSimples';
@@ -22,6 +22,15 @@ export function ManualPublicoPage() {
   const manual = MANUAIS[qual as QualManual];
   const html = useMemo(() => (manual ? markdownParaHtml(manual.texto) : ''), [manual]);
 
+  const navegar = useNavigate();
+  const local = useLocation();
+  // Voltar (@R 23/09 16:52: "a barra tem que ter o botão para voltar, para a tela anterior"). Com histórico
+  // dentro do site → volta 1; aberto direto (link colado) por alguém da equipe logado → Documentos; o médico
+  // ou o hospital que abriu pelo WhatsApp não tem "tela anterior" no site e não vê o botão.
+  const temHistorico = local.key !== 'default';
+  const logado = (() => { try { return !!localStorage.getItem('access_token'); } catch { return false; } })();
+  const voltar = () => (temHistorico ? navegar(-1) : navegar('/documentos'));
+
   useEffect(() => { document.title = manual ? `${manual.titulo}${para ? ` · ${para}` : ''} · G4MED` : 'Manuais · G4MED'; }, [manual, para]);
 
   if (!manual) {
@@ -41,9 +50,21 @@ export function ManualPublicoPage() {
   return (
     <div className="manual-pagina">
       <header className="manual-topo">
-        <span className="manual-marca">G<b>4</b>MED</span>
+        <div className="manual-topo-esq">
+          {(temHistorico || logado) && (
+            <button type="button" className="manual-voltar" onClick={voltar} aria-label="Voltar para a tela anterior">
+              <i className="pi pi-arrow-left" aria-hidden="true" /> Voltar
+            </button>
+          )}
+          <span className="manual-marca">G<b>4</b>MED</span>
+        </div>
         <button type="button" className="manual-pdf" onClick={() => window.print()}>Salvar em PDF</button>
       </header>
+      {/* só no papel: a barra escura some na impressão, a marca e o título ficam */}
+      <div className="manual-impresso" aria-hidden="true">
+        <span className="manual-marca">G<b>4</b>MED</span>
+        <span>{manual.titulo}</span>
+      </div>
       {para && <div className="manual-para">Preparado para <b>{para}</b></div>}
       {/* conteúdo fixo, escapado pelo conversor antes de qualquer marcação */}
       <main className="manual-corpo" dangerouslySetInnerHTML={{ __html: html }} />

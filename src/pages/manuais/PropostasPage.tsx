@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
@@ -23,9 +23,17 @@ export function PropostasPage() {
   const [salvando, setSalvando] = useState(false);
   const [aviso, setAviso] = useState('');
   const navegar = useNavigate();
+  const [busca] = useSearchParams();
 
   const carregar = () => listarPropostas().then((r) => setLista(r.data.itens ?? [])).catch(() => setAviso('Não foi possível carregar as propostas.'));
   useEffect(() => { carregar(); }, []);
+  // aberta pela área Documentos (/manuais/propostas?id=N): já entra na proposta clicada
+  const idPedido = Number(busca.get('id')) || 0;
+  useEffect(() => {
+    if (!idPedido || atual.id) return;
+    const p = lista.find((x) => x.id === idPedido);
+    if (p) setAtual(p);
+  }, [lista, idPedido]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const mudar = (campo: keyof Proposta, valor: unknown) => setAtual((p) => ({ ...p, [campo]: valor }));
 
@@ -66,7 +74,7 @@ export function PropostasPage() {
           <p>Preencha o cliente, o percentual e a base da cobrança. A prévia ao lado é exatamente o PDF.</p>
         </div>
         <div className="g4-acoes">
-          <Button label="Manuais" icon="pi pi-arrow-left" text onClick={() => navegar('/manuais')} />
+          <Button label="Documentos" icon="pi pi-arrow-left" text onClick={() => navegar('/documentos')} />
           <Button label="Nova proposta" icon="pi pi-plus" onClick={() => { setAtual(VAZIA); setAviso(''); }} />
         </div>
       </div>

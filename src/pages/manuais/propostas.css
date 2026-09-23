@@ -71,11 +71,44 @@
 @media (max-width: 1280px) { .propostas-corpo { grid-template-columns: 220px minmax(0, 1fr); } .pe-previa { grid-column: 1 / -1; max-height: none; } }
 @media (max-width: 860px) { .propostas-corpo { grid-template-columns: 1fr; } .pe-form { position: static; } .mc-pagina-g4 { padding: 16px; } }
 
-/* PDF: só a folha sai no papel */
+/* PDF: só a folha sai no papel — MAS só na página que TEM a folha. O Vite junta o CSS de todas as telas num
+   pacote só; sem o :has(), esta regra escondia tudo em qualquer impressão do site (medido 23/09: o manual
+   do hospital saía em branco, título com visibility:hidden). */
 @media print {
-  body * { visibility: hidden !important; }
-  .proposta-doc, .proposta-doc * { visibility: visible !important; }
+  body:has(.proposta-doc) * { visibility: hidden !important; }
+  /* mesma âncora body:has() nos dois lados: sem ela a regra que ESCONDE fica mais específica (0,1,1 × 0,1,0)
+     e a folha também some (medido 23/09 no preview: .proposta-doc visibility:hidden) */
+  body:has(.proposta-doc) .proposta-doc, body:has(.proposta-doc) .proposta-doc * { visibility: visible !important; }
   .proposta-doc { position: absolute; left: 0; top: 0; width: 100%; }
   .pd-remuneracao { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @page { size: A4; margin: 15mm 14mm; }
 }
+
+/* ── Documentos (@R 23/09 16:53): 3 áreas — Manuais · Proposta comercial · Documentos jurídicos ── */
+.doc-pagina { display: flex; flex-direction: column; gap: 1.5rem; }
+.doc-area { display: flex; flex-direction: column; gap: .75rem; }
+.doc-area-cabeca h2 { display: flex; align-items: center; gap: .5rem; font-size: 1.1rem; margin: 0; color: #0f2a3f; }
+.doc-area-cabeca h2 .pi { color: #0b8a4a; }
+.doc-area-cabeca p { margin: .2rem 0 0; color: #5b6b7a; font-size: .88rem; max-width: 70ch; }
+.doc-grade { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.doc-cartao { border: 1px solid #e3e8ec; border-radius: 10px; padding: 1rem; background: #fff; display: flex; flex-direction: column; gap: .5rem; }
+.doc-cartao h3 { font-size: 1rem; margin: 0; color: #0f2a3f; }
+.doc-cartao--acao { background: #f5fbf8; border-color: #c2ecd7; }
+.doc-desc { color: #4b5563; margin: 0; font-size: .88rem; }
+.doc-rotulo { font-size: .78rem; color: #5b6b7a; }
+.doc-campo { width: 100%; }
+.doc-acoes { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: auto; }
+.doc-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.doc-lista li + li { border-top: 1px solid #eef1f3; }
+.doc-lista button {
+  width: 100%; text-align: left; background: none; border: 0; padding: .45rem .25rem; cursor: pointer;
+  display: flex; justify-content: space-between; gap: .75rem; align-items: baseline; border-radius: 6px;
+}
+.doc-lista button:hover { background: #f4f7f9; }
+.doc-lista button:focus-visible { outline: 2px solid #0b8a4a; outline-offset: 1px; }
+.doc-lista-nome { font-weight: 600; color: #0f2a3f; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-lista-meta { color: #6b7a88; font-size: .78rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.doc-area--construcao { opacity: .7; }
+.doc-area--construcao h2 { color: #6b7a88; }
+.doc-area--construcao h2 .pi { color: #9aa7b3; }
+.doc-selo { font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; background: #fff3dc; color: #8a5a00; border-radius: 999px; padding: 2px 8px; }

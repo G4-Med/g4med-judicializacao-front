@@ -86,7 +86,9 @@ export function AppRoutes() {
         <Route path="/funil" element={<ProtectedScreen screen="funil"><FunilPage /></ProtectedScreen>} />
         <Route path="/sla" element={<ProtectedScreen screen="sla"><SlaPage /></ProtectedScreen>} />
         <Route path="/notificacoes-historico" element={<ProtectedScreen screen="notificacoesHistorico"><NotificacoesHistoricoPage /></ProtectedScreen>} />
-        <Route path="/manuais" element={<ProtectedScreen screen="processoOperacional"><ManuaisPage /></ProtectedScreen>} />
+        {/* Documentos (@R 23/09 16:53): o antigo /manuais leva para cá; os links públicos /manuais/medico e /manuais/hospital não mudam */}
+        <Route path="/documentos" element={<ProtectedScreen screen="processoOperacional"><ManuaisPage /></ProtectedScreen>} />
+        <Route path="/manuais" element={<Navigate to="/documentos" replace />} />
         <Route path="/manuais/propostas" element={<ProtectedScreen screen="processoOperacional"><PropostasPage /></ProtectedScreen>} />
         <Route path="/processo-operacional" element={<ProtectedScreen screen="processoOperacional"><ProcessoOperacionalPage /></ProtectedScreen>} />
         <Route path="/juridico" element={<ProtectedScreen screen="juridico"><JuridicoPage /></ProtectedScreen>} />

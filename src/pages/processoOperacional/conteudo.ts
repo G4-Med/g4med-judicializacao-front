@@ -489,8 +489,8 @@ export const AREAS_MENU: AreaMenu[] = [
   { grupo: 'Processo SES-MG', nome: 'Enviados sem protocolar', rota: '/enviado-ses', oQueE: 'Orçamentos entregues à SES sem protocolo — a bola está com o Estado.',
     paraQue: 'Aguardar o retorno técnico sem confundir com os protocolados.', tutorial: ['Abre pelo envio mais recente.'] },
   // ── Apoio ──────────────────────────────────────────────────────────────────
-  { grupo: 'Apoio', nome: 'Manuais (médico e hospital)', rota: '/manuais', novo: '21/09/2026',
-    oQueE: 'Os guias públicos para o médico e para o hospital parceiro, e as propostas comerciais.',
+  { grupo: 'Apoio', nome: 'Documentos', rota: '/documentos', novo: '23/09/2026',
+    oQueE: 'Três áreas: os manuais públicos do médico e do hospital, as propostas comerciais e os documentos jurídicos (em construção).',
     paraQue: 'Mandar ao prestador um link em vez de explicar tudo de novo.', tutorial: ['"Copiar link" e cole na conversa; "Salvar em PDF" imprime.'] },
   { grupo: 'Apoio', nome: 'Clientes', rota: '/clientes', oQueE: 'O cadastro de médicos, hospitais e clínicas.',
     paraQue: 'Manter quem cota o quê, onde atende e se está ativo.', tutorial: ['Inativar esconde o prestador das listas do sistema (reversível).'] },
