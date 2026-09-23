@@ -15,6 +15,7 @@ import { chaveOnboardingHome } from '../onboarding/useHomeOnboarding'
 // NUNCA usar o antigo logog4med_REPROVADA_* (5 blocos com serifa — lockup reprovado).
 import { MarcaG4med } from './MarcaG4med'
 import { AjudaModal } from '../../components/AjudaModal/AjudaModal'
+import { ChatInterno } from '../../components/ChatInterno/ChatInterno'
 import './Header.css'
 import { VersaoDoSistema } from './VersaoDoSistema';
 import { RelogioDoSite } from './RelogioDoSite';
@@ -209,6 +210,9 @@ export function Header({ onMenuClick }: Props) {
         {/* @R 20/09 (reunião com o Fabrício, Fase 6): tema escuro REMOVIDO — ninguém usava e as
             telas novas não eram testadas nele. `toggleTheme` fica só para quem tiver a preferência
             antiga gravada: o boot força claro (abaixo). */}
+
+        {/* Mensagens internas (#632): ícone aqui + aviso no centro da barra + painel lateral */}
+        <ChatInterno />
 
         <div className="mc-notif" ref={notificacoesRef}>
           <Button

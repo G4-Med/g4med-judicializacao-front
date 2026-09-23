@@ -108,6 +108,8 @@ function MainLayoutInner() {
   usarRegistroDePagina()
 
   return (
+    // Provider no TOPO (#632): o chat do cabeçalho abre a Ficha do Pedido pelo cartão anexado.
+    <FichaPedidoProvider>
     <div style={{ minHeight: '100vh' }}>
       <BarraDeCarregamento />
       <AvisoNovaVersao />
@@ -121,11 +123,10 @@ function MainLayoutInner() {
       {/* A ficha do pedido e o aviso de novidade vivem AQUI, e não em cada página:
           montados uma vez, valem para todas as telas (@R 16/09: "é em todas as telas"). */}
       <main style={{ padding: '20px' }}>
-        <FichaPedidoProvider>
-          <Outlet />
-        </FichaPedidoProvider>
+        <Outlet />
       </main>
     </div>
+    </FichaPedidoProvider>
   )
 }
 
