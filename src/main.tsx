@@ -10,6 +10,10 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { addLocale, locale } from 'primereact/api';
 import App from './App';
+import { instalarMedidaColunaFixa } from './lib/medidaColunaFixa';
+
+// travada de 13 s ao abrir tabelas com colunas fixas (@R 23/09) — ver src/lib/medidaColunaFixa.ts
+instalarMedidaColunaFixa();
 
 addLocale('pt', {
   startsWith: 'Começa com',
