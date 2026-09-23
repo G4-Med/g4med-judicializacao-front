@@ -159,7 +159,7 @@ export function useColunasVisiveis(tela: string) {
       .filter((el) => {
         const field = el?.props?.field;
         if (typeof field !== 'string' || !field) return true;   // coluna de sistema
-        achadas.push({ id: field, label: rotuloDe(el, field) });
+        achadas.push({ id: field, label: rotuloDe(el, verbete(field)?.nome ?? field) });   // título que não é texto (ex.: Re-pedido) usa o nome do dicionário
         return !ocultas.includes(field);
       })
       // @R 29/08 14:47 — CURA DO LOOP "Maximum update depth exceeded".
