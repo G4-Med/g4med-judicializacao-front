@@ -41,12 +41,22 @@ const fmt = (iso?: string | null) => {
 export type NivelRepedido = 'nenhum' | 'dois' | 'tres' | 'maximo';
 
 /**
+ * QUANTAS VEZES ESTE PEDIDO FOI FEITO — e-mails que chegaram (`vezesPedido`) + pedidos
+ * manuais registrados pelo telefone (`repedidosManuais`). #640 (@R 22/09): "recebemos uma
+ * ligação ou solicitação novamente... ele deveria alterar na tabela o valor". Antes a
+ * ligação ficava de fora da conta: 1 e-mail + 1 ligação aparecia "Urgência 1×". O servidor
+ * guarda os dois contadores separados de propósito (e-mail lido × ligação anotada); a
+ * soma mora AQUI, num lugar só, para coluna, cor e filtro nunca discordarem.
+ */
+export const vezesTotal = (r: any): number => (r?.vezesPedido ?? 1) + (r?.repedidosManuais ?? 0);
+
+/**
  * O nível de urgência de uma linha. Uma função só, para que coluna, cor e ficha nunca
  * discordem entre si — discordarem é como o usuário descobre que um dos três está errado.
  */
 export const nivelRepedido = (r: any): NivelRepedido => {
   if ((r?.repedidosManuais ?? 0) > 0) return 'maximo';   // cobrado por telefone
-  const n = r?.vezesPedido ?? 1;
+  const n = vezesTotal(r);
   if (n >= 3) return 'tres';
   if (n === 2) return 'dois';
   return 'nenhum';
@@ -80,19 +90,19 @@ export const rowClassRepedido = (r: any) => CLASSE[nivelRepedido(r)];
  * sobrescreve. Por isso o botão pergunta antes (registro que não se desfaz por clique
  * errado deve custar 1 confirmação).
  */
-function BotaoCobrouPorTelefone({ orderId, aoRegistrar }: { orderId?: number; aoRegistrar?: () => void }) {
+function BotaoCobrouPorTelefone({ orderId, aoRegistrar }: { orderId?: number; aoRegistrar?: (manuais: number) => void }) {
   const [enviando, setEnviando] = useState(false);
   if (!orderId) return null;
   return (
     <button type="button" className="mc-repedido-ligou" disabled={enviando}
-      title="Registrar que a secretária ligou cobrando este pedido — vai para urgência máxima"
+      title="Registrar que o pedido foi feito de novo (ligação ou nova solicitação) — soma +1 e vai para urgência máxima"
       onClick={async (e) => {
         e.stopPropagation();
-        if (!window.confirm('Registrar uma cobrança por telefone neste pedido?\n\nEle vai para urgência máxima na lista.')) return;
+        if (!window.confirm('Registrar que este pedido foi feito de novo (ligação ou nova solicitação)?\n\nConta +1 no Re-pedido e o pedido vai para urgência máxima em todas as telas.')) return;
         setEnviando(true);
         try {
-          await registrarRepedidoManual(orderId);
-          aoRegistrar?.();
+          const { data } = await registrarRepedidoManual(orderId);
+          aoRegistrar?.(Number(data?.repedidosManuais ?? 0));
         } catch (err) {
           console.error('Falha ao registrar cobrança por telefone:', err);
           window.alert('Não consegui registrar. Tente de novo — nada foi gravado.');
@@ -105,63 +115,67 @@ function BotaoCobrouPorTelefone({ orderId, aoRegistrar }: { orderId?: number; ao
   );
 }
 
-export const colunaRepedido = (dados?: any[], aoRegistrar?: () => void) => (
+/* A CÉLULA TEM ESTADO PRÓPRIO (#640): antes, o clique gravava no servidor mas a linha só
+   mudava ao recarregar a página — nenhuma das 11 telas passava o "recarregar". Agora a
+   própria célula atualiza a linha com o número que o servidor devolveu; as outras telas
+   leem o valor novo do servidor quando abrem. */
+function CelulaRepedido({ r, aoRegistrar }: { r: any; aoRegistrar?: () => void }) {
+  const [, setVersao] = useState(0);
+  const registrar = (manuais: number) => {
+    if (r) { r.repedidosManuais = manuais; r.repedidoTotal = vezesTotal(r); }
+    setVersao((v) => v + 1);
+    aoRegistrar?.();
+  };
+  const nivel = nivelRepedido(r);
+  if (nivel === 'nenhum') {
+    // @R 17/09: "Único pedido" AFIRMA que chegou uma vez só — célula vazia seria ambígua.
+    return (
+      <span className="mc-repedido-cel">
+        <span className="mc-repedido-unico" title="Este paciente foi pedido uma única vez.">Único pedido</span>
+        <BotaoCobrouPorTelefone orderId={r?.id} aoRegistrar={registrar} />
+      </span>
+    );
+  }
+  const n = vezesTotal(r);
+  const emails = r?.vezesPedido ?? 1;
+  const manuais = r?.repedidosManuais ?? 0;
+  const porTelefone = manuais > 0;
+  const titulo = [
+    `Pedido ${n} vez${n > 1 ? 'es' : ''}`,
+    `${emails} por e-mail`,
+    porTelefone ? `${manuais} registrado${manuais > 1 ? 's' : ''} manualmente (ligação/nova solicitação) — urgência máxima` : null,
+    r?.ultimoPedidoEm ? `último e-mail em ${fmt(r.ultimoPedidoEm)}` : null,
+  ].filter(Boolean).join(' · ');
+  return (
+    <span className="mc-repedido-cel">
+      <span className={`mc-repedido-badge mc-repedido-badge--${nivel}`} title={titulo} aria-label={`Urgência: ${titulo}`}>
+        <i className={porTelefone ? 'pi pi-phone' : 'pi pi-exclamation-triangle'} aria-hidden="true" />
+        Urgência {n}×
+      </span>
+      <BotaoCobrouPorTelefone orderId={r?.id} aoRegistrar={registrar} />
+    </span>
+  );
+}
+
+export const colunaRepedido = (dados?: any[], aoRegistrar?: () => void) => {
+  // O filtro e a ordenação leem um CAMPO; o total é derivado, então é gravado na própria
+  // linha (idempotente) antes de a tabela ler.
+  (dados ?? []).forEach((r: any) => { if (r) r.repedidoTotal = vezesTotal(r); });
+  return (
   <Column
     key="vezesPedido"
-    field="vezesPedido"
-    header={<span className="mc-repedido-cab"><i className="pi pi-exclamation-triangle" aria-hidden="true" />{cabecalhoComHint('Re-pedido', 'Quantas vezes este mesmo paciente foi pedido. Mais de 1 = urgência: o pedido voltou e ninguém respondeu. A linha fica marcada em todas as telas. \'Único pedido\' = chegou uma vez só, nada a fazer.')}</span>}
+    field="repedidoTotal"
+    header={<span className="mc-repedido-cab"><i className="pi pi-exclamation-triangle" aria-hidden="true" />{cabecalhoComHint('Re-pedido', 'Quantas vezes este pedido foi feito: e-mails que chegaram + pedidos registrados à mão pelo telefone (ligação ou nova solicitação). Mais de 1 = urgência. O telefone ao lado soma +1. \'Único pedido\' = chegou uma vez só.')}</span>}
     sortable
     filter
     showFilterMenu={false}
     filterMatchMode="custom"
-    /* @R 17/09: ⟦"repedido ainda está errado em 3"⟧ + ⟦"verificar todos os frontends
-       para padronizar"⟧. As duas opções fixas ("Com urgência 2× ou +" · "Único pedido")
-       escondiam a diferença entre o pedido que voltou UMA vez e o que voltou TRÊS — e é
-       essa diferença que decide o que se atende primeiro. Agora o filtro lista as
-       repetições que EXISTEM na tabela, cada uma com quantos pedidos, do maior para o
-       menor: nada de opção que não devolve linha, nada de 2 e 3 no mesmo balaio. */
     filterFunction={casaOpcaoDosDados}
-    filterElement={filtroOpcoesDosDados(dados, (r: any) => r?.vezesPedido ?? 1, 'Todos',
+    filterElement={filtroOpcoesDosDados(dados, (r: any) => vezesTotal(r), 'Todos',
       (v) => (Number(v) > 1 ? `${v}× pedido — urgência` : 'Único pedido'))}
     style={{ width: '9rem' }}
     bodyStyle={{ textAlign: 'center' }}
-    body={(r: any) => {
-      const nivel = nivelRepedido(r);
-      if (nivel === 'nenhum') {
-        // @R 17/09, corrigindo a minha leitura: ⟦"eu disse para ela ganhar um valor, não
-        // ficar como vazio — tipo 'Único Pedido'"⟧. Eu tinha entendido "sem re-pedido"
-        // como "sem nada" e deixei a célula em branco. São coisas diferentes: célula vazia
-        // é ambígua (não sei? não se aplica? a tela quebrou?), e "Único pedido" AFIRMA que
-        // o pedido chegou uma vez só. O que incomodava no "—" nunca foi haver texto, era
-        // o traço não dizer nada.
-        return (
-          <span className="mc-repedido-cel">
-            <span className="mc-repedido-unico" title="Este paciente foi pedido uma única vez pela SES.">Único pedido</span>
-            <BotaoCobrouPorTelefone orderId={r?.id} aoRegistrar={aoRegistrar} />
-          </span>
-        );
-      }
-
-      const n = r?.vezesPedido ?? 1;
-      const manuais = r?.repedidosManuais ?? 0;
-      const porTelefone = manuais > 0;
-
-      const titulo = [
-        `Pedido ${n} vez${n > 1 ? 'es' : ''}`,
-        porTelefone ? `${manuais} por telefone — urgência máxima` : null,
-        r?.ultimoPedidoEm ? `último em ${fmt(r.ultimoPedidoEm)}` : null,
-      ].filter(Boolean).join(' · ');
-
-      return (
-        <span className="mc-repedido-cel">
-        <span className={`mc-repedido-badge mc-repedido-badge--${nivel}`} title={titulo}
-          aria-label={`Urgência: ${titulo}`}>
-          <i className={porTelefone ? 'pi pi-phone' : 'pi pi-exclamation-triangle'} aria-hidden="true" />
-          Urgência {n}×{manuais > 0 ? ` +${manuais}☎` : ''}
-        </span>
-        <BotaoCobrouPorTelefone orderId={r?.id} aoRegistrar={aoRegistrar} />
-        </span>
-      );
-    }}
+    body={(r: any) => <CelulaRepedido r={r} aoRegistrar={aoRegistrar} />}
   />
-);
+  );
+};
