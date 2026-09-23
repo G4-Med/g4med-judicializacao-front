@@ -422,7 +422,8 @@ function BlocoAcordoValor({ pedido, nossoTotal, menorTerceiro }: { pedido: numbe
   const [editando, setEditando] = useState(false);
   const [cotado, setCotado] = useState<number | null>(null);
   const [pm, setPm] = useState<number | null>(null);
-  const [pg, setPg] = useState<number | null>(0);
+  // @R 23/09 01:59: a parte da G4MED NÃO se digita — é a comissão que deixa de existir (taxa × redução).
+  const [taxa, setTaxa] = useState<number | null>(null);
   const [componente, setComponente] = useState<AcordoValor['componente']>('HONORARIOS');
   const [com, setCom] = useState('');
   const [regra, setRegra] = useState('');
@@ -434,6 +435,7 @@ function BlocoAcordoValor({ pedido, nossoTotal, menorTerceiro }: { pedido: numbe
       const { data } = await lerAcordoValor(pedido);
       setAcordo(data.acordo);
       setCotado(data.cotadoAtual || nossoTotal || null);
+      setTaxa(data.taxaCliente ?? null);
       setErroLeitura(null);
     } catch {
       setErroLeitura('Não consegui ler o combinado deste pedido agora.');
@@ -444,12 +446,13 @@ function BlocoAcordoValor({ pedido, nossoTotal, menorTerceiro }: { pedido: numbe
   useEffect(() => { carregar(); }, [carregar]);
 
   const enviado = cotado != null && pm != null ? cotado - pm : null;
+  const pg = taxa != null && pm != null ? Math.round(taxa * pm) / 100 : null;
   const tresPct = menorTerceiro ? Math.round(menorTerceiro * 97) / 100 : null;
 
   const salvar = async () => {
-    if (cotado == null || pm == null || pg == null) return;
+    if (cotado == null || pm == null) return;
     const corpo: Record<string, unknown> = {
-      valorCotado: cotado, valorAcordado: (cotado - pm).toFixed(2), parteMedico: pm, parteG4med: pg,
+      valorCotado: cotado, valorAcordado: (cotado - pm).toFixed(2), parteMedico: pm,
       componente, aplicaNoEnvio: true, acordadoCom: com, regra, razao,
     };
     if (componente === 'OPME' || componente === 'HOSPITALAR') {
@@ -513,7 +516,8 @@ function BlocoAcordoValor({ pedido, nossoTotal, menorTerceiro }: { pedido: numbe
             <div className="col-4"><label className="text-600">Médico cede (no orçamento)</label>
               <InputNumber value={pm} onValueChange={(e) => setPm(e.value ?? null)} mode="currency" currency="BRL" locale="pt-BR" className="w-full" /></div>
             <div className="col-4"><label className="text-600">G4MED cede (na comissão)</label>
-              <InputNumber value={pg} onValueChange={(e) => setPg(e.value ?? null)} mode="currency" currency="BRL" locale="pt-BR" className="w-full" /></div>
+              <div className="text-xl font-bold" style={{ paddingTop: 6 }}>{taxa == null ? '—' : brl(pg)}</div>
+              <small className="text-600">{taxa == null ? 'cliente sem taxa cadastrada' : `${taxa}% da redução — calculado, não se digita`}</small></div>
           </div>
           <div>Vai à SES: <strong>{brl(enviado)}</strong>
             {tresPct != null && <span className="text-600"> · 3% abaixo do menor terceiro seria {brl(tresPct)}</span>}</div>
@@ -524,7 +528,7 @@ function BlocoAcordoValor({ pedido, nossoTotal, menorTerceiro }: { pedido: numbe
           <div className="flex justify-content-end gap-2">
             <Button size="small" text label="Cancelar" onClick={() => setEditando(false)} />
             <Button size="small" icon="pi pi-check" label="Registrar" loading={salvando}
-              disabled={salvando || cotado == null || pm == null || pg == null || (pm + pg) <= 0 || razao.trim().length < 10 || com.trim().length < 3}
+              disabled={salvando || cotado == null || pm == null || pm <= 0 || taxa == null || razao.trim().length < 10 || com.trim().length < 3}
               onClick={salvar} />
           </div>
         </div>

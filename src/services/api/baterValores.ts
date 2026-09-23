@@ -124,7 +124,7 @@ export interface AcordoValor {
   ativo: boolean; revogadoPor: string | null; revogadoEm: string | null; motivoRevogacao: string | null;
 }
 export const lerAcordoValor = (pedido: number) =>
-  api.get<{ acordo: AcordoValor | null; historico: AcordoValor[]; cotadoAtual: number }>(`/orders/${pedido}/acordo-valor/`);
+  api.get<{ acordo: AcordoValor | null; historico: AcordoValor[]; cotadoAtual: number; taxaCliente: number | null }>(`/orders/${pedido}/acordo-valor/`);
 export const registrarAcordoValor = (pedido: number, corpo: Record<string, unknown>) =>
   api.post<AcordoValor>(`/orders/${pedido}/acordo-valor/`, corpo);
 export const desfazerAcordoValor = (pedido: number, motivo: string) =>
