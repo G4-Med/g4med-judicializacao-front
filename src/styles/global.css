@@ -413,6 +413,20 @@ body.dark-theme .linha-sem-medico.linha-segredo > td {
 .linha-negado-sem-medico > td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
 body.dark-theme .linha-negado-sem-medico > td { background: rgba(220, 38, 38, 0.22) !important; color: var(--mc-ink, #e6eef6); }
 .filtros-rapidos-recusa { display: flex; gap: .5rem; flex-wrap: wrap; margin: .25rem 0 .5rem; }
+.filtros-rapidos-recusa { align-items: center; }
+.filtros-rapidos-sep { width: 1px; align-self: stretch; background: var(--surface-border, #d1d5db); margin: 0 .25rem; }
+/* 1 botão por médico a quem pedimos orçamento (@R 23/09 13:44) */
+.filtros-rapidos-medicos { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin: 0 0 .6rem; }
+.filtros-rapidos-medicos__rotulo { font-size: .8rem; color: var(--text-color-secondary, #6b7280); margin-right: .15rem; }
+.filtro-medico { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid var(--surface-border, #d1d5db);
+  background: var(--surface-card, #fff); color: var(--text-color, #1f2937); border-radius: 999px; padding: .2rem .65rem;
+  font-size: .8rem; cursor: pointer; transition: background .15s, border-color .15s; }
+.filtro-medico:hover { border-color: var(--primary-color, #1f7a4d); }
+.filtro-medico:focus-visible { outline: 2px solid var(--primary-color, #1f7a4d); outline-offset: 2px; }
+.filtro-medico__n { font-variant-numeric: tabular-nums; font-size: .72rem; background: var(--surface-ground, #f3f4f6);
+  border-radius: 999px; padding: 0 .4rem; }
+.filtro-medico--ativo { background: var(--primary-color, #1f7a4d); border-color: var(--primary-color, #1f7a4d); color: #fff; }
+.filtro-medico--ativo .filtro-medico__n { background: rgba(255,255,255,.25); color: #fff; }
 .selo-recusa { display: inline-block; margin-left: .4rem; padding: 0 .4rem; border-radius: 4px; font-size: .72rem;
   font-weight: 600; background: #fef3c7; color: #92400e; white-space: nowrap; text-transform: none; }
 .selo-recusa--sem { background: #dc2626; color: #fff; }

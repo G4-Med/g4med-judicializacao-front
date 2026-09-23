@@ -140,7 +140,8 @@ export function OrcamentoMedicoPage() {
   const [loading, setLoading] = useState(false);
   const [processos, setProcessos] = useState<ProcessoOrcamento[]>([]);
   // @R 22/09: "os dois botões na fase 3 — os que médico negou e os que ficaram sem médico".
-  const [filtroRapido, setFiltroRapido] = useState<'negou' | 'sem' | null>(null);
+  // 'medico:<nome>' = só os pedidos em que pedimos orçamento àquele médico (@R 23/09 13:44)
+  const [filtroRapido, setFiltroRapido] = useState<'negou' | 'sem' | 'naoPedido' | 'pedido' | `medico:${string}` | null>(null);
   // @R 22/09 18:22: "um indicador no pedido na fase 3 para dizer que ele está lá [na 3,1], no nome, e poder clicar"
   const [na31, setNa31] = useState<Map<number, { origem?: string; estado: string | null; acimaPct: number | null }>>(new Map());
   const [first, setFirst] = useState(0);
@@ -277,12 +278,28 @@ export function OrcamentoMedicoPage() {
   }, [dataComSequencial, medicos]);
   const nNegou = dataComMedico.filter((r: any) => r.negadoPorMedico).length;
   const nSemMedico = dataComMedico.filter((r: any) => r.semMedico).length;
+  // pedimos = copiamos a mensagem de pedido ao médico ao menos 1 vez (cotacoesPedidas, mesma régua da coluna "Pedido ao médico")
+  const foiPedido = (r: any) => (r?.cotacoesPedidas || 0) > 0;
+  const nNaoPedido = dataComMedico.filter((r: any) => !foiPedido(r)).length;
+  const nPedido = dataComMedico.length - nNaoPedido;
+  const medicosPedidos = useMemo(() => {
+    const cont = new Map<string, number>();
+    dataComMedico.filter(foiPedido).forEach((r: any) => {
+      const nome = (r.medico || '').trim() || 'Sem médico';
+      cont.set(nome, (cont.get(nome) || 0) + 1);
+    });
+    return [...cont.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [dataComMedico]);
   // filtro por texto inteligente (@R 23/09): a IA escolhe os ids; os outros filtros seguem valendo por cima
   const [filtroIA, setFiltroIA] = useState<FiltroAtivo | null>(null);
   const linhasDaTabela = useMemo(() => {
     const base = filtroRapido === 'negou' ? dataComMedico.filter((r: any) => r.negadoPorMedico)
       : filtroRapido === 'sem' ? dataComMedico.filter((r: any) => r.semMedico)
-        : dataComMedico;
+        : filtroRapido === 'naoPedido' ? dataComMedico.filter((r: any) => !foiPedido(r))
+          : filtroRapido === 'pedido' ? dataComMedico.filter(foiPedido)
+            : filtroRapido?.startsWith('medico:')
+              ? dataComMedico.filter((r: any) => foiPedido(r) && ((r.medico || '').trim() || 'Sem médico') === filtroRapido.slice(7))
+              : dataComMedico;
     return filtroIA ? base.filter((r: any) => filtroIA.ids.has(r.id)) : base;
   }, [dataComMedico, filtroRapido, filtroIA]);
   // Há pelo menos 1 envio confirmado na fila = a confirmação pela Eliza está viva (ver coluna Pedido ao médico).
@@ -660,8 +677,35 @@ ${blocos}
               label={`Sem médico (${nSemMedico})`}
               title="Pedidos que ficaram sem médico depois de uma recusa — precisam de outro médico (Trocar médico)"
               onClick={() => setFiltroRapido(filtroRapido === 'sem' ? null : 'sem')} />
+            <span className="filtros-rapidos-sep" aria-hidden="true" />
+            <Button size="small" icon="pi pi-inbox" severity="secondary"
+              outlined={filtroRapido !== 'naoPedido'} aria-pressed={filtroRapido === 'naoPedido'}
+              label={`Ainda não pedimos (${nNaoPedido})`}
+              title="Pedidos em que ninguém copiou ainda a mensagem de pedido de orçamento ao médico"
+              onClick={() => setFiltroRapido(filtroRapido === 'naoPedido' ? null : 'naoPedido')} />
+            <Button size="small" icon="pi pi-send" severity="info"
+              outlined={filtroRapido !== 'pedido'} aria-pressed={filtroRapido === 'pedido'}
+              label={`Já pedimos (${nPedido})`}
+              title="Pedidos em que a mensagem de pedido de orçamento já foi copiada ao médico ao menos uma vez"
+              onClick={() => setFiltroRapido(filtroRapido === 'pedido' ? null : 'pedido')} />
             {filtroRapido && <Button size="small" text label="Mostrar todos" onClick={() => setFiltroRapido(null)} />}
           </div>
+          {medicosPedidos.length > 0 && (
+            <div className="filtros-rapidos-medicos" role="group" aria-label="Pedidos por médico a quem pedimos">
+              <span className="filtros-rapidos-medicos__rotulo"><i className="pi pi-user" /> Pedimos a:</span>
+              {medicosPedidos.map(([nome, n]) => {
+                const chave = `medico:${nome}` as const;
+                const ativo = filtroRapido === chave;
+                return (
+                  <button key={nome} type="button" className={`filtro-medico${ativo ? ' filtro-medico--ativo' : ''}`}
+                    aria-pressed={ativo} title={`Só os pedidos em que pedimos orçamento a ${nome}`}
+                    onClick={() => setFiltroRapido(ativo ? null : chave)}>
+                    {nome} <span className="filtro-medico__n">{n}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
             <BotaoExportarExcel todos={dataComMedico} visiveis={visibleProcessos} nome="orcamento-medico" />
             {colunasCfg.botao}
