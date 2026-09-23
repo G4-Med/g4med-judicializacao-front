@@ -18,7 +18,7 @@ export const DICIONARIO_COLUNAS: VerbeteColuna[] = [
   { id: 'sequencial', nome: '#', grupo: 'Identidade', oQueE: 'Ordem da linha na lista que você está vendo.', deOndeVem: 'Contado na hora, muda com o filtro.' },
   { id: 'paciente', nome: 'Paciente', grupo: 'Identidade', oQueE: 'Nome do beneficiário, em MAIÚSCULAS sem acento (é o padrão de busca).', deOndeVem: 'Veio no pedido da SES.' },
   { id: 'origemRegistro', nome: 'Origem', grupo: 'Identidade', oQueE: 'Como o pedido entrou: E-mail (cadastro automático) ou Manual (alguém da equipe cadastrou).', deOndeVem: 'Marcado na criação do pedido.' },
-  { id: 'vezesPedido', nome: 'Re-pedido', grupo: 'Identidade', oQueE: 'Quantas vezes a SES mandou o MESMO pedido. Mais de uma = atenção.', deOndeVem: 'Contado pelo robô de e-mails.' },
+  { id: 'repedidoTotal', nome: 'Re-pedido', grupo: 'Identidade', oQueE: 'Quantas vezes a SES mandou o MESMO pedido. Mais de uma = atenção.', deOndeVem: 'Contado pelo robô de e-mails.' },
   { id: 'idade', nome: 'Idade', grupo: 'Pedido', oQueE: 'Idade do paciente hoje.', deOndeVem: 'Calculada da data de nascimento.' },
   { id: 'tipoPaciente', nome: 'Tipo', grupo: 'Pedido', oQueE: 'Recém-nascido (≤28 dias) · Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.', deOndeVem: 'Derivado da data de nascimento.' },
   { id: 'procedimento', nome: 'Procedimento', grupo: 'Pedido', oQueE: 'O que a decisão judicial determinou. É a chave para achar o preço histórico.', deOndeVem: 'Veio no pedido da SES.' },
@@ -27,7 +27,7 @@ export const DICIONARIO_COLUNAS: VerbeteColuna[] = [
   { id: 'medico', nome: 'Médico', grupo: 'Pedido', oQueE: 'Profissional escolhido para cotar este pedido.', deOndeVem: 'Seleção na fase 2.' },
   { id: 'dias', nome: 'Dias', grupo: 'Tempo', oQueE: 'Dias corridos desde a entrada do pedido nesta fase.', deOndeVem: 'Calculado da data do pedido.' },
   { id: 'slaFaseHorasRestantes', nome: 'SLA fase', grupo: 'Tempo', oQueE: 'Quanto falta do prazo desta fase (1 dia útil; sexta fecha na segunda). Vermelho = vencido.', deOndeVem: 'Contado a partir do "Cotar" do jurídico.' },
-  { id: 'dataPedido', nome: 'Chegou em', grupo: 'Tempo', oQueE: 'Quando o pedido entrou no sistema.', deOndeVem: 'Data do e-mail da SES ou do cadastro manual.' },
+  { id: 'chegouEm', nome: 'Chegou em', grupo: 'Tempo', oQueE: 'Quando o pedido entrou no sistema.', deOndeVem: 'Data do e-mail da SES ou do cadastro manual.' },
   { id: 'sesAnexos', nome: 'SES Anexos', grupo: 'Documentos', oQueE: 'O que a SES mandou de documento: com anexo · sem anexo · solicitado · recebido. Clique para ver, baixar e ler a thread.', deOndeVem: 'Anexos do e-mail + itens extraídos da peça pelo robô.' },
   { id: 'temInteiroTeor', nome: 'Inteiro teor', grupo: 'Documentos', oQueE: 'Se a peça judicial (inteiro teor) está anexada. "Sem peça (declarado)" = o jurídico declarou que não existe.', deOndeVem: 'Anexo do tipo peça; declaração fica registrada com quem/quando.' },
   { id: 'temOrcamentoPdf', nome: 'Orçamento', grupo: 'Documentos', oQueE: 'Se o PDF do orçamento do médico está no pedido.', deOndeVem: 'Anexo do tipo orçamento.' },
@@ -41,7 +41,7 @@ export const DICIONARIO_COLUNAS: VerbeteColuna[] = [
   { id: 'valorOrcamento', nome: 'Valor', grupo: 'Dinheiro', oQueE: 'Valor do orçamento enviado à SES.', deOndeVem: 'Orçamento do médico.' },
   { id: 'classePagamento', nome: 'Empenho Estado', grupo: 'Dinheiro', oQueE: 'O que o Estado empenhou/pagou neste processo. "PAGO após o pedido · pode dar baixa" é o sinal forte. O favorecido é o tribunal, não o prestador.', deOndeVem: 'API do 548 (base de empenhos do Estado), a cada 15 min.' },
   { id: 'empenho548.ultimoPagamento', nome: 'Pago em', grupo: 'Dinheiro', oQueE: 'Data do último pagamento registrado no processo.', deOndeVem: 'API do 548.', padraoOculta: true },
-  { id: 'diferenca', nome: 'Diferença', grupo: 'Dinheiro', oQueE: 'Diferença entre o que orçamos e o que o Estado pagou.', deOndeVem: 'Calculada.', padraoOculta: true },
+  { id: 'empenho548.pago', nome: 'Diferença', grupo: 'Dinheiro', oQueE: 'Diferença entre o que orçamos e o que o Estado pagou.', deOndeVem: 'Calculada.', padraoOculta: true },
 ];
 
 export const TELAS_COM_COLUNAS: { chave: string; nome: string }[] = [
@@ -59,4 +59,15 @@ export const TELAS_COM_COLUNAS: { chave: string; nome: string }[] = [
 ];
 
 export const CHAVE_PADRAO = 'colunas_ocultas:__padrao__';
+
+/** Ids antigos do dicionário que NÃO eram o `field` da coluna (achado 23/09: o guia do rapha escondia
+ *  'diferenca' e a coluna Diferença — field 'empenho548.pago' — continuava aparecendo). Listas já salvas
+ *  com o id antigo são traduzidas na LEITURA; nada é migrado no banco. */
+const ID_ANTIGO: Record<string, string> = {
+  vezesPedido: 'repedidoTotal',
+  dataPedido: 'chegouEm',
+  diferenca: 'empenho548.pago',
+};
+export const normalizarOcultas = (lista: unknown): string[] =>
+  Array.isArray(lista) ? [...new Set(lista.map((id) => ID_ANTIGO[String(id)] ?? String(id)))] : [];
 export const verbete = (id: string) => DICIONARIO_COLUNAS.find((v) => v.id === id);

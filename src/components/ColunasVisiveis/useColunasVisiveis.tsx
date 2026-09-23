@@ -5,7 +5,7 @@ import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { Checkbox } from 'primereact/checkbox';
 import api from '../../services/api';
-import { CHAVE_PADRAO, DICIONARIO_COLUNAS, verbete } from './dicionarioColunas';
+import { CHAVE_PADRAO, DICIONARIO_COLUNAS, normalizarOcultas, verbete } from './dicionarioColunas';
 import { useAccess } from '../../access/AccessContext';
 
 /** Quem é o GUIA das colunas (@R 23/09 15:33): o que ele escolhe numa tela é o padrão de quem não escolheu. */
@@ -74,11 +74,11 @@ export function useColunasVisiveis(tela: string) {
   const [ocultas, setOcultas] = useState<string[]>(() => {
     try {
       const daTela = localStorage.getItem(lsKey);
-      if (daTela) return JSON.parse(daTela);
+      if (daTela) return normalizarOcultas(JSON.parse(daTela));
       const doGuia = localStorage.getItem(lsGuia);
-      if (doGuia) return JSON.parse(doGuia);
+      if (doGuia) return normalizarOcultas(JSON.parse(doGuia));
       const doPadrao = localStorage.getItem(`mc_${CHAVE_PADRAO}`);
-      if (doPadrao) return JSON.parse(doPadrao);
+      if (doPadrao) return normalizarOcultas(JSON.parse(doPadrao));
     } catch { /* storage indisponível */ }
     return DICIONARIO_COLUNAS.filter((v) => v.padraoOculta).map((v) => v.id);
   });
@@ -92,7 +92,7 @@ export function useColunasVisiveis(tela: string) {
     // 1º a preferência DESTA tela; se o usuário nunca mexeu nela, cai no PADRÃO de todas as telas.
     api.get(`/preferencias/${encodeURIComponent(chave)}/`)
       .then(({ data }) => {
-        const doServidor = data?.valor?.ocultas;
+        const doServidor = Array.isArray(data?.valor?.ocultas) ? normalizarOcultas(data?.valor?.ocultas) : undefined;
         if (Array.isArray(doServidor)) {
           // CURA DO LOOP: só troca o estado se a lista REALMENTE mudou. Um setOcultas com a
           // mesma lista re-monta as colunas do cabeçalho, e o HeaderCell do PrimeReact
@@ -107,14 +107,14 @@ export function useColunasVisiveis(tela: string) {
         try { localStorage.removeItem(lsKey); } catch { /* fail-soft */ }
         // 2º o GUIA (@R 23/09 15:33): as colunas que o rapha escolheu nesta tela valem para quem não escolheu as suas
         return api.get(`/preferencias-sistema/${encodeURIComponent(chave)}/`).then(({ data: dg }) => {
-          const doGuia = dg?.valor?.ocultas;
+          const doGuia = Array.isArray(dg?.valor?.ocultas) ? normalizarOcultas(dg?.valor?.ocultas) : undefined;
           if (Array.isArray(doGuia)) {
             setOcultas((atual) => (mesmaLista(atual, doGuia) ? atual : doGuia));
             try { localStorage.setItem(lsGuia, JSON.stringify(doGuia)); } catch { /* fail-soft */ }
             return;
           }
           return api.get(`/preferencias/${encodeURIComponent(CHAVE_PADRAO)}/`).then(({ data: d2 }) => {
-          const doPadrao = d2?.valor?.ocultas;
+          const doPadrao = Array.isArray(d2?.valor?.ocultas) ? normalizarOcultas(d2?.valor?.ocultas) : undefined;
           if (Array.isArray(doPadrao)) {
             setOcultas((atual) => (mesmaLista(atual, doPadrao) ? atual : doPadrao));
             try { localStorage.setItem(`mc_${CHAVE_PADRAO}`, JSON.stringify(doPadrao)); } catch { /* fail-soft */ }
@@ -140,7 +140,7 @@ export function useColunasVisiveis(tela: string) {
     api.delete(`/preferencias/${encodeURIComponent(chave)}/`).catch(() => undefined).finally(() => {
       setTemPropria(false);
       api.get(`/preferencias-sistema/${encodeURIComponent(chave)}/`).then(({ data }) => {
-        const g = data?.valor?.ocultas;
+        const g = Array.isArray(data?.valor?.ocultas) ? normalizarOcultas(data?.valor?.ocultas) : undefined;
         if (Array.isArray(g)) {
           setOcultas(g);
           try { localStorage.setItem(lsGuia, JSON.stringify(g)); } catch { /* fail-soft */ }

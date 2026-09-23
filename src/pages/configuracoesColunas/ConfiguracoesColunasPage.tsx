@@ -13,7 +13,7 @@ import { Checkbox } from 'primereact/checkbox';
 import { Dropdown } from 'primereact/dropdown';
 import { Tag } from 'primereact/tag';
 import api from '../../services/api';
-import { DICIONARIO_COLUNAS, TELAS_COM_COLUNAS, CHAVE_PADRAO } from '../../components/ColunasVisiveis/dicionarioColunas';
+import { DICIONARIO_COLUNAS, TELAS_COM_COLUNAS, CHAVE_PADRAO, normalizarOcultas } from '../../components/ColunasVisiveis/dicionarioColunas';
 import './ConfiguracoesColunasPage.css';
 
 const GRUPOS = ['Identidade', 'Pedido', 'Tempo', 'Documentos', 'Processo', 'Dinheiro'] as const;
@@ -31,8 +31,8 @@ export function ConfiguracoesColunasPage() {
     const pedidos = [api.get(`/preferencias/${encodeURIComponent(chaveDe(t))}/`).catch(() => null)];
     if (t !== '__padrao__') pedidos.push(api.get(`/preferencias/${encodeURIComponent(CHAVE_PADRAO)}/`).catch(() => null));
     Promise.all(pedidos).then(([r, rp]) => {
-      const lista = (r as any)?.data?.valor?.ocultas;
-      const listaP = (rp as any)?.data?.valor?.ocultas;
+      const lista = Array.isArray((r as any)?.data?.valor?.ocultas) ? normalizarOcultas((r as any)?.data?.valor?.ocultas) : undefined;
+      const listaP = Array.isArray((rp as any)?.data?.valor?.ocultas) ? normalizarOcultas((rp as any)?.data?.valor?.ocultas) : undefined;
       setOcultas(Array.isArray(lista) ? lista : (t === '__padrao__' ? DICIONARIO_COLUNAS.filter((v) => v.padraoOculta).map((v) => v.id) : []));
       setPadrao(Array.isArray(listaP) ? listaP : (t === '__padrao__' ? [] : DICIONARIO_COLUNAS.filter((v) => v.padraoOculta).map((v) => v.id)));
     }).finally(() => setCarregando(false));
