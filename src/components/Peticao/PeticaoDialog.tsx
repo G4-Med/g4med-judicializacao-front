@@ -315,7 +315,7 @@ export function PeticaoDialog({ pedido, rotulo, visivel, onFechar }: Props) {
                 <p key={i} ref={el => { refsPar.current[i] = el; }} className={`pt-p pt-p--${p.tipo}`} onClick={e => { e.stopPropagation(); setEditando(i); }} title="Clique para editar">
                   {p.texto ? <Rico texto={p.texto} valores={valores} campos={campos} onCampo={focarCampo} /> : ' '}
                 </p>
-              ))); })}
+              )); })}
                 {pg === todas.length - 1 && (
                   <button className="pt-novo" onClick={e => { e.stopPropagation(); inserir(paras.length - 1); }}>+ parágrafo no fim</button>
                 )}
