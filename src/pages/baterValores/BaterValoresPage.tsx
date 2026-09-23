@@ -11,7 +11,9 @@ import { SelectButton } from 'primereact/selectbutton';
 import { Tag } from 'primereact/tag';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
 import type { EstadoGatilho, FilaBaterValores, ItemBaterValores, PainelBaterValores, Saida } from '../../services/api/baterValores';
-import { compararComponentes, decidirBaterValores, listarBaterValores, painelBaterValores } from '../../services/api/baterValores';
+import { compararComponentes, decidirBaterValores, listarBaterValores, painelBaterValores, lerAcordoValor, registrarAcordoValor, desfazerAcordoValor } from '../../services/api/baterValores';
+import type { AcordoValor } from '../../services/api/baterValores';
+import { readAuthProfile } from '../../access/authProfile';
 import type { ComparativoComponentes } from '../../services/api/baterValores';
 import { EntradaManualDialog } from './EntradaManualDialog';
 import { registrarRespostaCotacao, salvarOrcamentoMedico, uploadAnexoOrder } from '../../services/api/orders';
@@ -342,6 +344,8 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
         )}
       </div>
 
+      <BlocoAcordoValor pedido={painel.pedido} nossoTotal={painel.nossoTotal} menorTerceiro={painel.menorTerceiro} />
+
       <div className="p-2 mb-3 text-600" style={{ background: '#f2f4f7', borderRadius: 6, fontSize: '.85rem' }}>
         Não alteramos o valor do médico. Hospital, OPME e anestesista são custo de terceiro; se houver espaço,
         ele está no honorário — e a decisão é do médico. Se ele mandou valor novo, registre abaixo.
@@ -391,5 +395,140 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
           disabled={!pode} onClick={decidir} />
       </div>
     </Dialog>
+  );
+}
+
+/* ── #642 COMBINADO DIFERENTE (@R 23/09) ────────────────────────────────────────────────────────
+   O acordo fechado com o médico fica registrado aqui, com os dois donos da redução: a parte do MÉDICO
+   baixa o orçamento (é o que vai à SES) e a parte da G4MED sai da nossa comissão — fora do valor
+   enviado. O cotado nunca é apagado: a diferença entre cotado e acordado é o dado. Só Admin e Gerente
+   registram; o estado (previsto / realizado / extinto) vem do resultado do pedido. */
+const ROTULO_ESTADO: Record<AcordoValor['estado'], [string, string]> = {
+  PREVISTO: ['previsto — caso em aberto', '#175cd3'],
+  REALIZADO: ['realizado — ganho, abatido', '#067647'],
+  EXTINTO: ['extinto — caso perdido, nada abatido', '#667085'],
+};
+const COMPONENTES_ACORDO = [
+  { label: 'Honorários (equipe médica)', value: 'HONORARIOS' }, { label: 'OPME / materiais', value: 'OPME' },
+  { label: 'Hospitalar', value: 'HOSPITALAR' }, { label: 'Outros', value: 'OUTROS' },
+];
+
+function BlocoAcordoValor({ pedido, nossoTotal, menorTerceiro }: { pedido: number; nossoTotal: number | null; menorTerceiro: number | null }) {
+  const perfil = readAuthProfile();
+  const podeEscrever = perfil.isSuperuser || (perfil.groups ?? []).some((g) => g === 'ADMIN' || g === 'GERENTE');
+  const [acordo, setAcordo] = useState<AcordoValor | null>(null);
+  const [carregado, setCarregado] = useState(false);
+  const [erroLeitura, setErroLeitura] = useState<string | null>(null);
+  const [editando, setEditando] = useState(false);
+  const [cotado, setCotado] = useState<number | null>(null);
+  const [pm, setPm] = useState<number | null>(null);
+  const [pg, setPg] = useState<number | null>(0);
+  const [componente, setComponente] = useState<AcordoValor['componente']>('HONORARIOS');
+  const [com, setCom] = useState('');
+  const [regra, setRegra] = useState('');
+  const [razao, setRazao] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  const carregar = useCallback(async () => {
+    try {
+      const { data } = await lerAcordoValor(pedido);
+      setAcordo(data.acordo);
+      setCotado(data.cotadoAtual || nossoTotal || null);
+      setErroLeitura(null);
+    } catch {
+      setErroLeitura('Não consegui ler o combinado deste pedido agora.');
+    } finally {
+      setCarregado(true);
+    }
+  }, [pedido, nossoTotal]);
+  useEffect(() => { carregar(); }, [carregar]);
+
+  const enviado = cotado != null && pm != null ? cotado - pm : null;
+  const tresPct = menorTerceiro ? Math.round(menorTerceiro * 97) / 100 : null;
+
+  const salvar = async () => {
+    if (cotado == null || pm == null || pg == null) return;
+    const corpo: Record<string, unknown> = {
+      valorCotado: cotado, valorAcordado: (cotado - pm).toFixed(2), parteMedico: pm, parteG4med: pg,
+      componente, aplicaNoEnvio: true, acordadoCom: com, regra, razao,
+    };
+    if (componente === 'OPME' || componente === 'HOSPITALAR') {
+      if (!window.confirm('A regra é que a cessão sai da equipe médica. Confirmar redução em OPME/hospitalar?')) return;
+      corpo.confirmar = true;
+    }
+    setSalvando(true);
+    try {
+      await registrarAcordoValor(pedido, corpo);
+      setEditando(false);
+      await carregar();
+    } catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      alert(`Não registrei: ${msg ?? 'erro de rede'}.`);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const desfazer = async () => {
+    const motivo = window.prompt('Por que desfazer este combinado? (mínimo 10 letras)') ?? '';
+    if (motivo.trim().length < 10) return;
+    try { await desfazerAcordoValor(pedido, motivo.trim()); await carregar(); }
+    catch (e: unknown) {
+      const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      alert(`Não desfiz: ${msg ?? 'erro de rede'}.`);
+    }
+  };
+
+  if (!carregado) return null;
+  return (
+    <div className="p-2 mb-3" style={{ border: '1px solid #d0d5dd', borderRadius: 6, fontSize: '.85rem' }}>
+      <div className="flex justify-content-between align-items-center mb-1">
+        <strong>Combinado diferente</strong>
+        {acordo && <span style={{ color: ROTULO_ESTADO[acordo.estado][1] }}>{ROTULO_ESTADO[acordo.estado][0]}</span>}
+      </div>
+      {erroLeitura && <div style={{ color: '#b42318' }}>{erroLeitura}</div>}
+      {!erroLeitura && !acordo && !editando && <div className="text-600">Nenhum combinado registrado para este pedido.</div>}
+      {acordo && !editando && (
+        <div>
+          <div>Cotado <strong>{brl(acordo.valorCotado)}</strong> → vai à SES <strong>{brl(acordo.valorEnviado)}</strong></div>
+          <div>Médico cede <strong>{brl(acordo.parteMedico)}</strong> (no orçamento, {COMPONENTES_ACORDO.find((c) => c.value === acordo.componente)?.label})
+            · G4MED cede <strong>{brl(acordo.parteG4med)}</strong> (na comissão) · total <strong>{brl(acordo.reducaoTotalAbsorvida)}</strong></div>
+          {acordo.regra && <div className="text-600">Regra: {acordo.regra}</div>}
+          <div className="text-600">Com {acordo.acordadoCom}{acordo.acordadoEm ? ` em ${new Date(acordo.acordadoEm).toLocaleString('pt-BR')}` : ''} · registrado por {acordo.criadoPor} · {acordo.razao}</div>
+          <div className="text-600" style={{ fontSize: '.78rem' }}>A parte da G4MED sai da comissão e só é abatida se o caso for ganho.</div>
+        </div>
+      )}
+      {podeEscrever && !editando && (
+        <div className="flex gap-2 mt-2">
+          <Button size="small" outlined icon="pi pi-pencil" label={acordo ? 'Registrar novo combinado' : 'Registrar combinado'}
+            onClick={() => { setEditando(true); setPm(tresPct && cotado && cotado > tresPct ? Math.round((cotado - tresPct) * 100) / 100 : null); }} />
+          {acordo && acordo.estado !== 'REALIZADO' && <Button size="small" text severity="danger" label="Desfazer" onClick={desfazer} />}
+        </div>
+      )}
+      {editando && (
+        <div className="flex flex-column gap-2 mt-2">
+          <div className="grid">
+            <div className="col-4"><label className="text-600">Cotado</label>
+              <InputNumber value={cotado} onValueChange={(e) => setCotado(e.value ?? null)} mode="currency" currency="BRL" locale="pt-BR" className="w-full" /></div>
+            <div className="col-4"><label className="text-600">Médico cede (no orçamento)</label>
+              <InputNumber value={pm} onValueChange={(e) => setPm(e.value ?? null)} mode="currency" currency="BRL" locale="pt-BR" className="w-full" /></div>
+            <div className="col-4"><label className="text-600">G4MED cede (na comissão)</label>
+              <InputNumber value={pg} onValueChange={(e) => setPg(e.value ?? null)} mode="currency" currency="BRL" locale="pt-BR" className="w-full" /></div>
+          </div>
+          <div>Vai à SES: <strong>{brl(enviado)}</strong>
+            {tresPct != null && <span className="text-600"> · 3% abaixo do menor terceiro seria {brl(tresPct)}</span>}</div>
+          <Dropdown value={componente} options={COMPONENTES_ACORDO} onChange={(e) => setComponente(e.value)} />
+          <input className="p-inputtext" placeholder="Acordado com (médico/prestador)" value={com} onChange={(e) => setCom(e.target.value)} />
+          <input className="p-inputtext" placeholder="Regra (ex.: 3% abaixo do valor de quem judicializou)" value={regra} onChange={(e) => setRegra(e.target.value)} />
+          <InputTextarea rows={2} placeholder="Por que (obrigatório, mín. 10 letras)" value={razao} onChange={(e) => setRazao(e.target.value)} />
+          <div className="flex justify-content-end gap-2">
+            <Button size="small" text label="Cancelar" onClick={() => setEditando(false)} />
+            <Button size="small" icon="pi pi-check" label="Registrar" loading={salvando}
+              disabled={salvando || cotado == null || pm == null || pg == null || (pm + pg) <= 0 || razao.trim().length < 10 || com.trim().length < 3}
+              onClick={salvar} />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

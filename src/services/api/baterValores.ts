@@ -111,3 +111,21 @@ export const colocarNaBaterValores = (pedido: number, corpo: {
   motivo: string; anotacao: string; valorAlvo?: number | null; prestador?: string;
 }) => api.post<{ id: number; terceiroId: number | null; jaFoiSES: boolean }>(
   `/orders/${pedido}/bater-valores/entrada/`, corpo);
+
+/** #642 — combinado diferente (acordo de valor com o médico). A parte do médico reduz o ORÇAMENTO;
+ *  a parte da G4MED sai da nossa comissão, fora do valor enviado. Estado vem do pedido (¬gravado). */
+export interface AcordoValor {
+  id: number; valorCotado: number; valorAcordado: number;
+  reducaoNoOrcamento: number; reducaoTotalAbsorvida: number;
+  parteMedico: number; parteG4med: number;
+  componente: 'HONORARIOS' | 'OPME' | 'HOSPITALAR' | 'OUTROS'; aplicaNoEnvio: boolean; regra: string | null;
+  valorEnviado: number; valorEfetivo: number | null; estado: 'PREVISTO' | 'REALIZADO' | 'EXTINTO';
+  acordadoCom: string; acordadoEm: string | null; razao: string; criadoPor: string; criadoEm: string | null;
+  ativo: boolean; revogadoPor: string | null; revogadoEm: string | null; motivoRevogacao: string | null;
+}
+export const lerAcordoValor = (pedido: number) =>
+  api.get<{ acordo: AcordoValor | null; historico: AcordoValor[]; cotadoAtual: number }>(`/orders/${pedido}/acordo-valor/`);
+export const registrarAcordoValor = (pedido: number, corpo: Record<string, unknown>) =>
+  api.post<AcordoValor>(`/orders/${pedido}/acordo-valor/`, corpo);
+export const desfazerAcordoValor = (pedido: number, motivo: string) =>
+  api.post<AcordoValor>(`/orders/${pedido}/acordo-valor/revogar/`, { motivo });
