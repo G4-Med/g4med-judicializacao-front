@@ -455,6 +455,19 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
                                 <b style={{ color: cor }}>{rot}</b>
                                 {c.oQueCobre && <div style={{ color: '#5b6b7b' }}>lê: {c.oQueCobre}</div>}
                                 {c.motivo && c.compativel !== 'SIM' && <div style={{ color: '#5b6b7b' }}>{c.motivo}</div>}
+                                {c.considerar && (
+                                  <div style={{ marginTop: 3, paddingTop: 3, borderTop: '1px dashed #e5e7eb' }}>
+                                    <b style={{ color: ({ SIM: '#0a7a3d', COM_RESSALVA: '#b45309', NAO: '#b42318' } as Record<string, string>)[c.considerar] }}>
+                                      {({ SIM: 'Considerar', COM_RESSALVA: 'Considerar com ressalva', NAO: 'Não considerar' } as Record<string, string>)[c.considerar]}
+                                    </b>
+                                    {c.justificativa && <div style={{ color: '#5b6b7b' }}>{c.justificativa}</div>}
+                                    {c.considerar === 'COM_RESSALVA' && c.ressalvaParaMedico && (
+                                      <div style={{ color: '#92400e', background: '#fffbeb', borderRadius: 4, padding: '2px 4px', marginTop: 2 }}
+                                        title="Este texto aparece para o médico no link, junto deste orçamento">
+                                        O médico verá: «{c.ressalvaParaMedico}»</div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             );
                           })()}

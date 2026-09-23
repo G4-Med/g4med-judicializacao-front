@@ -649,7 +649,9 @@ export const filtrarTextoIA = (texto: string, ids: number[]) =>
 /** @R 23/09 12:54: a IA confere se cada orçamento listado no Copiar COBRE a cirurgia pedida.
  *  Reusa o parecer guardado para o mesmo procedimento; forcar refaz. Só aponta, não muda o link. */
 export interface ParecerCompat { compativel: 'SIM' | 'PARCIAL' | 'NAO' | 'ILEGIVEL' | 'FOLHA_INDISPONIVEL' | 'ERRO';
-  oQueCobre?: string | null; motivo?: string | null }
+  oQueCobre?: string | null; motivo?: string | null;
+  /** @R 23/09 15:18: o que FAZER com o orçamento + por quê + o que o médico lê no link */
+  considerar?: 'SIM' | 'COM_RESSALVA' | 'NAO' | null; justificativa?: string | null; ressalvaParaMedico?: string | null }
 export const conferirCompatibilidade = (orderId: number, forcar = false) =>
   api.post<{ procedimentoPedido: string; itens: Record<string, ParecerCompat>; restantes: number }>(
     `/orders/${orderId}/link-documentos/compatibilidade/`, { forcar });

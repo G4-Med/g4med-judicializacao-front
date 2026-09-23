@@ -22,7 +22,7 @@ interface Dados {
   procedimento: string | null;
   aviso: string;
   documentos: Documento[];
-  referencias: { categoria: string; valorReferencia: number; local?: string | null; descricao?: string | null;
+  referencias: { categoria: string; valorReferencia: number; local?: string | null; descricao?: string | null; ressalva?: string | null;
                  data?: string | null; pagina?: number | null }[];
   referenciasNota: string;
   /** @R 23/09: quem copiou marcou que o processo (lido) não tem orçamento de outro prestador */
@@ -548,6 +548,10 @@ export function LinkDocumentosPage() {
                         {r.categoria !== 'Procedimento' && r.descricao ? ` · ${r.categoria}` : ''}
                         {r.data ? ` · orçamento de ${dataBR(r.data)}` : ''}{r.pagina ? ` · página ${r.pagina} do processo` : ''}
                       </div>
+                      {r.ressalva && (
+                        <div style={{ fontSize: 13, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a',
+                          borderRadius: 8, padding: '6px 10px' }}>⚠ {r.ressalva}</div>
+                      )}
                     </div>
                   ))}
                 </div>
