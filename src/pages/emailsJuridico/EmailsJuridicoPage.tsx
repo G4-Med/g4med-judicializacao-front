@@ -103,10 +103,12 @@ export function EmailsJuridicoPage() {
   // "Tratado"/↩ de cada linha já usa — sem endpoint novo, sem 2ª fonte de verdade de status.
   const [selecionados, setSelecionados] = useState<Set<number>>(new Set());
   const [aplicandoLote, setAplicandoLote] = useState(false);
-  // ?classe=JUSTICA vem do alerta da Home/fases: abre já filtrado no que o alerta contou.
+  // @R 22/09 21:20: "sempre abrir com o jurídico selecionado para o foco estar na parte jurídica" — o padrão é
+  // Justiça; ?classe=<outra> (alerta/link) abre na classe pedida e ?classe=TODAS abre sem filtro.
   const [classeFiltro, setClasseFiltro] = useState<ClasseEmailJuridico | null>(() => {
     const q = new URLSearchParams(window.location.search).get('classe');
-    return q && q in CLASSE_LABEL ? (q as ClasseEmailJuridico) : null;
+    if (q === 'TODAS') return null;
+    return q && q in CLASSE_LABEL ? (q as ClasseEmailJuridico) : ('JUSTICA' as ClasseEmailJuridico);
   });
   const [aberto, setAberto] = useState<EmailJuridicoItem | null>(null);
   const ordenacao = useOrdenacao('chegouEm', -1);   // @R: mais recente primeiro, sempre
@@ -215,7 +217,12 @@ export function EmailsJuridicoPage() {
       )}
 
       <DataTable value={visiveis} loading={carregando} size="small" stripedRows paginator rows={25} dataKey="id" {...ordenacao}
-        emptyMessage={status === 'ABERTO' ? 'Nada aberto — a fila está zerada.' : 'Nenhum e-mail neste filtro.'}
+        emptyMessage={status === 'ABERTO'
+          ? (classeFiltro && contagem && contagem.abertos > 0
+            // o filtro escondia os abertos de outras classes e a frase dizia "fila zerada" (print @R 22/09 21:20)
+            ? `Nenhum ${CLASSE_LABEL[classeFiltro]} aberto. Há ${contagem.abertos} aberto(s) em outras classes — limpe o filtro de classe para ver.`
+            : 'Nada aberto — a fila está zerada.')
+          : 'Nenhum e-mail neste filtro.'}
         rowClassName={(r: EmailJuridicoItem) => (r.vencido ? 'mc-linha-vencida' : '')}>
         <Column header={
           <input type="checkbox" checked={todosVisiveisSelecionados} aria-label="Marcar todos os visíveis"

@@ -68,7 +68,13 @@ const LoginForms = ({ view, toggleView }: LoginFormsProps) => {
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [cpf, setCpf] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // aviso deixado por quem mandou para o login (sessão de 1 dia vencida) — lido 1 vez e apagado
+  const [aviso] = useState(() => {
+    try { const a = sessionStorage.getItem('aviso_login'); sessionStorage.removeItem('aviso_login'); return a || ''; }
+    catch { return ''; }
+  });
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -79,7 +85,7 @@ const LoginForms = ({ view, toggleView }: LoginFormsProps) => {
     setError('');
     setLoading(true);
     try {
-      const data = await login(username, password);
+      const data = await login(username, password, cpf.replace(/\D/g, ''));
       const profile = persistAuthProfile(data);
       navigate(getDefaultRouteForGroup(profile.group));
     } catch (err: any) {
@@ -87,7 +93,11 @@ const LoginForms = ({ view, toggleView }: LoginFormsProps) => {
       // falha (servidor fora, rede, timeout) mostrava a MESMA mensagem, escondendo
       // a causa real (achado 26/08: tentativa de login bateu no backend subindo,
       // a tela disse "senha errada" quando a senha nunca chegou a ser checada).
-      if (err?.response?.status === 401) {
+      const codigo = err?.response?.data?.code;
+      if (codigo && String(codigo).startsWith('cpf_')) {
+        // o servidor já manda a frase certa (primeiro acesso, CPF obrigatório, inválido, não confere, já em uso)
+        setError(err.response.data.detail || 'Confira o CPF.');
+      } else if (err?.response?.status === 401) {
         setError('Usuário ou senha incorretos.');
       } else if (!err?.response) {
         setError('Não foi possível falar com o servidor. Verifique sua conexão e tente novamente.');
@@ -144,6 +154,30 @@ const LoginForms = ({ view, toggleView }: LoginFormsProps) => {
               <i className={showPassword ? 'pi pi-eye-slash' : 'pi pi-eye'} />
             </button>
           </div>
+
+          <div className="login-page__input-box">
+            <i className="pi pi-id-card login-page__input-icon" />
+            <input
+              className="login-page__input"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="CPF (sua chave de acesso)"
+              required
+              title="No primeiro acesso o CPF que você digitar vira a sua chave. Depois, ele é pedido em todo login."
+              value={cpf}
+              onChange={(e) => {
+                const d = e.target.value.replace(/\D/g, '').slice(0, 11);
+                setCpf(d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2'));
+              }}
+            />
+          </div>
+
+          {aviso && !error && (
+            <p className="login-page__error">
+              <i className="pi pi-info-circle" /> {aviso}
+            </p>
+          )}
 
           {error && (
             <p className="login-page__error">

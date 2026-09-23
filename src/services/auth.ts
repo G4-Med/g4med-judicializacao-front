@@ -6,8 +6,9 @@ const API_BASE = import.meta.env.VITE_API_URL;
 const AUTH_URL = `${API_BASE}/auth/token/`;
 const FORGOT_PASSWORD_BASE_URL = `${API_BASE}/auth/esqueci-senha`;
 
-export async function login(username: string, password: string) {
-  const { data } = await axios.post(AUTH_URL, { username, password });
+/** @R 22/09: o CPF é a chave de entrada — gravado no 1º acesso, conferido em todos os seguintes (backend/cpf_acesso.py). */
+export async function login(username: string, password: string, cpf?: string) {
+  const { data } = await axios.post(AUTH_URL, { username, password, ...(cpf ? { cpf } : {}) });
   localStorage.setItem('access_token', data.access);
   localStorage.setItem('refresh_token', data.refresh);
   persistAuthProfile(data);

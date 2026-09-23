@@ -20,6 +20,7 @@ import {
   getGruposUsuarios,
   getMedicosUsuario,
   getUsuarios,
+  limparCpfAcesso,
   type UsuarioPayload
 } from '../../services/api/usuarios';
 import { getMedicosCompleto } from '../../services/api/orders';
@@ -47,6 +48,8 @@ interface ApiUsuario {
   medico?: { id: number; nome?: string } | null;
   medico_id?: number | null;
   medico_nome?: string | null;
+  /** CPF-chave de entrada (@R 22/09): só se cadastrou e os 2 últimos dígitos — nunca o CPF */
+  cpfCadastrado?: boolean; cpfFinal?: string | null; cpfIsento?: boolean;
 }
 
 interface ApiGrupo {
@@ -80,6 +83,7 @@ interface UsuarioRow {
   medicoNome: string;
   dateJoined: string | null;
   lastLogin: string | null;
+  cpfCadastrado: boolean; cpfFinal: string | null; cpfIsento: boolean;
 }
 
 interface FormUsuario {
@@ -228,8 +232,19 @@ export function UsuariosPage() {
       medicoId,
       medicoNome: medicoNomeVal || (medicoId ? `Médico ${medicoId}` : '--'),
       dateJoined: u.date_joined ?? null,
-      lastLogin: u.last_login ?? u.lastLogin ?? null
+      lastLogin: u.last_login ?? u.lastLogin ?? null,
+      cpfCadastrado: !!u.cpfCadastrado, cpfFinal: u.cpfFinal ?? null, cpfIsento: !!u.cpfIsento
     };
+  };
+
+  const limparCpf = async (row: UsuarioRow) => {
+    if (!window.confirm(`Apagar o CPF de acesso de ${row.nomeCompleto || row.username}? No próximo login a pessoa informa o CPF de novo e ele vira a nova chave.`)) return;
+    try {
+      await limparCpfAcesso(row.id);
+      await carregarDados();
+    } catch (e: any) {
+      alert(e?.response?.status === 403 ? 'Só o Admin pode apagar o CPF de acesso.' : 'Não consegui apagar o CPF agora.');
+    }
   };
 
   const carregarDados = async () => {
@@ -566,6 +581,20 @@ export function UsuariosPage() {
             header="Último acesso"
             sortable
             body={(row: UsuarioRow) => formatarDataHora(row.lastLogin)}
+            style={{ minWidth: '12rem' }}
+          />
+
+          <Column
+            header="CPF de acesso"
+            body={(row: UsuarioRow) => row.cpfIsento
+              ? <span title="Conta de serviço (robô/Eliza): entra sem CPF">isento</span>
+              : row.cpfCadastrado
+                ? <span title="O CPF é pedido em todo login. Apagar faz a pessoa cadastrar de novo no próximo acesso.">
+                    ***.***.***-{row.cpfFinal}{' '}
+                    <Button icon="pi pi-eraser" text rounded size="small" aria-label="Apagar CPF de acesso"
+                      onClick={() => void limparCpf(row)} />
+                  </span>
+                : <span title="Cadastra no próximo login">aguardando 1º acesso</span>}
             style={{ minWidth: '12rem' }}
           />
 
