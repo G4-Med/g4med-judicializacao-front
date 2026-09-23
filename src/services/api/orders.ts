@@ -666,3 +666,7 @@ export interface CustosIA {
   precos: Record<string, { entrada: number; saida: number }>;
 }
 export const getCustosIA = (dias: number) => api.get<CustosIA>('/ia/custos/', { params: { dias } });
+
+/** Lápis do selo Segredo/Sem segredo (@R 23/09 15:25): motivo obrigatório, vira anotação na ficha. */
+export const mudarSegredo = (orderId: number, segredo: boolean, motivo: string) =>
+  api.post(`/orders/${orderId}/segredo/`, { segredo, motivo });

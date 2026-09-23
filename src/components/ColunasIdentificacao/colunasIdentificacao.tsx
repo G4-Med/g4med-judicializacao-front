@@ -6,10 +6,11 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
 import { BotaoCopiar } from '../BotaoCopiar/BotaoCopiar';
 import { useFichaPedido } from '../FichaPedido/FichaPedidoContext';
-import { uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos, baixarAnexoDoTipo, salvarBlob, reprocessarDocumentos } from '../../services/api/orders';
+import { mudarSegredo, uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos, baixarAnexoDoTipo, salvarBlob, reprocessarDocumentos } from '../../services/api/orders';
 import { MarcadorAnotacao } from '../Anotacoes/MarcadorAnotacao';
 import { MarcadorRecusa } from '../Recusas/MarcadorRecusa';
 import { SeloPendencia } from '../PendenciaJuridica/PendenciaJuridica';
+import { useAccess } from '../../access/AccessContext';
 import './colunasIdentificacao.css';
 
 
@@ -572,6 +573,72 @@ function AbreFicha({ id, children, titulo }: { id?: number; children: React.Reac
   );
 }
 
+/** Lápis ao lado do selo (@R 23/09 15:25: ⟦"se mudarmos temos que colocar o porquê e ser inserido adicional à
+ *  observação da ficha do pedido a mudança e com o motivo"⟧). Só Admin, Gerente e Jurídico (o servidor confere
+ *  de novo). O motivo vira anotação interna na ficha; a tabela recarrega pelo versaoDados. */
+function LapisSegredo({ r }: { r: any }) {
+  const { profile } = useAccess() as any;
+  const { avisarMudanca } = useFichaPedido();
+  const [aberto, setAberto] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  if (!['ADMIN', 'GERENTE', 'JURIDICO'].includes(profile?.group)) return null;
+  const vira = r.segredo === 'sim' ? false : true;          // 'possivel' também se resolve (default: confirmar)
+  return (
+    <>
+      <button type="button" className="ident-lapis-segredo" aria-label="Mudar segredo de justiça"
+        title="Mudar Segredo / Sem segredo (pede o motivo, que fica na ficha)"
+        onClick={(e) => { e.stopPropagation(); setMotivo(''); setErro(null); setAberto(true); }}>
+        <i className="pi pi-pencil" />
+      </button>
+      <DialogSegredo aberto={aberto} r={r} padrao={vira} motivo={motivo} setMotivo={setMotivo} erro={erro}
+        salvando={salvando} fechar={() => setAberto(false)}
+        confirmar={async (quer: boolean) => {
+          if (motivo.trim().length < 5) { setErro('Escreva o motivo (pelo menos 5 letras).'); return; }
+          setSalvando(true); setErro(null);
+          try { await mudarSegredo(r.id, quer, motivo.trim()); setAberto(false); avisarMudanca(); }
+          catch (e: any) { setErro(e?.response?.data?.error ?? 'Não foi possível mudar agora.'); }
+          finally { setSalvando(false); }
+        }} />
+    </>
+  );
+}
+
+function DialogSegredo({ aberto, r, padrao, motivo, setMotivo, erro, salvando, fechar, confirmar }: {
+  aberto: boolean; r: any; padrao: boolean; motivo: string; setMotivo: (v: string) => void; erro: string | null;
+  salvando: boolean; fechar: () => void; confirmar: (quer: boolean) => void;
+}) {
+  const [quer, setQuer] = useState<boolean>(padrao);
+  React.useEffect(() => { if (aberto) setQuer(padrao); }, [aberto, padrao]);
+  const agora = r.segredo === 'sim' ? 'Segredo' : r.segredo === 'possivel' ? 'Possível segredo (sinal da API)' : 'Sem segredo';
+  return (
+    <Dialog header={`Segredo de justiça — pedido #${r.id}`} visible={aberto} onHide={fechar} modal
+      style={{ width: '28rem', maxWidth: '96vw' }} onClick={(e) => e.stopPropagation()}>
+      <div className="ident-seg-form">
+        <p className="ident-seg-agora">Hoje: <strong>{agora}</strong></p>
+        <div className="ident-seg-opcoes" role="radiogroup" aria-label="Novo estado">
+          <button type="button" role="radio" aria-checked={quer} disabled={r.segredo === 'sim'}
+            className={`ident-seg-op${quer ? ' ident-seg-op--on ident-seg-op--seg' : ''}`} onClick={() => setQuer(true)}>
+            <i className="pi pi-lock" /> Segredo</button>
+          <button type="button" role="radio" aria-checked={!quer} disabled={r.segredo === 'nao'}
+            className={`ident-seg-op${!quer ? ' ident-seg-op--on' : ''}`} onClick={() => setQuer(false)}>
+            <i className="pi pi-lock-open" /> Sem segredo</button>
+        </div>
+        <label htmlFor={`seg-mot-${r.id}`}>Por quê? <span className="ident-seg-obr">(obrigatório — vai para as anotações da ficha)</span></label>
+        <textarea id={`seg-mot-${r.id}`} rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={500}
+          placeholder="ex.: conferido no PJe, o processo não corre em segredo" className="ident-seg-motivo" autoFocus />
+        {erro && <p className="ident-seg-erro" role="alert">{erro}</p>}
+        <div className="ident-seg-botoes">
+          <button type="button" className="ident-seg-cancelar" onClick={fechar}>Cancelar</button>
+          <button type="button" className="ident-seg-salvar" disabled={salvando || motivo.trim().length < 5}
+            onClick={() => confirmar(quer)}>{salvando ? 'Salvando…' : `Mudar para ${quer ? 'Segredo' : 'Sem segredo'}`}</button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
 export function colunaSegredo(largura = '9rem', dados?: any[]) {
   return (
     <Column key="col-segredo" field="segredo" header={cabecalhoComHint('Segredo', EXPLICA.segredo)} sortable
@@ -582,9 +649,9 @@ export function colunaSegredo(largura = '9rem', dados?: any[]) {
       body={(r: LinhaIdentificada) => {
         // @R 17/09: "encurtar o nome Segredo de Justiça para não quebrar linha". O texto
         // completo vai para o hover — encurta o que ocupa espaço, ¬o que informa.
-        if (r.segredo === 'sim') return <AbreFicha id={(r as any).id} titulo="Abrir a ficha: decisão jurídica, observações, orçamento e arquivos"><Tag value="Segredo" severity="danger" icon="pi pi-lock" title={`Segredo de Justiça — ${r.segredoFonte ?? 'marcado no sistema'}`} /></AbreFicha>;
-        if (r.segredo === 'possivel') return <AbreFicha id={(r as any).id} titulo="Abrir a ficha: decisão jurídica, observações, orçamento e arquivos"><Tag value="Possível" severity="warning" icon="pi pi-question-circle" title={`Possível segredo de justiça: sinal da API, ainda não confirmado. Confirme na tela Segredo de Justiça. ${r.segredoFonte ?? ''}`} /></AbreFicha>;
-        if (r.segredo === 'nao') return <AbreFicha id={(r as any).id} titulo="Abrir a ficha: decisão jurídica, observações, orçamento e arquivos"><Tag value="Sem segredo" severity="secondary" title={r.segredoFonte ?? 'Sem marca nem sinal da API'} /></AbreFicha>;
+        if (r.segredo === 'sim') return <span className="ident-seg-cel"><AbreFicha id={(r as any).id} titulo="Abrir a ficha: decisão jurídica, observações, orçamento e arquivos"><Tag value="Segredo" severity="danger" icon="pi pi-lock" title={`Segredo de Justiça — ${r.segredoFonte ?? 'marcado no sistema'}`} /></AbreFicha><LapisSegredo r={r} /></span>;
+        if (r.segredo === 'possivel') return <span className="ident-seg-cel"><AbreFicha id={(r as any).id} titulo="Abrir a ficha: decisão jurídica, observações, orçamento e arquivos"><Tag value="Possível" severity="warning" icon="pi pi-question-circle" title={`Possível segredo de justiça: sinal da API, ainda não confirmado. Confirme na tela Segredo de Justiça. ${r.segredoFonte ?? ''}`} /></AbreFicha><LapisSegredo r={r} /></span>;
+        if (r.segredo === 'nao') return <span className="ident-seg-cel"><AbreFicha id={(r as any).id} titulo="Abrir a ficha: decisão jurídica, observações, orçamento e arquivos"><Tag value="Sem segredo" severity="secondary" title={r.segredoFonte ?? 'Sem marca nem sinal da API'} /></AbreFicha><LapisSegredo r={r} /></span>;
         return <span className="ident-vazio">—</span>;
       }} />
   );

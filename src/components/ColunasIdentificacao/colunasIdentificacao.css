@@ -124,3 +124,26 @@ body.dark-theme .chip-cadastro--completo { background: rgba(28,122,72,0.16); bor
 /* Reprocessar ao lado do Inteiro teor (@R 19/09/2026) */
 .inteiro-teor-wrap--linha { flex-direction: row; align-items: center; gap: .4rem; flex-wrap: wrap; }
 .inteiro-teor-reprocessar { display: inline-flex; align-items: center; gap: .25rem; }
+
+/* lápis do segredo (@R 23/09 15:25) */
+.ident-seg-cel { display: inline-flex; align-items: center; gap: .2rem; }
+.ident-lapis-segredo { border: none; background: transparent; color: var(--text-color-secondary, #6b7280); cursor: pointer;
+  padding: .15rem .3rem; border-radius: 6px; opacity: .55; transition: opacity .15s, background .15s; }
+.ident-lapis-segredo:hover, .ident-lapis-segredo:focus-visible { opacity: 1; background: var(--surface-ground, #f1f5f9); }
+.ident-lapis-segredo i { font-size: .72rem; }
+.ident-seg-form { display: flex; flex-direction: column; gap: .6rem; }
+.ident-seg-agora { margin: 0; font-size: .88rem; }
+.ident-seg-opcoes { display: flex; gap: .5rem; }
+.ident-seg-op { flex: 1; display: inline-flex; justify-content: center; align-items: center; gap: .4rem; padding: .55rem;
+  border: 1px solid var(--surface-border, #d1d5db); border-radius: 8px; background: var(--surface-card, #fff); cursor: pointer; font-size: .88rem; }
+.ident-seg-op:disabled { opacity: .45; cursor: not-allowed; }
+.ident-seg-op--on { border-color: #475569; background: #475569; color: #fff; }
+.ident-seg-op--on.ident-seg-op--seg { border-color: #dc2626; background: #dc2626; }
+.ident-seg-form label { font-weight: 600; font-size: .85rem; }
+.ident-seg-obr { font-weight: 400; color: var(--text-color-secondary, #6b7280); font-size: .78rem; }
+.ident-seg-motivo { width: 100%; border: 1px solid var(--surface-border, #d1d5db); border-radius: 8px; padding: .5rem; font: inherit; resize: vertical; }
+.ident-seg-erro { margin: 0; color: #b91c1c; font-size: .82rem; }
+.ident-seg-botoes { display: flex; justify-content: flex-end; gap: .5rem; }
+.ident-seg-cancelar { border: none; background: transparent; color: var(--primary-color, #1f7a4d); cursor: pointer; padding: .5rem .8rem; }
+.ident-seg-salvar { border: none; background: var(--primary-color, #1f7a4d); color: #fff; border-radius: 8px; padding: .5rem .9rem; cursor: pointer; }
+.ident-seg-salvar:disabled { opacity: .5; cursor: not-allowed; }

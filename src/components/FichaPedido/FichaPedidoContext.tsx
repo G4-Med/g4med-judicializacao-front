@@ -26,9 +26,12 @@ type Ctx = {
    *  fase" — a ficha se atualizava e a tabela atrás continuava com a fase antiga, então
    *  quem fechava a ficha concluía que não tinha funcionado. */
   versaoDados: number;
+  /** Quem muda um pedido FORA da ficha (ex.: lápis do segredo na tabela, @R 23/09) chama isto para as
+   *  telas que escutam versaoDados recarregarem. */
+  avisarMudanca: () => void;
 };
 
-const FichaCtx = createContext<Ctx>({ abrir: () => {}, disponivel: false, versaoDados: 0 });
+const FichaCtx = createContext<Ctx>({ abrir: () => {}, disponivel: false, versaoDados: 0, avisarMudanca: () => {} });
 
 export function useFichaPedido() {
   return useContext(FichaCtx);
@@ -45,7 +48,8 @@ export function FichaPedidoProvider({ children }: { children: React.ReactNode })
     profile?.group === 'ADMIN' || profile?.group === 'GERENTE' || profile?.group === 'JURIDICO';
 
   const valor = useMemo<Ctx>(
-    () => ({ abrir: (id: number) => setOrderId(id), disponivel: true, versaoDados }),
+    () => ({ abrir: (id: number) => setOrderId(id), disponivel: true, versaoDados,
+             avisarMudanca: () => setVersaoDados((v) => v + 1) }),
     [versaoDados],
   );
 
