@@ -6,6 +6,10 @@ import { Dialog } from 'primereact/dialog';
 import { Checkbox } from 'primereact/checkbox';
 import api from '../../services/api';
 import { CHAVE_PADRAO, DICIONARIO_COLUNAS, verbete } from './dicionarioColunas';
+import { useAccess } from '../../access/AccessContext';
+
+/** Quem é o GUIA das colunas (@R 23/09 15:33): o que ele escolhe numa tela é o padrão de quem não escolheu. */
+const GUIA_COLUNAS = 'rapha';
 
 /**
  * Personalização de colunas POR USUÁRIO (task #228, @R 27/08 19:46: "botão que
@@ -61,12 +65,18 @@ function achatar(nodes: ReactNode): any[] {
 export function useColunasVisiveis(tela: string) {
   const chave = `colunas_ocultas:${tela}`;
   const lsKey = `mc_${chave}`;
+  const lsGuia = `mc_guia_${chave}`;
+  const { profile } = useAccess() as any;
+  const souGuia = profile?.username === GUIA_COLUNAS;
+  const [temPropria, setTemPropria] = useState<boolean | null>(null);   // null = ainda não sei
   // @R 29/08 13:28: o PADRÃO (todas as telas) manda; a escolha POR TELA sobrescreve; e coluna
   // marcada como opcional no dicionário NASCE DESMARCADA para quem nunca configurou nada.
   const [ocultas, setOcultas] = useState<string[]>(() => {
     try {
       const daTela = localStorage.getItem(lsKey);
       if (daTela) return JSON.parse(daTela);
+      const doGuia = localStorage.getItem(lsGuia);
+      if (doGuia) return JSON.parse(doGuia);
       const doPadrao = localStorage.getItem(`mc_${CHAVE_PADRAO}`);
       if (doPadrao) return JSON.parse(doPadrao);
     } catch { /* storage indisponível */ }
@@ -90,14 +100,26 @@ export function useColunasVisiveis(tela: string) {
           // produzia "Maximum update depth exceeded" ao trocar de tela.
           setOcultas((atual) => (mesmaLista(atual, doServidor) ? atual : doServidor));
           try { localStorage.setItem(lsKey, JSON.stringify(doServidor)); } catch { /* cheio/bloqueado */ }
+          setTemPropria(true);
           return;
         }
-        return api.get(`/preferencias/${encodeURIComponent(CHAVE_PADRAO)}/`).then(({ data: d2 }) => {
+        setTemPropria(false);
+        try { localStorage.removeItem(lsKey); } catch { /* fail-soft */ }
+        // 2º o GUIA (@R 23/09 15:33): as colunas que o rapha escolheu nesta tela valem para quem não escolheu as suas
+        return api.get(`/preferencias-sistema/${encodeURIComponent(chave)}/`).then(({ data: dg }) => {
+          const doGuia = dg?.valor?.ocultas;
+          if (Array.isArray(doGuia)) {
+            setOcultas((atual) => (mesmaLista(atual, doGuia) ? atual : doGuia));
+            try { localStorage.setItem(lsGuia, JSON.stringify(doGuia)); } catch { /* fail-soft */ }
+            return;
+          }
+          return api.get(`/preferencias/${encodeURIComponent(CHAVE_PADRAO)}/`).then(({ data: d2 }) => {
           const doPadrao = d2?.valor?.ocultas;
           if (Array.isArray(doPadrao)) {
             setOcultas((atual) => (mesmaLista(atual, doPadrao) ? atual : doPadrao));
             try { localStorage.setItem(`mc_${CHAVE_PADRAO}`, JSON.stringify(doPadrao)); } catch { /* fail-soft */ }
           }
+          });
         });
       })
       .catch(() => undefined);   // API fora → fica o cache local
@@ -106,9 +128,25 @@ export function useColunasVisiveis(tela: string) {
 
   const salvar = (novas: string[]) => {
     setOcultas(novas);
+    setTemPropria(true);
     try { localStorage.setItem(lsKey, JSON.stringify(novas)); } catch { /* fail-soft */ }
     api.put(`/preferencias/${encodeURIComponent(chave)}/`, { valor: { ocultas: novas } })
       .catch(() => undefined);
+  };
+
+  // "Usar o padrão do Rapha": apaga a escolha própria desta tela e lê o guia de novo.
+  const voltarAoGuia = () => {
+    try { localStorage.removeItem(lsKey); } catch { /* fail-soft */ }
+    api.delete(`/preferencias/${encodeURIComponent(chave)}/`).catch(() => undefined).finally(() => {
+      setTemPropria(false);
+      api.get(`/preferencias-sistema/${encodeURIComponent(chave)}/`).then(({ data }) => {
+        const g = data?.valor?.ocultas;
+        if (Array.isArray(g)) {
+          setOcultas(g);
+          try { localStorage.setItem(lsGuia, JSON.stringify(g)); } catch { /* fail-soft */ }
+        }
+      }).catch(() => undefined);
+    });
   };
 
   const filtrar = (children: ReactNode) => {
@@ -196,6 +234,13 @@ export function useColunasVisiveis(tela: string) {
         title="Escolha quais colunas aparecem — a escolha fica salva para o seu usuário" />
       <Dialog header="Colunas visíveis" visible={aberto} modal onHide={() => setAberto(false)}
         style={{ width: '24rem', maxWidth: '94vw' }}>
+        <p style={{ margin: '0 0 10px', fontSize: '.8rem', color: 'var(--text-color-secondary, #6b7280)' }}>
+          {souGuia
+            ? <>Você é o <strong>guia</strong>: o que marcar aqui vira o padrão desta tela para quem não escolheu as próprias colunas.</>
+            : temPropria
+              ? <>Você está usando as <strong>suas</strong> colunas nesta tela.</>
+              : <>Você está vendo o <strong>padrão do sistema</strong> (colunas do Rapha). Se mudar, passa a valer a sua escolha.</>}
+        </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {conhecidas.current.map((c) => (
             <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
@@ -207,11 +252,15 @@ export function useColunasVisiveis(tela: string) {
             </label>
           ))}
         </div>
-        <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
           <Button label="O que é cada coluna" text size="small" icon="pi pi-question-circle"
             onClick={() => { window.location.href = '/configuracoes-colunas'; }}
             title="Abre Configurações › Colunas: explica cada coluna e deixa definir o padrão de todas as telas" />
           <Button label="Mostrar todas" text size="small" onClick={() => salvar([])} />
+          {!souGuia && temPropria && (
+            <Button label="Usar o padrão do Rapha" text size="small" icon="pi pi-replay" onClick={voltarAoGuia}
+              title="Apaga a sua escolha nesta tela e volta às colunas que o Rapha deixou como padrão" />
+          )}
           <Button label="Fechar" size="small" onClick={() => setAberto(false)} />
         </div>
       </Dialog>
