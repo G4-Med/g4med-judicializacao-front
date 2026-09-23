@@ -628,3 +628,12 @@ export const rastroLinksDocumentos = (orderId: number) =>
   api.get(`/orders/${orderId}/link-documentos/rastro/`);
 export const revogarLinkDocumentos = (linkId: number) =>
   api.post(`/link-documentos/${linkId}/revogar/`, {});
+
+/** Filtro por texto inteligente da tabela (@R 23/09): texto livre (médico, cirurgia, área, especialidade…)
+ *  + ids que a tela mostra → a IA devolve os que casam, como entendeu e quais colunas usou. */
+export interface FiltroTextoResposta {
+  entendi: string; colunasUsadas: string[]; ids: number[]; porque: Record<string, string>;
+  analisados: number; descartadosInvalidos: number;
+}
+export const filtrarTextoIA = (texto: string, ids: number[]) =>
+  api.post<FiltroTextoResposta>('/ia/filtrar-texto/', { texto, ids });

@@ -1,0 +1,13 @@
+/* Filtro por texto inteligente (@R 23/09) — cores da marca */
+.filtro-ia { margin: 8px 0 12px; }
+.filtro-ia__linha { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.filtro-ia__icone { color: #00a651; }
+.filtro-ia__campo { flex: 1; min-width: 260px; max-width: 640px; }
+.filtro-ia__erro { color: #b42318; font-size: 13px; margin-top: 6px; }
+.filtro-ia__resultado { margin-top: 8px; background: #f5fbf8; border: 1px solid #c2ecd7; border-left: 3px solid #00a651;
+  border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #1f2d3d; }
+.filtro-ia__colunas { color: #5b6b7b; }
+.filtro-ia__link { background: none; border: 0; color: #0a7a3d; text-decoration: underline; cursor: pointer; font: inherit; margin-left: 8px; }
+.filtro-ia__porque { margin: 6px 0 0; padding-left: 18px; max-height: 220px; overflow-y: auto; }
+.filtro-ia__porque li { margin: 2px 0; }
+.filtro-ia__nota { font-size: 11px; color: #5b6b7b; font-style: italic; margin-top: 4px; }

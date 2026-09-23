@@ -7,6 +7,7 @@ import { CelulaCotacaoConcorrente, DialogCotacaoConcorrente } from '../../compon
 import { FaixaDaPeca } from '../../components/CotacaoConcorrente/FaixaDaPeca';
 import { registrarCotacaoPedida, darPerdaNoOrcamento } from '../../services/api/orders';
 import { DialogoCopiarPedido, prepararCopiaPedido, type PedidoParaCopiar } from './DialogoCopiarPedido';
+import { FiltroInteligente, type FiltroAtivo } from '../../components/FiltroInteligente/FiltroInteligente';
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
@@ -276,11 +277,14 @@ export function OrcamentoMedicoPage() {
   }, [dataComSequencial, medicos]);
   const nNegou = dataComMedico.filter((r: any) => r.negadoPorMedico).length;
   const nSemMedico = dataComMedico.filter((r: any) => r.semMedico).length;
-  const linhasDaTabela = useMemo(() => (
-    filtroRapido === 'negou' ? dataComMedico.filter((r: any) => r.negadoPorMedico)
+  // filtro por texto inteligente (@R 23/09): a IA escolhe os ids; os outros filtros seguem valendo por cima
+  const [filtroIA, setFiltroIA] = useState<FiltroAtivo | null>(null);
+  const linhasDaTabela = useMemo(() => {
+    const base = filtroRapido === 'negou' ? dataComMedico.filter((r: any) => r.negadoPorMedico)
       : filtroRapido === 'sem' ? dataComMedico.filter((r: any) => r.semMedico)
-        : dataComMedico
-  ), [dataComMedico, filtroRapido]);
+        : dataComMedico;
+    return filtroIA ? base.filter((r: any) => filtroIA.ids.has(r.id)) : base;
+  }, [dataComMedico, filtroRapido, filtroIA]);
   // Há pelo menos 1 envio confirmado na fila = a confirmação pela Eliza está viva (ver coluna Pedido ao médico).
   const confirmacaoEnvioAtiva = dataComMedico.some((r: any) => !!r?.ultimaCotacaoEnviadaEm);
 
@@ -628,6 +632,7 @@ ${blocos}
       </PainelKpis>
 
       <div className="card">
+        <FiltroInteligente idsNaTela={dataComMedico.map((r: any) => r.id)} ativo={filtroIA} onMudar={setFiltroIA} />
         <h2 className="mc-tabela-titulo">
           <i className="pi pi-table" />Pedidos aguardando orçamento médico
           {/* Diz quantos são e em que fase estão (task #208): a tela mostrar 16 estava
