@@ -35,7 +35,8 @@ export type ScreenKey =
   | 'notificacoesHistorico'
   | 'lixeira'
   | 'orcamentosTerceiros'
-  | 'centralEmails';
+  | 'centralEmails'
+  | 'custoIA';
 
 export type ReportKey = 'relatorioResumido' | 'relatorioConsolidado';
 
@@ -78,6 +79,7 @@ export const GROUP_PERMISSIONS: Record<UserGroup, GroupPermissionConfig> = {
       'lixeira',
       'orcamentosTerceiros',
       'centralEmails',
+      'custoIA',
     ],
     edit: [
       'lixeira',
@@ -133,6 +135,7 @@ export const GROUP_PERMISSIONS: Record<UserGroup, GroupPermissionConfig> = {
       'orcamentosTerceiros',
       'centralEmails',
       'configuracoesEmails',
+      'custoIA',
     ],
     // Gerente era 100% somente-leitura por padrão — mas na prática precisa agir na
     // tela de orçamento médico (enviar orçamento, solicitar exames, recusar o
@@ -257,6 +260,7 @@ export const SCREEN_PATHS: Record<ScreenKey, string> = {
   lixeira: '/lixeira',
   orcamentosTerceiros: '/orcamentos-terceiros',
   centralEmails: '/central-emails',
+  custoIA: '/custo-ia',
 };
 
 export const SCREEN_ORDER: ScreenKey[] = [
@@ -285,6 +289,7 @@ export const SCREEN_ORDER: ScreenKey[] = [
   'lixeira',
   'orcamentosTerceiros',
   'centralEmails',
+  'custoIA',
 ];
 
 export const DEFAULT_GROUP: UserGroup = 'SECRETARIA';

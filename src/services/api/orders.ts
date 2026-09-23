@@ -649,3 +649,16 @@ export interface ParecerCompat { compativel: 'SIM' | 'PARCIAL' | 'NAO' | 'ILEGIV
 export const conferirCompatibilidade = (orderId: number, forcar = false) =>
   api.post<{ procedimentoPedido: string; itens: Record<string, ParecerCompat>; restantes: number }>(
     `/orders/${orderId}/link-documentos/compatibilidade/`, { forcar });
+
+/** Custo de IA (@R 23/09 13:54): somas feitas no banco por área, sistema, rota, modelo, usuário e dia. */
+export interface LinhaCustoIA { chamadas: number; custoUsd: number; tokensEntrada: number; tokensSaida: number; falhas: number; semPreco: number; [campo: string]: any }
+export interface CustosIA {
+  dias: number; desde: string; contandoDesde: string | null;
+  total: LinhaCustoIA; porArea: LinhaCustoIA[]; porSistema: LinhaCustoIA[]; porRota: LinhaCustoIA[];
+  porModelo: LinhaCustoIA[]; porUsuario: LinhaCustoIA[];
+  porDia: { dia: string; chamadas: number; custoUsd: number }[];
+  ultimas: { em: string; area: string; sistema: string; rota: string | null; usuario: string | null; modelo: string;
+    tokensEntrada: number | null; tokensSaida: number | null; custoUsd: number | null; duracaoMs: number | null; ok: boolean; erro: string | null }[];
+  precos: Record<string, { entrada: number; saida: number }>;
+}
+export const getCustosIA = (dias: number) => api.get<CustosIA>('/ia/custos/', { params: { dias } });

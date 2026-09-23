@@ -67,6 +67,7 @@ export const MENU_CONFIG_CLEAN: MenuConfigItem[] = [
   { label: 'Rotina dos dados do Estado', icon: 'pi pi-sync', path: '/rotina-dados-estado', screen: 'processos' },
   { label: 'Acervo de preços', icon: 'pi pi-dollar', path: '/orcamentos-terceiros', screen: 'orcamentosTerceiros' },
   { label: 'Central de E-mails', icon: 'pi pi-inbox', path: '/central-emails', screen: 'centralEmails' },
+  { label: 'Custo de IA', icon: 'pi pi-wallet', path: '/custo-ia', screen: 'custoIA' },   // @R 23/09 13:54
   { label: 'Lixeira', icon: 'pi pi-trash', path: '/lixeira', screen: 'lixeira' },
   { label: 'Clientes', icon: 'pi pi-users', path: '/clientes', screen: 'clientes' },
   {

@@ -41,6 +41,7 @@ import { SelecionarMedicoPage } from '../../pages/selecionarMedico/SelecionarMed
 import { RelatorioResumidoPage } from '../../pages/relatorios/RelatorioResumidoPage';
 import { RelatorioConsolidadoPage } from '../../pages/relatorios/RelatorioConsolidadoPage';
 import { EmailsPage } from '../../pages/emails/EmailsPage';
+import { CustoIAPage } from '../../pages/custoIA/CustoIAPage';
 import { ConfiguracoesEmailsPage } from '../../pages/configuracoesEmails/ConfiguracoesEmailsPage';
 import { ConfiguracoesColunasPage } from '../../pages/configuracoesColunas/ConfiguracoesColunasPage';
 import { MonitorIntegracaoPage } from '../../pages/monitorIntegracao/MonitorIntegracaoPage';
@@ -118,6 +119,7 @@ export function AppRoutes() {
         <Route path="/lixeira" element={<ProtectedScreen screen="lixeira"><LixeiraPage /></ProtectedScreen>} />
         <Route path="/orcamentos-terceiros" element={<ProtectedScreen screen="orcamentosTerceiros"><OrcamentosTerceirosPage /></ProtectedScreen>} />
         <Route path="/central-emails" element={<ProtectedScreen screen="centralEmails"><CentralEmailsPage /></ProtectedScreen>} />
+        <Route path="/custo-ia" element={<ProtectedScreen screen="custoIA"><CustoIAPage /></ProtectedScreen>} />
       </Route>
     </Routes>
   );
