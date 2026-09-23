@@ -1,23 +1,48 @@
-/* Filtro por texto inteligente (@R 23/09) — cores da marca */
-.filtro-ia { margin: 8px 0 12px; display: flex; flex-direction: column; gap: 6px; }
+/* Filtro inteligente — cartão próprio acima da tabela (@R 23/09 13:40). Marca: verde #00A651, navy #0A3D62 */
+.filtro-ia {
+  background: #fff; border: 1px solid #dfe6ec; border-radius: 12px; padding: 14px 16px 12px;
+  margin: 0 0 14px; display: flex; flex-direction: column; gap: 10px;
+  box-shadow: 0 1px 2px rgba(10, 61, 98, .04), 0 4px 14px rgba(10, 61, 98, .06);
+  border-top: 3px solid #00a651;
+}
+.filtro-ia__cab { display: flex; align-items: center; gap: 10px; }
+.filtro-ia__selo { width: 32px; height: 32px; border-radius: 9px; background: #e6f7ef; color: #00a651;
+  display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.filtro-ia__titulo { font-weight: 700; color: #0a3d62; font-size: 15px; line-height: 1.2; }
+.filtro-ia__sub { font-size: 12.5px; color: #5b6b7b; }
+
 .filtro-ia__linha { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.filtro-ia__icone { color: #00a651; }
-.filtro-ia__campo { flex: 1 1 420px; min-width: 240px; max-width: 720px; }
-.filtro-ia__linha .p-button { flex: none; white-space: nowrap; }
-.filtro-ia__erro { color: #b42318; font-size: 13px; }
-.filtro-ia__resultado { line-height: 1.5; background: #f5fbf8; border: 1px solid #c2ecd7; border-left: 3px solid #00a651;
-  border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #1f2d3d; }
+.filtro-ia__caixa { position: relative; flex: 1 1 420px; min-width: 240px; max-width: 760px; display: flex; }
+.filtro-ia__lupa { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 14px; pointer-events: none; }
+.filtro-ia__campo.p-inputtext { width: 100%; padding: 9px 12px 9px 34px; border-radius: 10px; border: 1px solid #cfd8e0; font-size: 14px;
+  transition: border-color .15s, box-shadow .15s; }
+.filtro-ia__campo.p-inputtext:enabled:focus { border-color: #00a651; box-shadow: 0 0 0 3px rgba(0, 166, 81, .15); }
+.filtro-ia__linha .p-button { flex: none; white-space: nowrap; border-radius: 10px; }
+.filtro-ia__linha .p-button:not(.p-button-outlined):not(.p-button-text) { background: #00a651; border-color: #00a651; }
+.filtro-ia__linha .p-button:not(.p-button-outlined):not(.p-button-text):enabled:hover { background: #008c44; border-color: #008c44; }
+.filtro-ia__linha .p-button.p-button-outlined { color: #0a3d62; border-color: #b6c6d3; }
+
+.filtro-ia__salvos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.filtro-ia__salvos-rotulo { font-size: 11.5px; color: #5b6b7b; text-transform: uppercase; letter-spacing: .05em; margin-right: 2px; }
+.filtro-ia__chip { display: inline-flex; align-items: center; border: 1px solid #d5e3dc; background: #f7fbf9; border-radius: 999px;
+  transition: border-color .15s, background .15s; }
+.filtro-ia__chip:hover { border-color: #9fdcbc; background: #eefaf3; }
+.filtro-ia__chip--ativo { background: #e6f7ef; border-color: #00a651; }
+.filtro-ia__chip-txt { background: none; border: 0; padding: 4px 4px 4px 11px; font: inherit; font-size: 12.5px; color: #0a3d62; cursor: pointer; }
+.filtro-ia__chip-x { background: none; border: 0; padding: 0 9px 0 4px; font-size: 15px; line-height: 1; color: #94a3b8; cursor: pointer; }
+.filtro-ia__chip-x:hover { color: #b42318; }
+
+.filtro-ia__erro { color: #b42318; font-size: 12.5px; }
+.filtro-ia__resultado { background: #f5fbf8; border: 1px solid #c2ecd7; border-left: 3px solid #00a651; border-radius: 10px;
+  padding: 9px 12px; font-size: 13px; color: #1f2d3d; line-height: 1.5; }
 .filtro-ia__colunas { color: #5b6b7b; }
-.filtro-ia__link { background: none; border: 0; color: #0a7a3d; text-decoration: underline; cursor: pointer; font: inherit; margin-left: 8px; padding: 0; white-space: nowrap; }
+.filtro-ia__link { background: none; border: 0; color: #0a7a3d; text-decoration: underline; cursor: pointer; font: inherit;
+  margin-left: 8px; padding: 0; white-space: nowrap; }
 .filtro-ia__porque { margin: 6px 0 0; padding-left: 18px; max-height: 220px; overflow-y: auto; }
 .filtro-ia__porque li { margin: 2px 0; }
 .filtro-ia__nota { font-size: 11px; color: #5b6b7b; font-style: italic; margin-top: 4px; }
 
-/* filtros salvos (@R 23/09) */
-.filtro-ia__salvos { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.filtro-ia__salvos-rotulo { font-size: 12px; color: #5b6b7b; }
-.filtro-ia__chip { display: inline-flex; align-items: center; border: 1px solid #c2ecd7; background: #fff; border-radius: 999px; }
-.filtro-ia__chip--ativo { background: #e6f7ef; border-color: #00a651; }
-.filtro-ia__chip-txt { background: none; border: 0; padding: 3px 4px 3px 10px; font: inherit; font-size: 12.5px; color: #0a3d62; cursor: pointer; }
-.filtro-ia__chip-x { background: none; border: 0; padding: 0 8px 0 4px; font-size: 15px; line-height: 1; color: #94a3b8; cursor: pointer; }
-.filtro-ia__chip-x:hover { color: #b42318; }
+@media (max-width: 720px) {
+  .filtro-ia__sub { display: none; }
+  .filtro-ia__linha .p-button { flex: 1 1 auto; }
+}

@@ -631,8 +631,9 @@ ${blocos}
       </div>
       </PainelKpis>
 
+      {/* Filtro inteligente em cartão PRÓPRIO, acima da tabela (@R 23/09 13:40: "separado da tabela") */}
+      <FiltroInteligente idsNaTela={dataComMedico.map((r: any) => r.id)} ativo={filtroIA} onMudar={setFiltroIA} chaveSalvos="filtros_ia_orcamento_medico" />
       <div className="card">
-        <FiltroInteligente idsNaTela={dataComMedico.map((r: any) => r.id)} ativo={filtroIA} onMudar={setFiltroIA} chaveSalvos="filtros_ia_orcamento_medico" />
         <h2 className="mc-tabela-titulo">
           <i className="pi pi-table" />Pedidos aguardando orçamento médico
           {/* Diz quantos são e em que fase estão (task #208): a tela mostrar 16 estava

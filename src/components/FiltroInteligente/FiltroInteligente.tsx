@@ -68,12 +68,21 @@ export function FiltroInteligente({ idsNaTela, ativo, onMudar, exemplo, chaveSal
   const limpar = () => { onMudar(null); setTexto(''); setErro(''); setVerPorque(false); };
 
   return (
-    <div className="filtro-ia">
+    <section className="filtro-ia" aria-label="Filtro inteligente">
+      <header className="filtro-ia__cab">
+        <span className="filtro-ia__selo"><i className="pi pi-sparkles" aria-hidden /></span>
+        <div>
+          <div className="filtro-ia__titulo">Filtro inteligente</div>
+          <div className="filtro-ia__sub">Escreva do seu jeito — médico, cirurgia, área ou uma combinação. A IA cruza as colunas e explica.</div>
+        </div>
+      </header>
       <div className="filtro-ia__linha">
-        <i className="pi pi-sparkles filtro-ia__icone" aria-hidden />
+        <span className="filtro-ia__caixa">
+          <i className="pi pi-search filtro-ia__lupa" aria-hidden />
         <InputText value={texto} onChange={(e) => { setTexto(e.target.value); setErro(''); }} className="filtro-ia__campo"
-          placeholder={exemplo || 'Filtro inteligente: médico, cirurgia, área… (ex.: vascular, Dr. Paulo, prótese de quadril)'}
+          placeholder={exemplo || 'ex.: vascular · Dr. Paulo · prótese de quadril · ortopedia sem médico'}
           onKeyDown={(e) => { if (e.key === 'Enter') void filtrar(); }} disabled={carregando} aria-label="Filtro inteligente por texto" />
+        </span>
         <Button label={carregando ? 'Filtrando…' : 'Filtrar com IA'} icon="pi pi-filter" size="small"
           loading={carregando} onClick={() => void filtrar()} />
         {chaveSalvos && (
@@ -123,6 +132,6 @@ export function FiltroInteligente({ idsNaTela, ativo, onMudar, exemplo, chaveSal
           <div className="filtro-ia__nota">filtro feito pela IA — confira; os outros filtros da tabela continuam valendo</div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
