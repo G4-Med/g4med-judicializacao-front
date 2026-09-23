@@ -147,6 +147,9 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   // @R 23/09 12:51: o valor que o médico vê pode ser ajustado por quem copia ("coerente com o que acho").
   // Só guarda o que difere do calculado; o servidor valida (orçamento do pedido, valor > 0) e registra.
   const [ajustes, setAjustes] = useState<Record<number, number>>({});
+  // @R 23/09 13:19: sem valores no link, dá para avisar ao médico que o processo (lido: inteiro teor) não tem
+  // orçamento de outro prestador — em vez da página ficar muda. Só existe com a peça de inteiro teor.
+  const [avisoSemRef, setAvisoSemRef] = useState(false);
   const [refsFora, setRefsFora] = useState<Set<number>>(new Set());
   // @R 22/09 ~11:10: "um check que vamos mandar os últimos pagamentos, os 5... e podemos desmarcar os
   // valores para enviar só os corretos". Padrão: NÃO vai (como antes); ligando, vão os 5 e desmarca-se.
@@ -209,6 +212,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   const docsVao = docs.filter((d) => !docsFora.has(d.id)).length;
   // só a referência que o médico PODE ver (conferida) conta como "vai"
   const refsVao = refs.filter((x) => !x.ocultoAoMedico && !refsFora.has(x.id)).length;
+  const semValoresNoLink = !comValores || refsVao === 0;
   const hist = previa?.historicoPago;
   const pagamentos: any[] = hist?.pagamentos || [];
   const pagVao = pagamentos.filter((p) => !pagFora.has(p.id));
@@ -252,6 +256,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
           pagamentosIncluidos: enviarPag ? pagVao.map((p) => p.id) : [],
           resumoId: enviarRel && rel ? rel.id : null,
           historicoIncluido: enviarHist && cotacoesAnt.length > 0,
+          avisoSemReferencia: avisoSemRef && semValoresNoLink && !!previa?.temInteiroTeor,
           valoresAjustados: comValores ? Object.fromEntries(Object.entries(ajustes)
             .filter(([id]) => !refsFora.has(Number(id)))) : {},
         });
@@ -469,6 +474,19 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
               </div>
             )}
           </section>
+
+          {semValoresNoLink && previa?.temInteiroTeor && (
+            <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <Checkbox inputId="avisoSemRef" checked={avisoSemRef} onChange={(e) => setAvisoSemRef(!!e.checked)} />
+                <span>
+                  <b>Avisar ao médico que o processo não tem valores de referência</b><br />
+                  <span style={{ color: '#6b7280' }}>Nenhum valor vai neste link. Marque se o processo (inteiro teor, lido pela G4MED) não
+                    traz orçamento de outro prestador — o médico lê isso na página em vez de ficar sem saber.</span>
+                </span>
+              </label>
+            </section>
+          )}
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>Quanto o Estado já pagou por procedimento parecido</div>

@@ -25,6 +25,8 @@ interface Dados {
   referencias: { categoria: string; valorReferencia: number; local?: string | null; descricao?: string | null;
                  data?: string | null; pagina?: number | null }[];
   referenciasNota: string;
+  /** @R 23/09: quem copiou marcou que o processo (lido) não tem orçamento de outro prestador */
+  semReferenciaNoProcesso?: boolean;
   // @R 22/09 12:42: os ÚLTIMOS pagamentos um a um + o MENOR como norte ("baixo é vitória") — sem média
   pagoPeloEstado?: { n: number; menor: number; menorMes: string; maior: number; maiorMes: string; de: string; ate: string; aviso: string;
                     lista?: { valor: number; mes: string; procedimento: string; menor?: boolean }[] } | null;
@@ -510,6 +512,17 @@ export function LinkDocumentosPage() {
                       <b>{brl(x.valor)}</b>
                     </div>
                   ))}
+                </div>
+              </section>
+            )}
+
+            {dados.referencias.length === 0 && dados.semReferenciaNoProcesso && (
+              <section>
+                <h2 style={tituloSecao}>◆ Orçamentos deste processo (referência)</h2>
+                <div style={{ background: cor.cartao, borderRadius: 12, border: `1px solid ${cor.linha}`, padding: '14px 16px',
+                  fontSize: 15, lineHeight: 1.5 }}>
+                  <b>Não há valores de referência neste processo.</b> A G4MED leu o processo e não encontrou orçamento de
+                  outro prestador para este procedimento — o seu orçamento será o primeiro.
                 </div>
               </section>
             )}

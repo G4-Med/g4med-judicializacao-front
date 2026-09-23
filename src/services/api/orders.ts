@@ -617,6 +617,8 @@ export const gerarLinkDocumentos = (orderId: number, dados: {
   historicoIncluido?: boolean;
   /** @R 23/09 12:51: valor que o médico vê, ajustado por quem copia — {idReferência: valor}. */
   valoresAjustados?: Record<string, number>;
+  /** @R 23/09 13:19: link sem valores e o processo (inteiro teor) não tem orçamento de outro prestador. */
+  avisoSemReferencia?: boolean;
 }) =>
   api.post(`/orders/${orderId}/link-documentos/`, dados);
 /* Relatório médico da IA (@R 22/09): gerado no clique, a partir dos documentos MARCADOS, com citação
