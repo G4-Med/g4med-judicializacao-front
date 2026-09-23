@@ -65,7 +65,7 @@ api.interceptors.response.use(
         return api(original);
       } catch {
         // @R 22/09 "Login dura 1 dia completo": o refresh vence 24 h depois do login — diz isso na tela de entrada
-        try { sessionStorage.setItem('aviso_login', 'Sua sessão de 1 dia terminou. Entre de novo com usuário, senha e CPF.'); } catch { /* sem storage */ }
+        try { sessionStorage.setItem('aviso_login', 'Sua sessão de 1 dia terminou. Entre de novo com usuário e senha.'); } catch { /* sem storage */ }
         localStorage.clear();
         window.location.href = '/login';
       }

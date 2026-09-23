@@ -634,12 +634,21 @@ export function ComoEstamos({ linhas }: { linhas: Linha[] }) {
   const foco = lente === 'mes' ? dados.mesAtual : lente === 'ano' ? dados.anoAtual : dados.vida;
 
   return (
-    <section className={`ce ${aberto ? '' : 'ce--fechada'}`}>
+    <section id="ce-conteudo" className={`ce ${aberto ? '' : 'ce--fechada'}`} aria-label="Como estamos">
       <header className="ce__topo">
         {/* @R 22/09 19:14: vinha sempre aberto; agora abre/fecha como os outros painéis da Início */}
-        <button type="button" className="ce__toggle" onClick={() => setAberto((v) => !v)} aria-expanded={aberto}>
-          <i className={`pi ${aberto ? 'pi-chevron-down' : 'pi-chevron-right'}`} />
-          <h2>Como estamos</h2>
+        <button type="button" className="ce__toggle" onClick={() => setAberto((v) => !v)} aria-expanded={aberto}
+          aria-controls="ce-conteudo" aria-describedby="ce-sub">
+          <i className={`pi ${aberto ? 'pi-chevron-down' : 'pi-chevron-right'}`} aria-hidden="true" />
+          <span className="ce__titulos">
+            <h2>Como estamos</h2>
+            {/* @R 22/09 21:27: faltava dizer o que é a área e o que tem dentro (os outros painéis já diziam) */}
+            <span id="ce-sub" className="home-panel__sub">
+              O resultado do negócio: pedidos recebidos, ganhos decididos e os valores recebidos em oportunidade,
+              enviados em orçamento, perdidos e ganhos — no mês (até hoje), no ano, na vida toda ou mês a mês,
+              comparando com o mês anterior e com o mesmo mês do ano passado.
+            </span>
+          </span>
         </button>
         {aberto && <div className="ce__lentes" role="tablist">
           {([['mes', `${nomeMes} (até dia ${dados.dia})`], ['ano', `${dados.ano}`], ['vida', 'Vida toda'], ['serie', 'Mês a mês']] as const)

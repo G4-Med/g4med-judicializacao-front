@@ -107,3 +107,12 @@ body.dark-theme .ce-hint__legenda { border-top-color: #2b3932; }
 .ce__toggle:hover h2 { text-decoration: underline; }
 .ce--fechada > :not(.ce__topo) { display: none; }
 .ce--fechada .ce__topo { margin-bottom: 0; }
+
+/* @R 22/09 21:27 — descrição sob o título (como Acessos e Visão mensal) + foco visível só pelo teclado:
+   o clique do mouse deixava um contorno preto "de caixa" em volta do título (print) */
+.ce__toggle { text-align: left; align-items: flex-start; }
+.ce__toggle > .pi { margin-top: 4px; }
+.ce__titulos { display: flex; flex-direction: column; gap: 2px; }
+.ce__titulos .home-panel__sub { font-weight: 400; }
+.ce__toggle:focus { outline: none; }
+.ce__toggle:focus-visible { outline: 2px solid var(--mc-green-600, #00a651); outline-offset: 2px; }

@@ -69,6 +69,9 @@ const LoginForms = ({ view, toggleView }: LoginFormsProps) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [cpf, setCpf] = useState('');
+  // @R 22/09 21:25: o CPF só é pedido quando o login ainda NÃO tem CPF (1º acesso) — o servidor avisa com
+  // cpf_primeiro_acesso e só então o campo aparece; quem já cadastrou entra só com usuário e senha.
+  const [pedirCpf, setPedirCpf] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   // aviso deixado por quem mandou para o login (sessão de 1 dia vencida) — lido 1 vez e apagado
   const [aviso] = useState(() => {
@@ -95,6 +98,7 @@ const LoginForms = ({ view, toggleView }: LoginFormsProps) => {
       // a tela disse "senha errada" quando a senha nunca chegou a ser checada).
       const codigo = err?.response?.data?.code;
       if (codigo && String(codigo).startsWith('cpf_')) {
+        setPedirCpf(true);
         // o servidor já manda a frase certa (primeiro acesso, CPF obrigatório, inválido, não confere, já em uso)
         setError(err.response.data.detail || 'Confira o CPF.');
       } else if (err?.response?.status === 401) {
@@ -155,23 +159,24 @@ const LoginForms = ({ view, toggleView }: LoginFormsProps) => {
             </button>
           </div>
 
-          <div className="login-page__input-box">
+          {pedirCpf && <div className="login-page__input-box">
             <i className="pi pi-id-card login-page__input-icon" />
             <input
               className="login-page__input"
               type="text"
               inputMode="numeric"
               autoComplete="off"
-              placeholder="CPF (sua chave de acesso)"
+              placeholder="CPF (cadastro do primeiro acesso)"
               required
-              title="No primeiro acesso o CPF que você digitar vira a sua chave. Depois, ele é pedido em todo login."
+              autoFocus
+              title="Pedido só no primeiro acesso: o CPF fica cadastrado no seu usuário. Nos próximos logins não é pedido de novo."
               value={cpf}
               onChange={(e) => {
                 const d = e.target.value.replace(/\D/g, '').slice(0, 11);
                 setCpf(d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2'));
               }}
             />
-          </div>
+          </div>}
 
           {aviso && !error && (
             <p className="login-page__error">

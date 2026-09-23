@@ -624,3 +624,25 @@ body.dark-theme .home-collapse__toggle:hover { background: rgba(255, 255, 255, 0
 .home-hero__fases li:has(.home-hero__selo) { column-span: all; margin-top: 4px; }
 .home-hero__fases li { padding: 2px 0; }
 @container (max-width: 520px) { .home-hero__fases { columns: 1; } }
+
+/* @R 22/09 21:28 — linhas recolhidas (menos informação à vista): fechada mostra quem + situação, abre o detalhe */
+.acessos-bloco__pessoa--dobra { display: block; padding: 0; }
+.acessos-bloco__pessoa--dobra > details > summary {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; list-style: none; cursor: pointer;
+  padding: 6px 6px; border-radius: 8px;
+}
+.acessos-bloco__pessoa--dobra > details > summary::-webkit-details-marker { display: none; }
+.acessos-bloco__pessoa--dobra > details > summary::after {
+  content: '\203A'; margin-left: auto; color: #94a3b8; font-size: 16px; line-height: 1; transition: transform .15s ease;
+}
+.acessos-bloco__pessoa--dobra > details[open] > summary::after { transform: rotate(90deg); }
+.acessos-bloco__pessoa--dobra > details > summary:hover { background: rgba(15, 23, 42, .04); }
+.acessos-bloco__pessoa--dobra > details > summary:focus { outline: none; }
+.acessos-bloco__pessoa--dobra > details > summary:focus-visible { outline: 2px solid #00a651; outline-offset: 1px; }
+.acessos-bloco__pessoa--dobra > details > summary small { color: #64748b; margin-left: auto; }
+.acessos-bloco__detalhe { display: flex; flex-direction: column; gap: 6px; padding: 2px 8px 10px 22px; font-size: 12.5px; }
+.acessos-bloco__ver {
+  align-self: flex-start; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; padding: 3px 10px;
+  font: inherit; font-size: 12px; color: #0a3d62; cursor: pointer;
+}
+.acessos-bloco__ver:hover { background: #f1f5f9; }

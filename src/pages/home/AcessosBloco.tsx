@@ -103,25 +103,34 @@ export function AcessosBloco() {
     ? `${ativos} pessoa(s) ativa(s) agora · ${logados} logada(s) nas últimas 24 h · ${loginsPessoas.length} login(s) de pessoas hoje`
     : erro ? 'não foi possível carregar agora' : 'carregando…';
 
+  // @R 22/09 21:28: "o Agora e o Quem entrou vêm fechados para abrirmos só se quisermos ver" — cada linha é um
+  // <details> (teclado e leitor de tela nativos): fechada = quem e em que situação; aberta = o detalhe.
   const linhaPessoa = (p: Acessos['agora'][number]) => {
     const alt = p.ultimaAlteracao;
+    const situacao = p.ativo ? `on-line · há ${ha(p.ultimaAtividade)}` : p.logado ? `logado desde ${diaHora(p.ultimoLogin)}` : `último login ${diaHora(p.ultimoLogin)}`;
     return (
-      <li key={p.usuario} className="acessos-bloco__pessoa acessos-bloco__pessoa--clicavel" role="button" tabIndex={0}
-        title="Clique para ver as últimas ações desta pessoa"
-        onClick={() => setLogDe({ usuario: p.usuario, nome: p.nome })}
-        onKeyDown={(e) => { if (e.key === 'Enter') setLogDe({ usuario: p.usuario, nome: p.nome }); }}>
-        <span className={`acessos-bloco__ponto ${p.ativo ? 'ativo' : p.logado ? 'logado' : ''}`}
-          aria-label={p.ativo ? 'on-line' : p.logado ? 'logado' : 'fora'} />
-        <span className="acessos-bloco__nome">{p.nome}</span>
-        {p.grupo && <span className="acessos-bloco__grupo">{p.grupo}</span>}
-        <small>{p.ativo ? `on-line · página aberta (há ${ha(p.ultimaAtividade)})` : p.logado ? `logado desde ${diaHora(p.ultimoLogin)}` : `último login ${diaHora(p.ultimoLogin)}`}</small>
-        {/* @R 22/09 19:25: página aberta ≠ trabalho feito. A ação EFETIVA é a última alteração gravada. */}
-        <span className={`acessos-bloco__efetiva ${alt && minutosDesde(alt.em) > 120 && p.ativo ? 'acessos-bloco__efetiva--parada' : ''}`}>
-          {alt
-            ? <>última ação efetiva <b>há {ha(alt.em)}</b> ({diaHora(alt.em)}){alt.pedido ? ` · #${alt.pedido}` : ''} · {alt.campo}: {alt.de || '—'} → {alt.para || '—'}
-                {typeof p.alteracoesHoje === 'number' && <> · <b>{p.alteracoesHoje}</b> alteraç{p.alteracoesHoje === 1 ? 'ão' : 'ões'} hoje</>}</>
-            : 'nenhuma alteração gravada no histórico'}
-        </span>
+      <li key={p.usuario} className="acessos-bloco__pessoa acessos-bloco__pessoa--dobra">
+        <details>
+          <summary>
+            <span className={`acessos-bloco__ponto ${p.ativo ? 'ativo' : p.logado ? 'logado' : ''}`}
+              aria-label={p.ativo ? 'on-line' : p.logado ? 'logado' : 'fora'} />
+            <span className="acessos-bloco__nome">{p.nome}</span>
+            {p.grupo && <span className="acessos-bloco__grupo">{p.grupo}</span>}
+            <small>{situacao}</small>
+          </summary>
+          <div className="acessos-bloco__detalhe">
+            {/* @R 22/09 19:25: página aberta ≠ trabalho feito. A ação EFETIVA é a última alteração gravada. */}
+            <span className={`acessos-bloco__efetiva ${alt && minutosDesde(alt.em) > 120 && p.ativo ? 'acessos-bloco__efetiva--parada' : ''}`}>
+              {alt
+                ? <>última ação efetiva <b>há {ha(alt.em)}</b> ({diaHora(alt.em)}){alt.pedido ? ` · #${alt.pedido}` : ''} · {alt.campo}: {alt.de || '—'} → {alt.para || '—'}
+                    {typeof p.alteracoesHoje === 'number' && <> · <b>{p.alteracoesHoje}</b> alteraç{p.alteracoesHoje === 1 ? 'ão' : 'ões'} hoje</>}</>
+                : 'nenhuma alteração gravada no histórico'}
+            </span>
+            <button type="button" className="acessos-bloco__ver" onClick={() => setLogDe({ usuario: p.usuario, nome: p.nome })}>
+              <i className="pi pi-list" aria-hidden="true" /> Ver atividades
+            </button>
+          </div>
+        </details>
       </li>
     );
   };
@@ -156,18 +165,23 @@ export function AcessosBloco() {
                   <LogDoUsuario usuario={logDe.usuario} nome={logDe.nome} onFechar={() => setLogDe(null)}
                     logins={(dados.logins ?? []).filter((l) => l.usuario === logDe.usuario)} />
                 )}
-                <p className="acessos-bloco__regra">Clique numa pessoa para ver as últimas ações dela. On-line = a página dela fez alguma requisição (inclusive automática) nos últimos {dados.regras.ativoMinutos} min · Ação efetiva = última alteração gravada no histórico · Logado = entrou nas últimas {dados.regras.logadoHoras} h.</p>
+                <p className="acessos-bloco__regra">Clique numa pessoa para abrir o detalhe e as atividades dela. On-line = a página dela fez alguma requisição (inclusive automática) nos últimos {dados.regras.ativoMinutos} min · Ação efetiva = última alteração gravada no histórico · Logado = entrou nas últimas {dados.regras.logadoHoras} h.</p>
               </div>
               <div className="acessos-bloco__coluna">
                 <h3>Quem entrou em {new Date(`${dados.dia}T12:00:00`).toLocaleDateString('pt-BR')} <span>{loginsPessoas.length}</span></h3>
                 {loginsPessoas.length === 0
                   ? <p className="acessos-bloco__vazio">Nenhuma pessoa entrou neste dia.{dados.historicoDesde && dados.dia < dados.historicoDesde.slice(0, 10) ? ` O histórico começa em ${new Date(dados.historicoDesde).toLocaleDateString('pt-BR')}.` : ' O registro de logins começou em 22/09/2026.'}</p>
                   : <ul className="acessos-bloco__lista">{loginsPessoas.map((l, i) => (
-                      <li key={i} className="acessos-bloco__pessoa" title={l.aparelho ?? ''}>
-                        <b className="acessos-bloco__hora">{hora(l.em)}</b>
-                        <span className="acessos-bloco__nome">{l.nome}</span>
-                        {l.grupo && <span className="acessos-bloco__grupo">{l.grupo}</span>}
-                        <OrigemLogin l={l} />
+                      <li key={i} className="acessos-bloco__pessoa acessos-bloco__pessoa--dobra">
+                        <details>
+                          <summary title={l.aparelho ?? ''}>
+                            <b className="acessos-bloco__hora">{hora(l.em)}</b>
+                            <span className="acessos-bloco__nome">{l.nome}</span>
+                            {l.grupo && <span className="acessos-bloco__grupo">{l.grupo}</span>}
+                            {l.dispositivo && <small>{l.dispositivo}</small>}
+                          </summary>
+                          <div className="acessos-bloco__detalhe"><OrigemLogin l={l} /></div>
+                        </details>
                       </li>
                     ))}</ul>}
                 <h3 className="acessos-bloco__mes-titulo">Dias do mês com login</h3>
