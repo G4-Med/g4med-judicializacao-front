@@ -606,7 +606,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   );
 }
 
-/** Copiar mensagem: travas ANTES de abrir o diálogo (segredo de justiça, pedido sem CNJ, especialidade
+/** Copiar mensagem: travas ANTES de abrir o diálogo (pedido sem CNJ, especialidade
  *  do prestador). Usada pela fase 3 e, desde 23/09, logo após confirmar o médico na fase 2. */
 export const prepararCopiaPedido = async (
   // qualquer linha de fila com id/paciente/procedimento/area (fase 2 e fase 3 usam formatos próximos)
@@ -614,16 +614,9 @@ export const prepararCopiaPedido = async (
   abrirDialogo: (p: PedidoParaCopiar, recarregar?: () => void) => void,
   recarregar?: () => void,
 ) => {
-  /* SEGREDO DE JUSTIÇA NÃO VAI A PRESTADOR (mandato @R via eliza-urgencia, 20/09 02:08): 7 pedidos em
-     segredo foram disparados a canais de prestador nesta madrugada. O servidor também recusa
-     (409 segredo_de_justica em cotacao-pedida e solicitar-cotacao-medico); aqui barramos ANTES de
-     copiar, porque o texto copiado já é o vazamento. */
-  // as filas trazem o segredo em `segredo` ('sim'|'possivel'|'nao'); algumas também em statusJuridico —
-  // olhar os DOIS (23/09: na fase 2 só existe o primeiro, e a trava passaria calada).
-  if ((rowData.statusJuridico || '').trim().toLowerCase() === 'segredo de justiça' || rowData.segredo === 'sim') {
-    alert('Este processo está em SEGREDO DE JUSTIÇA e não pode ser enviado a prestador.\n\nNada foi copiado. Se o segredo caiu, desmarque em "Segredo de Justiça" antes.');
-    return;
-  }
+  /* SEGREDO DE JUSTIÇA VAI AO PRESTADOR como os outros (@R 23/09 13:45, com o #1279 barrado):
+     ⟦"normalmente como os outros, eu preciso copiar para fazer a solicitação"⟧. A trava de 20/09
+     (via eliza-urgencia) foi revogada aqui e no servidor. */
   const cnjDaLinha = ((rowData as any).cnj ?? (rowData as any).nprocesso ?? '').toString().trim();
   if (!cnjDaLinha && !window.confirm('Este pedido está SEM número de processo (CNJ).\n\nEnviar ao prestador mesmo assim?')) return;
   /* #505 (20/09): a especialidade do pedido bate com o cadastro do prestador? O servidor

@@ -41,6 +41,7 @@ import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext'
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
 import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
 import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
+import { FiltroInteligente, type FiltroAtivo } from '../../components/FiltroInteligente/FiltroInteligente';
 
 const STATUS_PROCESSO_FALLBACK = [
   'Aguardando Juridico',
@@ -530,10 +531,7 @@ export function ProcessosPage() {
       }
 
       if (action === 'copiar_linha') {
-        if ((rowData as any).segredo === 'sim' || rowData.statusJuridico === 'Segredo de Justiça') {
-          alert('Este processo está em SEGREDO DE JUSTIÇA e não pode ser enviado a prestador.\n\nNada foi copiado.');
-          return;
-        }
+        // segredo de justiça copia como os outros (@R 23/09 13:45 — trava de 20/09 revogada)
         let linhasAnexos = 'Nenhum anexo';
 
         try {
@@ -869,6 +867,8 @@ ${linhasAnexos}
 
   
 
+  // filtro por texto inteligente (@R 23/09 13:43): a IA escolhe os ids; os filtros da tabela seguem valendo
+  const [filtroIA, setFiltroIA] = useState<FiltroAtivo | null>(null);
   const dataComCamposCalculados = useMemo<ProcessoTableRow[]>(() => {
     const hoje = new Date();
 
@@ -2236,6 +2236,9 @@ ${linhasAnexos}
         }}
       />
 
+      <FiltroInteligente idsNaTela={dataComCamposCalculados.map((r: any) => r.id)} ativo={filtroIA} onMudar={setFiltroIA}
+        chaveSalvos="filtros_ia_base_processos"
+        exemplo="ex.: vascular na fase de orçamento · Dr. Paulo · perdas de ortopedia · protocolar" />
       <div className="card">
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />Todos os processos — status, valor de referência e responsável por cada etapa</h2>
           <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
@@ -2246,7 +2249,7 @@ ${linhasAnexos}
           expandedRows={expandidas} onRowToggle={(e) => setExpandidas(e.data)}
           rowExpansionTemplate={(r: any) => <ExpansorPedido linha={r} />}
           aria-label="Todos os processos — status, valor de referência e responsável por cada etapa"
-          value={dataComCamposCalculados}
+          value={filtroIA ? dataComCamposCalculados.filter((r: any) => filtroIA.ids.has(r.id)) : dataComCamposCalculados}
           dataKey="id"
           paginator
           rowsPerPageOptions={[10, 20, 50, 100, 200]}
