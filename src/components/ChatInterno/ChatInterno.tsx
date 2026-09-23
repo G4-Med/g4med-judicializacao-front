@@ -25,13 +25,15 @@ import { Sidebar } from 'primereact/sidebar';
 import { OverlayPanel } from 'primereact/overlaypanel';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { InputText } from 'primereact/inputtext';
+import { Dialog } from 'primereact/dialog';
 import {
-  buscarPedidoChat, enviarMensagem, getContatosChat, getConversaCom, getConversasChat, getResumoMensagens,
+  baixarImagemChat, buscarPedidoChat, enviarMensagem, getContatosChat, getConversaCom, getConversasChat, getResumoMensagens,
   marcarLidas, type ContatoChat, type ConversaAberta, type ConversaChat, type MensagemChat, type PedidoBusca,
-  type PedidoNaMensagem, type ResumoMensagens,
+  type ImagemChat, type PedidoNaMensagem, type ResumoMensagens,
 } from '../../services/api/mensagens';
 import { useFichaPedido } from '../FichaPedido/FichaPedidoContext';
 import { DialogResumirConversa } from '../QuadroTarefas/QuadroTarefas';
+import { MarcaG4med } from '../../app/layout/MarcaG4med';
 import './ChatInterno.css';
 
 const RESUMO_MS = 30000;
@@ -40,7 +42,9 @@ const CONVERSA_MS = 10000;
 const PRESENCA_MS = 60000;            // quem está online: 1 min com a aba visível
 type Carga<T> = { estado: 'carregando' } | { estado: 'erro' } | { estado: 'ok'; dados: T };
 type Tela = { tipo: 'lista' } | { tipo: 'nova' } | { tipo: 'conversa'; uid: number; nome: string };
-type Pendente = { clienteId: string; texto: string; pedido: PedidoBusca | null; estado: 'enviando' | 'falhou' };
+type Pendente = { clienteId: string; texto: string; pedido: PedidoBusca | null; imagens: File[]; estado: 'enviando' | 'falhou' };
+const IMAGENS_MAX = 4;
+const IMAGEM_MAX_BYTES = 10 * 1024 * 1024;
 
 const status = (e: unknown) => (e as { response?: { status?: number } })?.response?.status;
 const hora = (iso: string | null) => {
@@ -140,7 +144,8 @@ export function ChatInterno() {
       {icone}
       {pilula && <div className="chat-slot-pilula">{pilula}</div>}
       <Sidebar visible={aberto} position="right" onHide={() => setAberto(false)} className="chat-sidebar"
-        header={tela.tipo === 'conversa' ? tela.nome : tela.tipo === 'nova' ? 'Nova conversa' : 'Mensagens'}>
+        header={tela.tipo === 'conversa' ? tela.nome : tela.tipo === 'nova' ? 'Nova conversa' : (
+          <span className="chat-cab"><MarcaG4med altura={22} /><span>Conversas internas</span></span>)}>
         {aberto && tela.tipo === 'lista' && (
           <Lista onAbrir={abrirConversa} onNova={() => setTela({ tipo: 'nova' })} />
         )}
@@ -214,25 +219,86 @@ function EstadoCarga({ c, vazio, tentar }: { c: Carga<unknown[]>; vazio: string;
   return null;
 }
 
+/* Lista de conversas (@R 23/09 17:17-17:18: "mais legal ... conversas internas G4MED com a logo ... o dia da última
+   mensagem e quantos dias tem ... e vermos quem está online ou offline e podermos clicar para mandar mensagem").
+   Presença = mesma régua do cabeçalho: usou a plataforma nos últimos 10 min (servidor, SessaoAtiva). */
+const iniciais = (nome: string) => nome.split(/\s+/).filter((x) => /^\p{L}/u.test(x)).slice(0, 2).map((x) => x[0].toUpperCase()).join('') || '?';
+const inicioDoDia = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+function quandoFoi(iso: string) {
+  const d = new Date(iso);
+  const dias = Math.round((inicioDoDia(new Date()) - inicioDoDia(d)) / 86_400_000);
+  const dia = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: 'America/Sao_Paulo' });
+  const hh = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
+  const semana = d.toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'America/Sao_Paulo' }).replace('.', '');
+  if (dias <= 0) return { data: `hoje · ${hh}`, ha: 'hoje', dias: 0 };
+  if (dias === 1) return { data: `ontem · ${hh}`, ha: 'há 1 dia', dias };
+  return { data: `${semana}, ${dia}`, ha: `há ${dias} dias`, dias };
+}
+
+function Avatar({ nome, online }: { nome: string; online?: boolean }) {
+  return (
+    <span className="chat-avatar" aria-hidden>
+      {iniciais(nome)}
+      {online !== undefined && <span className={`chat-avatar__bola${online ? ' chat-avatar__bola--on' : ''}`} />}
+    </span>
+  );
+}
+
 function Lista({ onAbrir, onNova }: { onAbrir: (uid: number, nome: string) => void; onNova: () => void }) {
   const [c, setC] = useState<Carga<ConversaChat[]>>({ estado: 'carregando' });
+  const [equipe, setEquipe] = useState<ContatoChat[] | null>(null);
   const carregar = useCallback(() => {
     setC({ estado: 'carregando' });
     getConversasChat().then(({ data }) => setC({ estado: 'ok', dados: data })).catch(() => setC({ estado: 'erro' }));
+    getContatosChat().then(({ data }) => setEquipe(Array.isArray(data) ? data : [])).catch(() => setEquipe(null));
   }, []);
   useEffect(() => { carregar(); }, [carregar]);
+  const presenca = new Map((equipe ?? []).map((p) => [p.id, p.plataformaAberta]));
+  const pessoas = [...(equipe ?? [])].sort((a, b) => Number(b.plataformaAberta) - Number(a.plataformaAberta) || a.nome.localeCompare(b.nome));
+  const nOnline = pessoas.filter((p) => p.plataformaAberta).length;
   return (
     <div className="chat-lista">
-      <Button label="Nova conversa" icon="pi pi-plus" size="small" onClick={onNova} className="chat-nova" />
-      <EstadoCarga c={c} vazio="Nenhuma conversa ainda." tentar={carregar} />
-      {c.estado === 'ok' && c.dados.map((cv) => (
-        <button key={cv.com.id} type="button" className="chat-linha" onClick={() => onAbrir(cv.com.id, cv.com.nome)}>
-          <span className="chat-linha__nome">{cv.com.nome}</span>
-          <span className="chat-linha__quando">{hora(cv.ultima.em)}</span>
-          <span className="chat-linha__previa">{cv.ultima.deMim ? 'Você: ' : ''}{cv.ultima.previa}</span>
-          {cv.naoLidas > 0 && <span className="chat-linha__n">{cv.naoLidas}</span>}
-        </button>
-      ))}
+      {equipe && pessoas.length > 0 && (
+        <section className="chat-equipe" aria-label="Equipe">
+          <div className="chat-secao">Equipe <span>· {nOnline} online agora</span></div>
+          <div className="chat-equipe__linha">
+            {pessoas.map((p) => (
+              <button key={p.id} type="button" className="chat-pessoa" onClick={() => onAbrir(p.id, p.nome)}
+                title={`${p.nome} — ${p.plataformaAberta ? 'online' : 'offline'} · clique para mandar mensagem`}>
+                <Avatar nome={p.nome} online={p.plataformaAberta} />
+                <span className="chat-pessoa__nome">{p.nome.split(' ')[0]}</span>
+                <span className={`chat-pessoa__estado${p.plataformaAberta ? ' chat-pessoa__estado--on' : ''}`}>
+                  {p.plataformaAberta ? 'online' : 'offline'}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      <div className="chat-secao chat-secao--conversas">
+        Conversas
+        <Button label="Nova" icon="pi pi-plus" size="small" text onClick={onNova} className="chat-nova" />
+      </div>
+      <EstadoCarga c={c} vazio="Nenhuma conversa ainda — clique numa pessoa acima para começar." tentar={carregar} />
+      {c.estado === 'ok' && c.dados.map((cv) => {
+        const q = quandoFoi(cv.ultima.em);
+        return (
+          <button key={cv.com.id} type="button" className={`chat-linha chat-linha--nova${cv.naoLidas > 0 ? ' chat-linha--naolida' : ''}`}
+            onClick={() => onAbrir(cv.com.id, cv.com.nome)}>
+            <Avatar nome={cv.com.nome} online={presenca.get(cv.com.id)} />
+            <span className="chat-linha__corpo">
+              <span className="chat-linha__topo">
+                <span className="chat-linha__nome">{cv.com.nome}</span>
+                <span className="chat-linha__quando" title={new Date(cv.ultima.em).toLocaleString('pt-BR')}>{q.data}</span>
+              </span>
+              <span className="chat-linha__baixo">
+                <span className="chat-linha__previa">{cv.ultima.deMim ? 'Você: ' : ''}{cv.ultima.previa}</span>
+                <span className={`chat-linha__ha${q.dias >= 7 ? ' chat-linha__ha--velha' : ''}`}>{q.ha}</span>
+                {cv.naoLidas > 0 && <span className="chat-linha__n">{cv.naoLidas}</span>}
+              </span>
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -272,6 +338,8 @@ function Conversa({ uid, abrirFicha, onVoltar, onLeu }: {
   const [antigas, setAntigas] = useState<MensagemChat[]>([]);
   const [texto, setTexto] = useState('');
   const [pedido, setPedido] = useState<PedidoBusca | null>(null);
+  const [imagens, setImagens] = useState<File[]>([]);   // coladas/escolhidas, ainda não enviadas (#662)
+  const escolherRef = useRef<HTMLInputElement | null>(null);
   const [pendentes, setPendentes] = useState<Pendente[]>([]);
   const [erroEnvio, setErroEnvio] = useState<string | null>(null);
   const [resumirAberto, setResumirAberto] = useState(false);   // botão de IA (@R 23/09 15:13)
@@ -341,10 +409,32 @@ function Conversa({ uid, abrirFicha, onVoltar, onLeu }: {
     } catch { setErroEnvio('Não consegui carregar as mensagens anteriores.'); }
   };
 
+  // Ctrl+V, botão "Imagem" e arrastar: todos passam por aqui (tipo e tamanho conferidos antes de enviar;
+  // o servidor confere de novo pelos bytes).
+  const juntarImagens = (fs: File[]) => {
+    const ok = fs.filter((f) => f.type.startsWith('image/'));
+    const grandes = ok.filter((f) => f.size > IMAGEM_MAX_BYTES);
+    if (grandes.length) setErroEnvio(`Imagem acima de 10 MB não vai: ${grandes.map((f) => f.name).join(', ')}.`);
+    const cabem = ok.filter((f) => f.size <= IMAGEM_MAX_BYTES);
+    if (!cabem.length) return;
+    setImagens((atuais) => {
+      const todas = [...atuais, ...cabem.map((f, i) => (f.name && f.name !== 'image.png' ? f
+        : new File([f], `imagem-colada-${Date.now()}-${i}.${(f.type.split('/')[1] || 'png').replace('jpeg', 'jpg')}`, { type: f.type })))];
+      if (todas.length > IMAGENS_MAX) setErroEnvio(`No máximo ${IMAGENS_MAX} imagens por mensagem.`);
+      return todas.slice(0, IMAGENS_MAX);
+    });
+  };
+  const aoColar = (e: React.ClipboardEvent) => {
+    const fs = Array.from(e.clipboardData?.files ?? []).filter((f) => f.type.startsWith('image/'));
+    if (!fs.length) return;
+    if (!e.clipboardData.getData('text/plain')) e.preventDefault();   // colou só a imagem: não cola "nada" no texto
+    juntarImagens(fs);
+  };
+
   const mandar = async (p: Pendente) => {
     setPendentes((ps) => ps.map((x) => x.clienteId === p.clienteId ? { ...x, estado: 'enviando' } : x));
     try {
-      await enviarMensagem({ para: uid, texto: p.texto, pedidoId: p.pedido?.id ?? null, clienteId: p.clienteId });
+      await enviarMensagem({ para: uid, texto: p.texto, pedidoId: p.pedido?.id ?? null, clienteId: p.clienteId }, p.imagens);
       setPendentes((ps) => ps.filter((x) => x.clienteId !== p.clienteId));
       setErroEnvio(null);
       void carregar(true);
@@ -354,7 +444,7 @@ function Conversa({ uid, abrirFicha, onVoltar, onLeu }: {
       if (s && s >= 400 && s < 500 && s !== 408) {
         // recusa do servidor (texto grande, pessoa fora do chat…): não adianta tentar de novo
         setPendentes((ps) => ps.filter((x) => x.clienteId !== p.clienteId));
-        setTexto(p.texto); setPedido(p.pedido);
+        setTexto(p.texto); setPedido(p.pedido); setImagens(p.imagens);
         setErroEnvio(msg ?? 'A mensagem foi recusada.');
       } else {
         setPendentes((ps) => ps.map((x) => x.clienteId === p.clienteId ? { ...x, estado: 'falhou' } : x));
@@ -363,9 +453,9 @@ function Conversa({ uid, abrirFicha, onVoltar, onLeu }: {
   };
   const enviar = () => {
     const t = texto.trim();
-    if (!t) return;
-    const p: Pendente = { clienteId: novoId(), texto: t, pedido, estado: 'enviando' };
-    setPendentes((ps) => [...ps, p]); setTexto(''); setPedido(null);
+    if (!t && !imagens.length) return;
+    const p: Pendente = { clienteId: novoId(), texto: t, pedido, imagens, estado: 'enviando' };
+    setPendentes((ps) => [...ps, p]); setTexto(''); setPedido(null); setImagens([]);
     void mandar(p);
   };
 
@@ -387,7 +477,8 @@ function Conversa({ uid, abrirFicha, onVoltar, onLeu }: {
         {msgs.map((m) => (
           <div key={m.id} data-id={m.id} ref={refBalao(m)} className={`chat-balao${m.deMim ? ' chat-balao--meu' : ''}`}>
             {m.pedido && <CartaoPedido p={m.pedido} abrir={abrirFicha} />}
-            <div className="chat-balao__texto">{m.texto}</div>
+            {!!m.imagens?.length && <ImagensDaMensagem mid={m.id} imagens={m.imagens} />}
+            {m.texto && <div className="chat-balao__texto">{m.texto}</div>}
             <div className="chat-balao__meta">
               {m.deMim
                 ? <>enviada {hora(m.enviadaEm)}{m.lidaEm ? <> · <span className="chat-lida">✓✓ lida {hora(m.lidaEm)}</span></> : ' · ✓'}</>
@@ -398,7 +489,8 @@ function Conversa({ uid, abrirFicha, onVoltar, onLeu }: {
         {pendentes.map((p) => (
           <div key={p.clienteId} className="chat-balao chat-balao--meu chat-balao--pendente">
             {p.pedido && <div className="chat-pedido chat-pedido--morto">#{p.pedido.id} {p.pedido.paciente}</div>}
-            <div className="chat-balao__texto">{p.texto}</div>
+            {!!p.imagens.length && <div className="chat-info">📷 {p.imagens.length} {p.imagens.length === 1 ? 'imagem' : 'imagens'}</div>}
+            {p.texto && <div className="chat-balao__texto">{p.texto}</div>}
             <div className="chat-balao__meta">
               {p.estado === 'enviando' ? 'enviando…'
                 : <>não enviada — <button type="button" className="chat-link" onClick={() => void mandar(p)}>tentar de novo</button></>}
@@ -410,17 +502,27 @@ function Conversa({ uid, abrirFicha, onVoltar, onLeu }: {
       {info && !info.participa
         ? <div className="chat-info chat-info--erro">Essa pessoa não está mais no chat.</div>
         : (
-          <div className="chat-compositor">
+          <div className="chat-compositor"
+            onDragOver={(e) => { if (e.dataTransfer?.types?.includes('Files')) e.preventDefault(); }}
+            onDrop={(e) => { const fs = Array.from(e.dataTransfer?.files ?? []); if (fs.length) { e.preventDefault(); juntarImagens(fs); } }}>
             {erroEnvio && <div className="chat-info chat-info--erro">{erroEnvio}</div>}
             {pedido && (
               <div className="chat-anexo">📎 #{pedido.id} {pedido.paciente} · {pedido.fase}
                 <button type="button" className="chat-link" onClick={() => setPedido(null)}>tirar</button></div>
             )}
-            <AnexarPedido onEscolher={setPedido} />
+            {!!imagens.length && <PreviasParaEnviar imagens={imagens} tirar={(i) => setImagens((xs) => xs.filter((_, k) => k !== i))} />}
+            <div className="chat-anexar-linha">
+              <AnexarPedido onEscolher={setPedido} />
+              <Button label="Imagem" icon="pi pi-image" text size="small" onClick={() => escolherRef.current?.click()}
+                title="Escolher imagem — ou cole com Ctrl+V no campo de texto" disabled={imagens.length >= IMAGENS_MAX} />
+              <input ref={escolherRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden
+                onChange={(e) => { juntarImagens(Array.from(e.target.files ?? [])); e.target.value = ''; }} />
+            </div>
             <InputTextarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={3} autoResize maxLength={4000}
-              placeholder="Escreva… (Enter envia · Shift+Enter quebra linha)"
+              placeholder="Escreva… (Enter envia · Shift+Enter quebra linha · Ctrl+V cola imagem)"
+              onPaste={aoColar}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }} />
-            <Button label="Enviar" icon="pi pi-send" size="small" onClick={enviar} disabled={!texto.trim()} />
+            <Button label="Enviar" icon="pi pi-send" size="small" onClick={enviar} disabled={!texto.trim() && !imagens.length} />
           </div>
         )}
     </div>
@@ -451,6 +553,93 @@ function AnexarPedido({ onEscolher }: { onEscolher: (p: PedidoBusca) => void }) 
           <span className="chat-linha__nome">#{p.id} {p.paciente}</span>
           <span className="chat-linha__previa">{p.fase}</span>
         </button>
+      ))}
+    </div>
+  );
+}
+
+
+/* ── Imagens do chat (#662, @R 23/09 16:54: "o usuário poder abrir ou ver e dar zoom ou baixar") ──────────────
+   O arquivo só sai pela API com o token (o servidor confere que você é um dos 2 da conversa), então a tela baixa
+   o blob e mostra por URL local. Cache por imagem: rolar a conversa não baixa de novo. */
+const cacheImagens = new Map<string, Promise<string>>();
+function urlDaImagem(mid: number, iid: number): Promise<string> {
+  const k = `${mid}:${iid}`;
+  let p = cacheImagens.get(k);
+  if (!p) {
+    p = baixarImagemChat(mid, iid).then(({ data }) => URL.createObjectURL(data));
+    p.catch(() => cacheImagens.delete(k));   // falhou: a próxima tentativa baixa de novo
+    cacheImagens.set(k, p);
+  }
+  return p;
+}
+
+function ImagensDaMensagem({ mid, imagens }: { mid: number; imagens: ImagemChat[] }) {
+  const [aberta, setAberta] = useState<ImagemChat | null>(null);
+  return (
+    <div className="chat-imagens">
+      {imagens.map((im) => <Miniatura key={im.id} mid={mid} im={im} abrir={() => setAberta(im)} />)}
+      {aberta && <Visualizador mid={mid} im={aberta} fechar={() => setAberta(null)} />}
+    </div>
+  );
+}
+
+function Miniatura({ mid, im, abrir }: { mid: number; im: ImagemChat; abrir: () => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [erro, setErro] = useState(false);
+  useEffect(() => {
+    let vivo = true;
+    urlDaImagem(mid, im.id).then((u) => { if (vivo) setUrl(u); }).catch(() => { if (vivo) setErro(true); });
+    return () => { vivo = false; };
+  }, [mid, im.id]);
+  if (erro) return <div className="chat-imagem chat-imagem--erro">imagem indisponível</div>;
+  return (
+    <button type="button" className="chat-imagem" onClick={abrir} title="Abrir (zoom e baixar)" disabled={!url}>
+      {url ? <img src={url} alt={im.nome || 'imagem'} /> : <span className="chat-imagem__carregando">carregando…</span>}
+    </button>
+  );
+}
+
+function Visualizador({ mid, im, fechar }: { mid: number; im: ImagemChat; fechar: () => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [zoom, setZoom] = useState(1);
+  useEffect(() => { urlDaImagem(mid, im.id).then(setUrl).catch(() => setUrl(null)); }, [mid, im.id]);
+  const mudar = (f: number) => setZoom((z) => Math.min(6, Math.max(0.25, Math.round(z * f * 100) / 100)));
+  const nome = im.nome || `imagem-${im.id}`;
+  return (
+    <Dialog header={nome} visible onHide={fechar} maximizable style={{ width: 'min(92vw, 1100px)' }} className="chat-visualizador"
+      footer={(
+        <div className="chat-visualizador__barra">
+          <Button icon="pi pi-search-minus" text rounded aria-label="Diminuir" onClick={() => mudar(1 / 1.25)} />
+          <button type="button" className="chat-link" onClick={() => setZoom(1)} title="Ajustar à janela">{Math.round(zoom * 100)}%</button>
+          <Button icon="pi pi-search-plus" text rounded aria-label="Aumentar" onClick={() => mudar(1.25)} />
+          <span className="chat-visualizador__espaco" />
+          {url && <a className="p-button p-button-sm p-button-outlined" href={url} target="_blank" rel="noreferrer">
+            <i className="pi pi-external-link" style={{ marginRight: 6 }} />Abrir em nova aba</a>}
+          {url && <a className="p-button p-button-sm" href={url} download={nome}>
+            <i className="pi pi-download" style={{ marginRight: 6 }} />Baixar</a>}
+        </div>
+      )}>
+      <div className="chat-visualizador__area"
+        onWheel={(e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); mudar(e.deltaY < 0 ? 1.1 : 1 / 1.1); } }}>
+        {url ? <img src={url} alt={nome} style={{ width: `${zoom * 100}%` }} onDoubleClick={() => setZoom((z) => (z === 1 ? 2 : 1))} />
+          : <span className="chat-imagem__carregando">carregando…</span>}
+      </div>
+      <div className="chat-info">Ctrl + roda do mouse ou os botões dão zoom · duplo clique alterna 100%/200%.</div>
+    </Dialog>
+  );
+}
+
+function PreviasParaEnviar({ imagens, tirar }: { imagens: File[]; tirar: (i: number) => void }) {
+  const urls = useMemo(() => imagens.map((f) => URL.createObjectURL(f)), [imagens]);
+  useEffect(() => () => urls.forEach((u) => URL.revokeObjectURL(u)), [urls]);
+  return (
+    <div className="chat-previas">
+      {urls.map((u, i) => (
+        <div key={u} className="chat-previa">
+          <img src={u} alt={imagens[i].name} />
+          <button type="button" className="chat-previa__tirar" aria-label="Tirar esta imagem" onClick={() => tirar(i)}>×</button>
+        </div>
       ))}
     </div>
   );

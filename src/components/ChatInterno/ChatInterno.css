@@ -70,3 +70,58 @@
 /* botão de IA no topo da conversa (@R 23/09 15:13) */
 .chat-conversa__topo { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
 .chat-ia-btn.p-button { font-size: .78rem; padding: .3rem .6rem; }
+
+/* ── imagens no chat (#662) ── */
+.chat-anexar-linha { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.chat-imagens { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.chat-imagem {
+  padding: 0; border: 1px solid #d7e1e8; border-radius: 8px; background: #fff; cursor: zoom-in; overflow: hidden;
+  width: 160px; height: 120px; display: flex; align-items: center; justify-content: center;
+}
+.chat-imagem img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.chat-imagem:focus-visible { outline: 2px solid #0b8a4a; outline-offset: 2px; }
+.chat-imagem--erro { cursor: default; font-size: .75rem; color: #8a5a00; background: #fff3dc; }
+.chat-imagem__carregando { font-size: .75rem; color: #6b7a88; }
+.chat-previas { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-previa { position: relative; width: 64px; height: 64px; border-radius: 6px; overflow: hidden; border: 1px solid #d7e1e8; }
+.chat-previa img { width: 100%; height: 100%; object-fit: cover; }
+.chat-previa__tirar {
+  position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: 0;
+  background: rgba(15, 42, 63, .8); color: #fff; font-size: 14px; line-height: 20px; cursor: pointer; padding: 0;
+}
+.chat-visualizador__area { overflow: auto; max-height: 70vh; background: #f4f7f9; border-radius: 6px; text-align: center; }
+.chat-visualizador__area img { max-width: none; display: inline-block; }
+.chat-visualizador__barra { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.chat-visualizador__espaco { flex: 1; }
+
+/* ── lista "Conversas internas G4MED" (@R 23/09 17:17) ── */
+.chat-cab { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; color: #0f2a3f; font-size: 1rem; }
+.chat-secao { display: flex; align-items: center; justify-content: space-between; font-size: .72rem; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; color: #6b7a88; margin: 4px 2px 6px; }
+.chat-secao span { font-weight: 600; letter-spacing: 0; text-transform: none; color: #0b8a4a; }
+.chat-secao--conversas { margin-top: 14px; }
+.chat-equipe { background: #f4f7f9; border-radius: 12px; padding: 10px 10px 8px; }
+.chat-equipe__linha { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.chat-pessoa { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 62px; padding: 6px 4px;
+  border: 0; background: transparent; border-radius: 10px; cursor: pointer; }
+.chat-pessoa:hover { background: #fff; }
+.chat-pessoa:focus-visible { outline: 2px solid #0b8a4a; outline-offset: 1px; }
+.chat-pessoa__nome { font-size: .78rem; font-weight: 600; color: #0f2a3f; max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-pessoa__estado { font-size: .66rem; color: #8a97a3; }
+.chat-pessoa__estado--on { color: #0b8a4a; font-weight: 600; }
+.chat-avatar { position: relative; flex: none; width: 38px; height: 38px; border-radius: 50%; display: inline-flex;
+  align-items: center; justify-content: center; background: linear-gradient(145deg, #0f2a3f, #1d4e73); color: #fff;
+  font-size: .8rem; font-weight: 700; letter-spacing: .02em; }
+.chat-avatar__bola { position: absolute; right: -1px; bottom: -1px; width: 11px; height: 11px; border-radius: 50%;
+  background: #b8c2cb; border: 2px solid #fff; }
+.chat-avatar__bola--on { background: #16b364; }
+.chat-linha--nova { display: flex; align-items: center; gap: 10px; text-align: left; }
+.chat-linha__corpo { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.chat-linha__topo, .chat-linha__baixo { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.chat-linha--nova .chat-linha__nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-linha--nova .chat-linha__previa { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-linha--nova .chat-linha__quando { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.chat-linha__ha { font-size: .68rem; color: #0b8a4a; background: #e3f6ec; border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+.chat-linha__ha--velha { color: #8a5a00; background: #fff3dc; }
+.chat-linha--naolida .chat-linha__nome { font-weight: 800; }
+.chat-linha--naolida .chat-linha__previa { color: #0f2a3f; font-weight: 600; }
