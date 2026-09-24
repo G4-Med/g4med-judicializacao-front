@@ -569,7 +569,7 @@ export function ClientesPage() {
       message: inativo
         ? `Reativar "${r.nomeSistema ?? r.nomeMedico ?? r.id}"? Ele volta a aparecer na seleção de médicos e nas cotações.`
         // #695 (@R 24/09 03:1x): inativar LIBERA os pedidos das fases 1-3 e encerra os links dele (servidor 021ff39)
-        : `Inativar "${r.nomeSistema ?? r.nomeMedico ?? r.id}"? Ele some da seleção de médicos, das cotações e das listagens. Nos pedidos das fases 1 a 3 em que ele é o médico ou convidado, ele sai: o pedido fica livre para outro médico (volta para Selecionar Médico, ou segue com outro convidado). Os links de documentos dele são encerrados. Da fase 4 em diante nada muda. Dá para reativar depois nesta tela (filtro Inativos), mas os pedidos liberados não voltam para ele.`,
+        : `Inativar "${r.nomeSistema ?? r.nomeMedico ?? r.id}"? Ele some da seleção de médicos, das cotações e das listagens. Nos pedidos das fases 1 a 3 em que ele é o médico ou convidado, ele sai: o pedido volta para Selecionar Médico para você escolher outro (os outros convidados continuam no pedido). Os links de documentos dele são encerrados. Da fase 4 em diante nada muda. Dá para reativar depois nesta tela (filtro Inativos), mas os pedidos liberados não voltam para ele.`,
       icon: inativo ? 'pi pi-replay' : 'pi pi-ban',
       acceptLabel: inativo ? 'Reativar' : 'Inativar',
       rejectLabel: 'Cancelar',
@@ -585,8 +585,8 @@ export function ClientesPage() {
           const lib = resp?.data?.liberacao;
           const erroLib = resp?.data?.liberacaoErro;
           const resumo = lib
-            ? `\n\n${lib.pedidosDevolvidos?.length ?? 0} pedido(s) das fases 1-3 voltaram para Selecionar Médico`
-              + `${lib.pedidosComOutro?.length ? `, ${lib.pedidosComOutro.length} seguiram com outro convidado` : ''}`
+            ? `\n\n${lib.pedidosDevolvidos?.length ?? 0} pedido(s) das fases 1-3 voltaram para Selecionar Médico para você escolher`
+              + `${lib.pedidosComConvidados?.length ? ` (${lib.pedidosComConvidados.length} deles ainda têm outros convidados)` : ''}`
               + `; ${lib.convitesCancelados ?? 0} convite(s) cancelado(s); ${lib.linksEncerrados ?? 0} link(s) de documentos encerrado(s).`
             : '';
           alert(inativo

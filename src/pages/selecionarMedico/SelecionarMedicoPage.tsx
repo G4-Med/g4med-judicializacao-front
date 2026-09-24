@@ -964,10 +964,68 @@ export function SelecionarMedicoPage() {
                 </div>
                 {iaSugestao.candidatos && iaSugestao.candidatos.length === 1 && (
                   <div className="ia-candidato__unico">
-                    Só um da lista serve tecnicamente — a ordem não foi omitida, não há
-                    segundo candidato adequado.
+                    A IA achou só um adequado. Abaixo estão os outros que já mandaram
+                    orçamento, para você conferir e escolher.
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* QUEM MAIS JÁ MANDOU ORÇAMENTO, SEMPRE À VISTA (@R 24/09 03:4x: ⟦"mesmo que tenha um e ele
+                achou, ele deixa eu verificar os que tem para escolher, mas vários têm orçamento, para eu
+                escolher e deixar ali para saber"⟧). A ordem de cima é da IA; esta lista é do SISTEMA — todo
+                ativo que já cotou algo, do que mais cotou ESTA subárea para o que menos. Quando a IA dizia
+                "só um serve", os outros sumiam da tela: foi o que escondeu o Dr. Abdala no #629. */}
+            {(iaSugestao.outrosQueJaCotaram?.length ?? 0) > 0 && (
+              <div className="ia-sugestao-dialog__bloco">
+                <div className="ia-sugestao-dialog__label">
+                  Outros que já mandaram orçamento ({iaSugestao.outrosQueJaCotaram!.length}) — fora da ordem da IA
+                </div>
+                <ol className="ia-candidatos" style={{ maxHeight: '18rem', overflowY: 'auto' }}>
+                  {iaSugestao.outrosQueJaCotaram!.map((c) => (
+                    <li key={c.idMedico} className="ia-candidato">
+                      <div className="ia-candidato__nome">
+                        {c.idMedico !== iaMedicoEscolhido && (
+                          <Checkbox
+                            inputId={`tambem-outro-${c.idMedico}`}
+                            checked={iaTambemPedir.includes(c.idMedico)}
+                            onChange={(e) =>
+                              setIaTambemPedir((atual) =>
+                                e.checked ? [...atual, c.idMedico] : atual.filter((id) => id !== c.idMedico),
+                              )
+                            }
+                            disabled={iaAplicando}
+                            className="ia-candidato__check"
+                            tooltip="Também pedir orçamento a ele"
+                          />
+                        )}
+                        {c.nomeMedico}
+                        {c.idMedico === iaMedicoEscolhido ? (
+                          <span className="ia-candidato__selo ia-candidato__selo--resp">fica com o caso</span>
+                        ) : (
+                          <Button
+                            label="Ficar com o caso"
+                            text
+                            size="small"
+                            disabled={iaAplicando}
+                            onClick={() => {
+                              setIaMedicoEscolhido(c.idMedico);
+                              setIaTambemPedir((atual) => atual.filter((id) => id !== c.idMedico));
+                            }}
+                          />
+                        )}
+                      </div>
+                      <div className="ia-candidato__numeros">
+                        <span>{c.jaFezDestaSubarea ? `${c.jaFezDestaSubarea}× nesta subárea` : 'nunca nesta subárea'}</span>
+                        {c.respondeOrcamento && <span>responde {c.respondeOrcamento}</span>}
+                        {c.diasParaResponder != null && <span>{c.diasParaResponder}d para responder</span>}
+                        {c.cargaAtual && <span>{c.cargaAtual} na mão</span>}
+                        {c.cidade && <span>{c.cidade}</span>}
+                      </div>
+                      {c.jaCotou && <div className="ia-candidato__jacotou">já cotou: {c.jaCotou}</div>}
+                    </li>
+                  ))}
+                </ol>
               </div>
             )}
 

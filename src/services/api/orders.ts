@@ -231,6 +231,14 @@ export interface SugestaoIAResposta {
      *  cadastro é pobre (keywords vazia é a regra, ¬a exceção) */
     jaCotou?: string | null;
   }[];
+  /** médicos ativos FORA da ordem da IA que já mandaram orçamento — lista do SISTEMA, ¬da IA, do que mais cotou esta
+   *  subárea para o que menos (@R 24/09 03:4x: "deixa eu verificar os que tem para escolher... e deixar ali para saber") */
+  outrosQueJaCotaram?: {
+    idMedico: number; nomeMedico: string;
+    jaFezDestaSubarea?: number | null; jaCotou?: string | null;
+    respondeOrcamento?: string | null; diasParaResponder?: number | null;
+    atendePediatrico?: string | null; cargaAtual?: string | null; cidade?: string | null;
+  }[];
   /** os números que sustentam a escolha — o motor já os calculava e descartava (@R 17/09) */
   dossieMedico?: {
     respondeOrcamento?: string;
