@@ -11,7 +11,7 @@ import { FiltroInteligente, type FiltroAtivo } from '../../components/FiltroInte
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
-import { colunaOportunidade, colunaPagoEstado, colunaQuemPrecisamos } from '../../components/QuemPrecisamos/colunasMatch';
+import { colunaOportunidade, colunaPagoEstado, colunaQuemPrecisamos, FILTROS_MATCH, filtroAcessos } from '../../components/QuemPrecisamos/colunasMatch';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -218,6 +218,7 @@ export function OrcamentoMedicoPage() {
 
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    ...FILTROS_MATCH,   // Quem precisamos + Link e acessos (@R 24/09 02:53)
     vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
     segredo: { value: null, matchMode: 'custom' },
     origemRegistro: { value: null, matchMode: 'custom' },
@@ -795,11 +796,31 @@ ${blocos}
               </span>
             )}  frozen alignFrozen="left" />
           {/* @R 24/09 (tasks #7/#8): oportunidade e o que o Estado já pagou, logo no começo da linha */}
-          {colunaOportunidade()}{colunaPagoEstado()}{colunaQuemPrecisamos()}
+          {colunaOportunidade()}{colunaPagoEstado()}{colunaQuemPrecisamos(undefined, dataComMedico)}
+          {/* @R 24/09 02:52: Médico e Cotação concorrente logo depois de Quem precisamos — quem
+              precisamos, quem escolhemos e quem mais cotou ficam lado a lado. Depois, o que o Estado
+              já pagou NESTE processo (ordem combinada com a sessão medcheck). */}
+          <Column field="medico" header={cabecalhoComHint('Médico', 'Profissional da rede que cotou (ou vai cotar) este procedimento. O lápis troca o médico sem abrir o pedido.')} sortable filter
+            body={(r) => (
+              <CelulaMedico row={r} medicos={medicos} somenteLeitura={readOnly}
+                aoTrocar={async () => { await carregarDados(); }} />
+            )}
+            filterElement={(o) => dropdownFilterElement(o, medicosOptions)} style={{ minWidth: '14rem' }} />
+          {/* COTAÇÃO CONCORRENTE (@R 18/09) — quem mais foi convidado a cotar este mesmo
+              pedido, o que cada um respondeu, e qual orçamento valeu. */}
+          <Column key="col-cotacao-concorrente" field="cotacaoConcorrente"
+            header={cabecalhoComHint('Cotação concorrente',
+              'Outros médicos convidados a cotar o MESMO pedido. Clique para ver o que cada um respondeu e marcar qual orçamento vale.')}
+            style={{ minWidth: '12rem' }}
+            body={(r: any) => (
+              <CelulaCotacaoConcorrente candidatos={r.cotacaoConcorrente}
+                onAbrir={() => setCcOrderId(r.id)} />
+            )} />
+          {colunaEmpenhoEstado()}
           {colunaOrigem(dataComMedico)}
           {/* @R 22/09 00:16: "coluna do link e acessos... só para nós, com modal". Dado interno:
               nunca aparece na página que o médico abre. */}
-          <Column header={cabecalhoComHint('Link e acessos', 'Links seguros enviados deste pedido: quantos acessos houve e até quando valem (72 h a cada envio). Clique para ver cada acesso com data, IP, localização e aparelho.')}
+          <Column key="col-link-acessos" field="linkDocumentos" {...filtroAcessos(dataComMedico)} header={cabecalhoComHint('Link e acessos', 'Links seguros enviados deste pedido: quantos acessos houve e até quando valem (72 h a cada envio). Clique para ver cada acesso com data, IP, localização e aparelho.')}
             style={{ minWidth: '9rem' }}
             body={(r: any) => {
               const l = r.linkDocumentos;
@@ -923,16 +944,6 @@ ${blocos}
             style={{ minWidth: '11rem' }}
             body={(r: any) => <FaixaDaPeca faixa={r.orcamentosDaPeca} />} />
 
-          {/* COTAÇÃO CONCORRENTE (@R 18/09) — quem mais foi convidado a cotar este mesmo
-              pedido, o que cada um respondeu, e qual orçamento valeu. */}
-          <Column key="col-cotacao-concorrente" field="cotacaoConcorrente"
-            header={cabecalhoComHint('Cotação concorrente',
-              'Outros médicos convidados a cotar o MESMO pedido. Clique para ver o que cada um respondeu e marcar qual orçamento vale.')}
-            style={{ minWidth: '12rem' }}
-            body={(r: any) => (
-              <CelulaCotacaoConcorrente candidatos={r.cotacaoConcorrente}
-                onAbrir={() => setCcOrderId(r.id)} />
-            )} />
 
           <Column key="col-dias-pedido" field="diasDesdeCotacaoPedida" header={cabecalhoComHint(
               'Dias desde o pedido', 'Quantos dias desde a última vez que pedimos ao médico. Contado no servidor — o relógio é um só para todo mundo.')}
@@ -958,12 +969,6 @@ ${blocos}
             filterMatchMode="custom" showFilterMenu={false}
             filterFunction={casaOpcaoDosDados}
             filterElement={filtroOpcoesDosDados(dataComMedico, (l: any) => l?.area, 'Todas as áreas')} style={{ minWidth: '10rem' }} />
-          <Column field="medico" header={cabecalhoComHint('Médico', 'Profissional da rede que cotou (ou vai cotar) este procedimento. O lápis troca o médico sem abrir o pedido.')} sortable filter
-            body={(r) => (
-              <CelulaMedico row={r} medicos={medicos} somenteLeitura={readOnly}
-                aoTrocar={async () => { await carregarDados(); }} />
-            )}
-            filterElement={(o) => dropdownFilterElement(o, medicosOptions)} style={{ minWidth: '14rem' }} />
           <Column field="dataStatusJuridico"
             filter showFilterMenu={false} filterMatchMode="custom"
             filterFunction={casaPeriodo}
@@ -992,7 +997,6 @@ ${blocos}
           {colunaComarca()}
           {colunaSolicitante('13rem', dataComMedico)}
           {colunaBaixarOrcamento()}
-          {colunaEmpenhoEstado()}
           {colunaPagoEm()}
           {colunaDiferenca()}
           </>)}

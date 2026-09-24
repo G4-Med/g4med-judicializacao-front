@@ -27,7 +27,7 @@ import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
-import { colunaOportunidade, colunaPagoEstado, colunaQuemPrecisamos } from '../../components/QuemPrecisamos/colunasMatch';
+import { colunaOportunidade, colunaPagoEstado, colunaQuemPrecisamos, FILTROS_MATCH } from '../../components/QuemPrecisamos/colunasMatch';
 import { ModalMedico } from '../../components/TrocarMedico/CelulaMedico';
 import { DialogoCopiarPedido, prepararCopiaPedido, type PedidoParaCopiar } from '../orcamentoMedico/DialogoCopiarPedido';
 import './SelecionarMedicoPage.css';
@@ -173,6 +173,7 @@ export function SelecionarMedicoPage() {
   const colunasCfg = useColunasVisiveis('selecionar-medico');
 
   const [filters, setFilters] = useState<DataTableFilterMeta>({
+    ...FILTROS_MATCH,   // Quem precisamos + Link e acessos (@R 24/09 02:53)
     vezesPedido: { value: null, matchMode: FilterMatchMode.CUSTOM },
     slaFaseHorasRestantes: { value: '', matchMode: FilterMatchMode.EQUALS },
     // mesma classe: coluna com filter sem entrada no objeto = campo aceita e tabela ignora.
@@ -663,7 +664,16 @@ export function SelecionarMedicoPage() {
             frozen alignFrozen="left"
           />
           {/* @R 24/09 (tasks #7/#8): oportunidade e o que o Estado já pagou, logo no começo da linha */}
-          {colunaOportunidade()}{colunaPagoEstado()}{colunaQuemPrecisamos()}
+          {colunaOportunidade()}{colunaPagoEstado()}{colunaQuemPrecisamos(undefined, dataComCamposCalculados)}
+          <Column
+            field="medico"
+            header={cabecalhoComHint('Médico', 'Profissional da rede que cotou (ou vai cotar) este procedimento.')}
+            sortable
+            filter
+            filterElement={(options) => filterElement(options, 'Buscar')}
+            style={{ minWidth: '14rem' }}
+          />
+          {colunaEmpenhoEstado()}
           {colunaOrigem(dataComCamposCalculados)}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
@@ -717,14 +727,6 @@ export function SelecionarMedicoPage() {
             body={(r: any) => <FaixaDaPeca faixa={r.orcamentosDaPeca} />}
           />
           <Column
-            field="medico"
-            header={cabecalhoComHint('Médico', 'Profissional da rede que cotou (ou vai cotar) este procedimento.')}
-            sortable
-            filter
-            filterElement={(options) => filterElement(options, 'Buscar')}
-            style={{ minWidth: '14rem' }}
-          />
-          <Column
             field="slaFaseHorasRestantes"
             header={cabecalhoComHint('SLA fase', 'Prazo para definir o médico: 1 dia útil depois que a análise jurídica salvou "Cotar". Pedido que chega na sexta fecha na segunda (fim de semana não conta). Verde = no prazo · laranja = menos de 6 h · vermelho = vencido.')}
             sortable
@@ -772,7 +774,6 @@ export function SelecionarMedicoPage() {
           {colunaEmailOrgao()}
           {colunaSolicitante('13rem', dataComCamposCalculados)}
           {colunaBaixarOrcamento()}
-          {colunaEmpenhoEstado()}
           {colunaPagoEm()}
           {colunaDiferenca()}
           </>)}

@@ -1,6 +1,7 @@
 import { Column } from 'primereact/column';
 import { Tag } from 'primereact/tag';
-import { cabecalhoComHint } from '../ColunasIdentificacao/colunasIdentificacao';
+import { FilterService } from 'primereact/api';
+import { cabecalhoComHint, casaOpcaoDosDados, filtroOpcoesDosDados } from '../ColunasIdentificacao/colunasIdentificacao';
 import './colunasMatch.css';
 
 /**
@@ -29,6 +30,38 @@ const ROTULO_TIPO: Record<string, string> = {
   ONCOLOGIA_TRATAMENTO: 'Oncologia (radio/quimio)', HOME_CARE: 'Home care', HOSPITAL_INTERNACAO: 'Hospital',
   MEDICAMENTO_INSUMO: 'Medicamento/insumo', OUTRO: 'Outro',
 };
+
+/** Rótulo do filtro de Quem precisamos (@R 24/09 02:53: "filtrar o nome"). */
+export const rotuloQuem = (m: any): string | null => {
+  if (!m) return null;                                       // não calculado → "(sem preenchimento)"
+  if (m.erro || m.temos == null) return 'Leitura falhou';
+  return m.temos ? `Temos: ${m.medicoNome}` : `Procurar · ${m.especialidade || 'sem especialidade'}`;
+};
+
+/** Rótulo do filtro de Link e acessos (@R 24/09 02:53: "com acessos, sem acessos"). */
+export const rotuloAcessos = (l: any): string | null => {
+  if (!l) return null;                                       // sem link enviado → "(sem preenchimento)"
+  return l.acessos > 0 ? 'Com acessos' : 'Sem acessos';
+};
+
+// Tabela CONTROLADA (filters={filters}) não registra o filterFunction da coluna — ver o porquê em
+// colunasIdentificacao.tsx (REGISTRO DOS FILTROS CUSTOM). Sem isto o filtro devolve zero linhas.
+// O campo filtrado é o OBJETO (match / linkDocumentos) e o rótulo é derivado aqui.
+FilterService.register('custom_match', (valor: unknown, escolha: unknown) => casaOpcaoDosDados(rotuloQuem(valor), escolha));
+FilterService.register('custom_linkDocumentos', (valor: unknown, escolha: unknown) => casaOpcaoDosDados(rotuloAcessos(valor), escolha));
+
+/** Chaves que a página precisa ter no estado `filters` (sem elas o dropdown quebra ao escolher). */
+export const FILTROS_MATCH = {
+  match: { value: null, matchMode: 'custom' as const },
+  linkDocumentos: { value: null, matchMode: 'custom' as const },
+};
+
+/** Props de filtro "Com acessos / Sem acessos" para a coluna Link e acessos de uma página. */
+export const filtroAcessos = (dados: any[] | undefined) => ({
+  filter: true, filterField: 'linkDocumentos', filterMatchMode: 'custom' as const, showFilterMenu: false,
+  filterFunction: (v: unknown, e: unknown) => casaOpcaoDosDados(rotuloAcessos(v), e),
+  filterElement: filtroOpcoesDosDados(dados, (r: any) => rotuloAcessos(r?.linkDocumentos), 'Todos'),
+});
 
 const ORIGEM_OPORTUNIDADE: Record<string, string> = {
   estado: 'mediana do Estado', chegada: 'média na chegada', projetado: 'projetado',
@@ -60,9 +93,14 @@ export function colunaOportunidade(largura = '9rem') {
   );
 }
 
-export function colunaQuemPrecisamos(largura = '15rem') {
+export function colunaQuemPrecisamos(largura = '15rem', dados?: any[]) {
+  const filtro = dados ? {
+    filter: true, filterField: 'match', filterMatchMode: 'custom' as const, showFilterMenu: false,
+    filterFunction: (v: unknown, e: unknown) => casaOpcaoDosDados(rotuloQuem(v), e),
+    filterElement: filtroOpcoesDosDados(dados, (r: any) => rotuloQuem(r?.match), 'Todos'),
+  } : {};
   return (
-    <Column key="col-quem-precisamos" field="match.especialidade" sortable sortField="match.temos"
+    <Column key="col-quem-precisamos" field="match.especialidade" sortable sortField="match.temos" {...filtro}
       style={{ minWidth: largura, maxWidth: '20rem' }}
       header={cabecalhoComHint('Quem precisamos',
         'Calculado quando o pedido chega: a IA lê o procedimento e diz que tipo de profissional ou ' +

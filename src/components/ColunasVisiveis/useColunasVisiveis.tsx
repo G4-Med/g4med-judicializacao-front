@@ -62,6 +62,27 @@ function achatar(nodes: ReactNode): any[] {
   return out;
 }
 
+/**
+ * ORDEM DAS COLUNAS (@R 24/09 02:52: "criar em Colunas para alterar a ordem ... para facilitar eu
+ * manejar a ordem das colunas"). `ordem` é a lista de `field` que o usuário arrumou. Coluna que não
+ * está nela (coluna nova, criada depois que ele arrumou) entra logo depois da vizinha que a precedia
+ * no código — nunca some e nunca vai parar no fim da tabela sem motivo. Lista vazia = ordem do código.
+ */
+export function ordenarCampos(doCodigo: string[], ordem: string[]): string[] {
+  const presentes = new Set(doCodigo);
+  const saida = ordem.filter((f, i) => presentes.has(f) && ordem.indexOf(f) === i);
+  doCodigo.forEach((f, i) => {
+    if (saida.includes(f)) return;
+    let pos = 0;
+    for (let k = i - 1; k >= 0; k--) {
+      const j = saida.indexOf(doCodigo[k]);
+      if (j >= 0) { pos = j + 1; break; }
+    }
+    saida.splice(pos, 0, f);
+  });
+  return saida;
+}
+
 export function useColunasVisiveis(tela: string) {
   const chave = `colunas_ocultas:${tela}`;
   const lsKey = `mc_${chave}`;
@@ -82,6 +103,18 @@ export function useColunasVisiveis(tela: string) {
     } catch { /* storage indisponível */ }
     return DICIONARIO_COLUNAS.filter((v) => v.padraoOculta).map((v) => v.id);
   });
+  const [ordem, setOrdem] = useState<string[]>(() => {
+    for (const k of [lsKey + ':ordem', lsGuia + ':ordem', `mc_${CHAVE_PADRAO}:ordem`]) {
+      try { const v = localStorage.getItem(k); if (v) return JSON.parse(v); } catch { /* fail-soft */ }
+    }
+    return [];
+  });
+  const lerOrdem = (valor: any, cache: string) => {
+    const o = Array.isArray(valor?.ordem) ? valor.ordem.filter((x: unknown) => typeof x === 'string') : [];
+    setOrdem((atual) => (atual.join('|') === o.join('|') ? atual : o));
+    try { localStorage.setItem(cache + ':ordem', JSON.stringify(o)); } catch { /* fail-soft */ }
+  };
+  const [arrastando, setArrastando] = useState<string | null>(null);
   const [aberto, setAberto] = useState(false);
   const conhecidas = useRef<ColunaInfo[]>([]);
   const assinaturaConhecida = useRef<string>('');
@@ -99,6 +132,7 @@ export function useColunasVisiveis(tela: string) {
           // (useEffect sem deps) reage à troca chamando setState de novo — o vaivém que
           // produzia "Maximum update depth exceeded" ao trocar de tela.
           setOcultas((atual) => (mesmaLista(atual, doServidor) ? atual : doServidor));
+          lerOrdem(data?.valor, lsKey);
           try { localStorage.setItem(lsKey, JSON.stringify(doServidor)); } catch { /* cheio/bloqueado */ }
           setTemPropria(true);
           return;
@@ -110,6 +144,7 @@ export function useColunasVisiveis(tela: string) {
           const doGuia = Array.isArray(dg?.valor?.ocultas) ? normalizarOcultas(dg?.valor?.ocultas) : undefined;
           if (Array.isArray(doGuia)) {
             setOcultas((atual) => (mesmaLista(atual, doGuia) ? atual : doGuia));
+            lerOrdem(dg?.valor, lsGuia);
             try { localStorage.setItem(lsGuia, JSON.stringify(doGuia)); } catch { /* fail-soft */ }
             return;
           }
@@ -117,6 +152,7 @@ export function useColunasVisiveis(tela: string) {
           const doPadrao = Array.isArray(d2?.valor?.ocultas) ? normalizarOcultas(d2?.valor?.ocultas) : undefined;
           if (Array.isArray(doPadrao)) {
             setOcultas((atual) => (mesmaLista(atual, doPadrao) ? atual : doPadrao));
+            lerOrdem(d2?.valor, `mc_${CHAVE_PADRAO}`);
             try { localStorage.setItem(`mc_${CHAVE_PADRAO}`, JSON.stringify(doPadrao)); } catch { /* fail-soft */ }
           }
           });
@@ -126,23 +162,38 @@ export function useColunasVisiveis(tela: string) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chave]);
 
-  const salvar = (novas: string[]) => {
+  const salvar = (novas: string[], novaOrdem: string[] = ordem) => {
     setOcultas(novas);
+    setOrdem(novaOrdem);
     setTemPropria(true);
-    try { localStorage.setItem(lsKey, JSON.stringify(novas)); } catch { /* fail-soft */ }
-    api.put(`/preferencias/${encodeURIComponent(chave)}/`, { valor: { ocultas: novas } })
+    try {
+      localStorage.setItem(lsKey, JSON.stringify(novas));
+      localStorage.setItem(lsKey + ':ordem', JSON.stringify(novaOrdem));
+    } catch { /* fail-soft */ }
+    api.put(`/preferencias/${encodeURIComponent(chave)}/`, { valor: { ocultas: novas, ordem: novaOrdem } })
       .catch(() => undefined);
+  };
+  /** Move a coluna `id` para a posição da coluna `alvo` (arrastar) ou 1 casa (setas). */
+  const mover = (id: string, alvo: string) => {
+    const atual = conhecidas.current.map((c) => c.id);
+    const de = atual.indexOf(id);
+    const para = atual.indexOf(alvo);
+    if (de < 0 || para < 0 || de === para) return;
+    atual.splice(de, 1);
+    atual.splice(para, 0, id);
+    salvar(ocultas, atual);
   };
 
   // "Usar o padrão do Rapha": apaga a escolha própria desta tela e lê o guia de novo.
   const voltarAoGuia = () => {
-    try { localStorage.removeItem(lsKey); } catch { /* fail-soft */ }
+    try { localStorage.removeItem(lsKey); localStorage.removeItem(lsKey + ':ordem'); } catch { /* fail-soft */ }
     api.delete(`/preferencias/${encodeURIComponent(chave)}/`).catch(() => undefined).finally(() => {
       setTemPropria(false);
       api.get(`/preferencias-sistema/${encodeURIComponent(chave)}/`).then(({ data }) => {
         const g = Array.isArray(data?.valor?.ocultas) ? normalizarOcultas(data?.valor?.ocultas) : undefined;
         if (Array.isArray(g)) {
           setOcultas(g);
+          lerOrdem(data?.valor, lsGuia);
           try { localStorage.setItem(lsGuia, JSON.stringify(g)); } catch { /* fail-soft */ }
         }
       }).catch(() => undefined);
@@ -150,7 +201,21 @@ export function useColunasVisiveis(tela: string) {
   };
 
   const filtrar = (children: ReactNode) => {
-    const els = achatar(children);
+    const crus = achatar(children);
+    const campoDe = (el: any): string | null =>
+      (typeof el?.props?.field === 'string' && el.props.field ? el.props.field : null);
+    // Só as colunas de DADOS trocam de lugar entre si; as de sistema (expander, seleção, Ações)
+    // ficam exatamente onde o código as pôs.
+    const posicoes = crus.map((el, i) => (campoDe(el) ? i : -1)).filter((i) => i >= 0);
+    const porCampo = new Map<string, any[]>();
+    posicoes.forEach((i) => {
+      const f = campoDe(crus[i]) as string;
+      porCampo.set(f, [...(porCampo.get(f) ?? []), crus[i]]);
+    });
+    const doCodigo = [...porCampo.keys()];
+    const ordenados = ordenarCampos(doCodigo, ordem).flatMap((f) => porCampo.get(f) ?? []);
+    const els = [...crus];
+    posicoes.forEach((pos, k) => { els[pos] = ordenados[k]; });
     const achadas: ColunaInfo[] = [];
     let sistema = 0;
     // Conta quantas vezes cada chave já saiu NESTA passada (ver DESEMPATE abaixo).
@@ -231,9 +296,9 @@ export function useColunasVisiveis(tela: string) {
     <>
       <Button label="Colunas" icon="pi pi-sliders-h" size="small" outlined severity="secondary"
         className="botao-colunas" onClick={() => setAberto(true)}
-        title="Escolha quais colunas aparecem — a escolha fica salva para o seu usuário" />
-      <Dialog header="Colunas visíveis" visible={aberto} modal onHide={() => setAberto(false)}
-        style={{ width: '24rem', maxWidth: '94vw' }}>
+        title="Escolha quais colunas aparecem e em que ordem — a escolha fica salva para o seu usuário" />
+      <Dialog header="Colunas: quais aparecem e em que ordem" visible={aberto} modal onHide={() => setAberto(false)}
+        style={{ width: '28rem', maxWidth: '94vw' }}>
         <p style={{ margin: '0 0 10px', fontSize: '.8rem', color: 'var(--text-color-secondary, #6b7280)' }}>
           {souGuia
             ? <>Você é o <strong>guia</strong>: o que marcar aqui vira o padrão desta tela para quem não escolheu as próprias colunas.</>
@@ -242,14 +307,29 @@ export function useColunasVisiveis(tela: string) {
               : <>Você está vendo o <strong>padrão do sistema</strong> (colunas do Rapha). Se mudar, passa a valer a sua escolha.</>}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {conhecidas.current.map((c) => (
-            <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-              <Checkbox checked={!ocultas.includes(c.id)}
+          {conhecidas.current.map((c, i, lista) => (
+            <div key={c.id} draggable
+              onDragStart={() => setArrastando(c.id)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => { if (arrastando) mover(arrastando, c.id); setArrastando(null); }}
+              onDragEnd={() => setArrastando(null)}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 4px', borderRadius: 4,
+                background: arrastando === c.id ? 'var(--surface-200, #e5e7eb)' : undefined }}>
+              <i className="pi pi-bars" style={{ cursor: 'grab', color: 'var(--text-color-secondary, #9ca3af)', fontSize: '.75rem' }}
+                title="Arraste para mudar a posição da coluna" />
+              <Checkbox inputId={`col-vis-${c.id}`} checked={!ocultas.includes(c.id)}
                 onChange={(e) => salvar(e.checked
                   ? ocultas.filter((o) => o !== c.id)
                   : [...ocultas, c.id])} />
-              <span title={verbete(c.id)?.oQueE ?? c.label}>{c.label}</span>
-            </label>
+              <label htmlFor={`col-vis-${c.id}`} style={{ flex: 1, cursor: 'pointer' }}
+                title={verbete(c.id)?.oQueE ?? c.label}>{c.label}</label>
+              <Button icon="pi pi-angle-up" text rounded size="small" disabled={i === 0}
+                aria-label={`Subir ${c.label}`} title="Subir (fica mais à esquerda na tabela)"
+                onClick={() => mover(c.id, lista[i - 1].id)} style={{ width: 26, height: 26 }} />
+              <Button icon="pi pi-angle-down" text rounded size="small" disabled={i === lista.length - 1}
+                aria-label={`Descer ${c.label}`} title="Descer (fica mais à direita na tabela)"
+                onClick={() => mover(c.id, lista[i + 1].id)} style={{ width: 26, height: 26 }} />
+            </div>
           ))}
         </div>
         <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
@@ -257,6 +337,11 @@ export function useColunasVisiveis(tela: string) {
             onClick={() => { window.location.href = '/configuracoes-colunas'; }}
             title="Abre Configurações › Colunas: explica cada coluna e deixa definir o padrão de todas as telas" />
           <Button label="Mostrar todas" text size="small" onClick={() => salvar([])} />
+          {ordem.length > 0 && (
+            <Button label="Ordem padrão" text size="small" icon="pi pi-sort-alt"
+              title="Volta as colunas à ordem original da tela (mantém as que você escondeu)"
+              onClick={() => salvar(ocultas, [])} />
+          )}
           {!souGuia && temPropria && (
             <Button label="Usar o padrão do Rapha" text size="small" icon="pi pi-replay" onClick={voltarAoGuia}
               title="Apaga a sua escolha nesta tela e volta às colunas que o Rapha deixou como padrão" />
@@ -267,5 +352,5 @@ export function useColunasVisiveis(tela: string) {
     </>
   );
 
-  return { filtrar, botao, ocultas };
+  return { filtrar, botao, ocultas, ordem };
 }
