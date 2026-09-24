@@ -4,7 +4,8 @@ import { cabecalhoComHint } from '../ColunasIdentificacao/colunasIdentificacao';
 import './colunasMatch.css';
 
 /**
- * QUEM PRECISAMOS · VALOR DA OPORTUNIDADE · PAGO PELO ESTADO (@R 24/09 01:13–01:30, tasks #7/#8).
+ * QUEM PRECISAMOS · PAGO PELO ESTADO (@R 24/09 01:13–01:30, tasks #7/#8). A coluna Oportunidade saiu
+ * a pedido do @R (24/09 02:2x): ficam Pago pelo Estado e, ao lado, Quem precisamos, nas 2 primeiras.
  *
  * ⟦"quando um pedido chega nós já fazemos um match da sugestão ... para saber o que tenho que
  * priorizar para achar, com o que temos de ativo"⟧ + ⟦"o valor da oportunidade na primeira coluna
@@ -28,18 +29,6 @@ const ROTULO_TIPO: Record<string, string> = {
   ONCOLOGIA_TRATAMENTO: 'Oncologia (radio/quimio)', HOME_CARE: 'Home care', HOSPITAL_INTERNACAO: 'Hospital',
   MEDICAMENTO_INSUMO: 'Medicamento/insumo', OUTRO: 'Outro',
 };
-
-export function colunaValorOportunidade(largura = '8rem') {
-  return (
-    <Column key="col-oportunidade" field="valorOportunidade" sortable style={{ minWidth: largura }}
-      header={cabecalhoComHint('Oportunidade',
-        'Valor da oportunidade do pedido (referência de preço do procedimento). ' +
-        'É o que está em jogo — serve para priorizar a busca do profissional.')}
-      body={(r: any) => r?.valorOportunidade
-        ? <span className="match-valor">{reais(r.valorOportunidade)}</span>
-        : <span className="ident-vazio" title="Sem referência de preço registrada neste pedido.">—</span>} />
-  );
-}
 
 export function colunaQuemPrecisamos(largura = '15rem') {
   return (
