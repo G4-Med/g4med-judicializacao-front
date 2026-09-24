@@ -34,6 +34,23 @@ export interface ItemBaterValores {
   origem?: 'MANUAL' | 'AUTOMATICA';
   jaFoiSES?: boolean;
   entrada?: EntradaManual | null;
+  /** #702/#706 (@R 24/09): o MENOR orçamento de terceiro do processo, conferido ou não, acima ou abaixo do nosso —
+   *  `posicao` diz onde o do TERCEIRO está em relação ao nosso. null = não há (o motivo vem em semOrcamentoMotivo). */
+  menorDoProcesso?: MenorDoProcesso | null;
+  orcamentosNoProcesso?: number;
+  orcamentosDescartados?: number;
+  semOrcamentoMotivo?: string | null;
+  /** valor de referência que veio no e-mail da SES (quando veio) */
+  referenciaPreco?: { valor: number; origem: string; nossoAcimaPct: number | null } | null;
+}
+
+export interface MenorDoProcesso {
+  id: number;
+  valor: number;
+  prestador: string | null;
+  conferencia: string | null;
+  difPctNosso: number | null;
+  posicao: 'ABAIXO' | 'IGUAL' | 'ACIMA' | null;
 }
 
 export interface PainelBaterValores extends ItemBaterValores {
@@ -47,6 +64,14 @@ export interface PainelBaterValores extends ItemBaterValores {
                comparativo?: ComparativoComponentes | null }[];
   /** @R 22/09 (#629): só VALIDADOS aparecem; os que esperam conferência viram contagem. */
   aguardandoConferencia?: number;
+  /** #706 (@R 24/09: "ver todos os orçamentos dentro do processo... todos os exames... o email de solicitação e um
+   *  resumo do que foi pedido"): TUDO do processo, para conferir antes de enviar. */
+  orcamentosProcesso?: { id: number; prestador: string | null; valorTotal: number; pagina: number | null;
+                         procedimento: string | null; conferencia: string | null; difPctNosso: number | null;
+                         linkAbrir: string | null }[];
+  resumoClinico?: { campo: string; valor: string }[];
+  resumoClinicoEm?: string | null;
+  documentos?: { id: number; tipo: string; tipoRotulo: string; nome: string | null; em: string | null }[];
 }
 
 /** Comparativo por componente (#629) — a IA lê a folha; as contas são do servidor. */

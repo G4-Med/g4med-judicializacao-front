@@ -10,13 +10,13 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import { SelectButton } from 'primereact/selectbutton';
 import { Tag } from 'primereact/tag';
 import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext';
-import type { EstadoGatilho, FilaBaterValores, ItemBaterValores, PainelBaterValores, Saida } from '../../services/api/baterValores';
+import type { EstadoGatilho, FilaBaterValores, ItemBaterValores, MenorDoProcesso, PainelBaterValores, Saida } from '../../services/api/baterValores';
 import { compararComponentes, decidirBaterValores, listarBaterValores, painelBaterValores, lerAcordoValor, registrarAcordoValor, desfazerAcordoValor } from '../../services/api/baterValores';
 import type { AcordoValor } from '../../services/api/baterValores';
 import { readAuthProfile } from '../../access/authProfile';
 import type { ComparativoComponentes } from '../../services/api/baterValores';
 import { EntradaManualDialog } from './EntradaManualDialog';
-import { registrarRespostaCotacao, salvarOrcamentoMedico, uploadAnexoOrder } from '../../services/api/orders';
+import { baixarAnexo, getConteudoEmail, registrarRespostaCotacao, salvarOrcamentoMedico, uploadAnexoOrder } from '../../services/api/orders';
 
 /* Fase 3.1 "bater valores" (@R 22/09/2026 14:24: "quando recebemos um orçamento e vemos que tem um valor
    menor no próprio processo, nós tentamos bater o processo").
@@ -132,11 +132,12 @@ export function BaterValoresPage() {
           <span style={{ fontSize: '.85rem' }}>{(r.procedimento ?? '').slice(0, 90)}</span>
         )} />
         <Column header="Nosso" body={(r: ItemBaterValores) => brl(r.nossoTotal)} style={{ whiteSpace: 'nowrap' }} />
-        <Column header="Menor do processo" body={(r: ItemBaterValores) => brl(r.menorTerceiro)} style={{ whiteSpace: 'nowrap' }} />
+        <Column header="Menor do processo" body={(r: ItemBaterValores) => <CelulaMenor r={r} />} style={{ minWidth: 150 }} />
         <Column header="Situação" body={(r: ItemBaterValores) => r.estado ? (
           <div>
             <Tag severity={COR[r.estado]} value={ROTULO[r.estado]} />
             {r.acimaPct != null && <div className="text-600" style={{ fontSize: '.8rem' }}>nosso {Math.round(r.acimaPct)}% acima</div>}
+            {nossoEhOMenor(r) && <div className="mt-1"><Tag severity="success" value="Nosso é o menor" /></div>}
           </div>
         ) : null} />
         <Column body={(r: ItemBaterValores) => (
@@ -149,7 +150,8 @@ export function BaterValoresPage() {
       )}
 
       {aberto && (
-        <DialogDecisao painel={aberto} onFechar={() => setAberto(null)} onDecidido={() => { setAberto(null); carregar(); }} />
+        <DialogDecisao painel={aberto} onFechar={() => setAberto(null)} onDecidido={() => { setAberto(null); carregar(); }}
+          onAbrirFicha={() => ficha.abrir(aberto.pedido)} />
       )}
     </div>
   );
@@ -225,10 +227,16 @@ function TerceiroComparavel({ pedido, t }: { pedido: number; t: PainelBaterValor
   );
 }
 
-function DialogDecisao({ painel, onFechar, onDecidido }: {
-  painel: PainelBaterValores; onFechar: () => void; onDecidido: () => void;
+function DialogDecisao({ painel, onFechar, onDecidido, onAbrirFicha }: {
+  painel: PainelBaterValores; onFechar: () => void; onDecidido: () => void; onAbrirFicha: () => void;
 }) {
-  const [saida, setSaida] = useState<Saida>('CONFIRMADO');
+  const [saida, setSaidaCrua] = useState<Saida>('CONFIRMADO');
+  // #706 (@R 24/09 11:34, via eliza-urgência: "para aprovar precisa da confirmação dupla do usuário"): o 1º clique
+  // em "Confirmar e enviar" só MOSTRA o que vai sair (valor, PDF, destino, fase seguinte, quem assina); o envio à SES
+  // é o 2º clique. Trocar a saída desfaz o 1º passo.
+  const [passo2, setPasso2] = useState(false);
+  const setSaida = (s: Saida) => { setSaidaCrua(s); setPasso2(false); };
+  const usuario = readAuthProfile().username || 'o seu usuário';
   const [motivo, setMotivo] = useState<string | null>(null);
   const [valorNovo, setValorNovo] = useState<number | null>(null);
   const [obs, setObs] = useState('');
@@ -314,8 +322,16 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
 
       <div className="grid mb-2">
         <div className="col-6"><div className="text-600">Nosso orçamento</div><div className="text-2xl font-bold">{brl(painel.nossoTotal)}</div></div>
-        <div className="col-6"><div className="text-600">Menor orçamento do processo</div><div className="text-2xl font-bold">{brl(painel.menorTerceiro)}</div>
-          {painel.acimaPct != null && <div className="text-600">nosso está {Math.round(painel.acimaPct)}% acima</div>}</div>
+        <div className="col-6"><div className="text-600">Menor orçamento do processo</div>
+          <div className="text-2xl font-bold">{painel.menorDoProcesso ? brl(painel.menorDoProcesso.valor) : brl(painel.menorTerceiro)}</div>
+          {painel.menorDoProcesso
+            ? <div className="text-600" style={{ fontSize: '.85rem' }}>{painel.menorDoProcesso.prestador ?? 'prestador não identificado'} · {textoPosicao(painel.menorDoProcesso)}
+                {painel.menorDoProcesso.conferencia !== 'VALIDADO' && <span style={{ color: '#b54708' }}> · ainda não conferido</span>}</div>
+            : painel.semOrcamentoMotivo && <div className="text-600" style={{ fontSize: '.85rem' }}>{painel.semOrcamentoMotivo}</div>}
+          {painel.acimaPct != null && <div className="text-600">nosso está {Math.round(painel.acimaPct)}% acima</div>}
+          {painel.referenciaPreco && <div className="text-600" style={{ fontSize: '.85rem' }}>Referência do {painel.referenciaPreco.origem}: {brl(painel.referenciaPreco.valor)}
+            {painel.referenciaPreco.nossoAcimaPct != null && ` · nosso ${Math.abs(Math.round(painel.referenciaPreco.nossoAcimaPct))}% ${painel.referenciaPreco.nossoAcimaPct > 0 ? 'acima' : 'abaixo'}`}</div>}
+        </div>
       </div>
 
       {painel.entrada && (
@@ -327,6 +343,8 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
         </div>
       )}
       {painel.aviso && <div className="p-2 mb-2" style={{ background: '#fffaeb', color: '#b54708', borderRadius: 6 }}>{painel.aviso}</div>}
+
+      <TudoDoProcesso painel={painel} onAbrirFicha={onAbrirFicha} />
 
       {/* @R 22/09 18:39 (#629): só os orçamentos VALIDADOS na conferência; cada um abre a imagem e pode ser
           comparado por componente (a IA lê a folha, o servidor faz as contas). */}
@@ -390,11 +408,170 @@ function DialogDecisao({ painel, onFechar, onDecidido }: {
       <div className="flex justify-content-end gap-2 mt-3">
         <Button label="Cancelar" text onClick={onFechar} />
         <Button label={saida === 'REVISADO' ? 'Registrar revisão' : saida === 'RECUSADO' ? 'Registrar recusa'
-          : saida === 'PERDA' ? 'Dar perda' : 'Confirmar e enviar'}
+          : saida === 'PERDA' ? 'Dar perda' : passo2 ? 'Confira o resumo abaixo' : 'Confirmar e enviar'}
           icon={recusando ? 'pi pi-times' : 'pi pi-check'} severity={recusando ? 'danger' : undefined} loading={salvando}
-          disabled={!pode} onClick={decidir} />
+          disabled={!pode || (saida === 'CONFIRMADO' && passo2)} onClick={() => (saida === 'CONFIRMADO' ? setPasso2(true) : decidir())} />
       </div>
+      {saida === 'CONFIRMADO' && passo2 && (
+        <div className="p-3 mt-3 confirmacao-dupla" style={{ border: '2px solid #f97316', borderRadius: 8, background: '#fff7ed' }}
+          ref={(el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
+          <div className="font-bold mb-2">Confirme o envio (2º passo)</div>
+          <ul className="m-0 pl-3" style={{ fontSize: '.9rem', lineHeight: 1.6 }}>
+            <li>Pedido <b>#{painel.pedido}</b> — {painel.paciente}</li>
+            <li>Valor que vai à SES: <b>{brl(painel.nossoTotal)}</b>{painel.menorDoProcesso && <> (menor do processo: {brl(painel.menorDoProcesso.valor)})</>}</li>
+            <li>PDF anexo: <b>{pdf?.nome ?? 'nenhum'}</b></li>
+            <li>{painel.temEmailRetido ? 'O e-mail de orçamento parado SAI AGORA para a Secretaria de Estado de Saúde' : 'Não há e-mail parado: a confirmação só fica registrada'}</li>
+            <li>Depois: o pedido segue para <b>4. Protocolar</b> (ou <b>5.1</b>, se for segredo de justiça ou sem processo)</li>
+            <li>A aprovação fica registrada no nome de <b>{usuario}</b>, com data e hora</li>
+          </ul>
+          <div className="flex justify-content-end gap-2 mt-2">
+            <Button label="Voltar" text onClick={() => setPasso2(false)} />
+            <Button label="Sim, enviar à SES" icon="pi pi-send" severity="warning" loading={salvando} disabled={!pode} onClick={decidir} />
+          </div>
+        </div>
+      )}
     </Dialog>
+  );
+}
+
+
+/* ── #706 (@R 24/09): o MENOR do processo sempre à vista — valor, onde está em relação ao nosso, ou por que não há ── */
+function textoPosicao(m: MenorDoProcesso): string {
+  const d = m.difPctNosso != null ? Math.abs(Math.round(m.difPctNosso)) : null;
+  if (m.posicao === 'ABAIXO') return `abaixo do nosso${d != null ? ` (${d}%)` : ''}`;
+  if (m.posicao === 'ACIMA') return `acima do nosso${d != null ? ` (+${d}%)` : ''}`;
+  return 'igual ao nosso';
+}
+
+function nossoEhOMenor(r: ItemBaterValores): boolean {
+  return !!r.menorDoProcesso && (r.menorDoProcesso.posicao === 'ACIMA' || r.menorDoProcesso.posicao === 'IGUAL');
+}
+
+function CelulaMenor({ r }: { r: ItemBaterValores }) {
+  const m = r.menorDoProcesso;
+  if (!m) return <span className="text-600" style={{ fontSize: '.75rem' }}>{r.semOrcamentoMotivo ?? '—'}</span>;
+  return (
+    <div style={{ whiteSpace: 'nowrap' }}>
+      {brl(m.valor)}
+      <div className="text-600" style={{ fontSize: '.75rem', whiteSpace: 'normal' }}>
+        {textoPosicao(m)}{m.conferencia !== 'VALIDADO' && <span style={{ color: '#b54708' }}> · não conferido</span>}
+        {(r.orcamentosNoProcesso ?? 0) > 1 && <> · {r.orcamentosNoProcesso} no processo</>}
+      </div>
+    </div>
+  );
+}
+
+/* ── #706 "Tudo do processo" (@R 24/09: "ver todos os orçamentos dentro do processo caso tenha e todos os exames e
+   informações do processo e ver o email de solicitação e um resumo do que foi pedido... na hora de conferir temos
+   todas as informações para podermos verificar e conferir o pedido antes de enviar"). Só LEITURA: nada aqui grava. */
+function TudoDoProcesso({ painel, onAbrirFicha }: { painel: PainelBaterValores; onAbrirFicha: () => void }) {
+  const [aberto, setAberto] = useState(false);
+  const [email, setEmail] = useState<{ id: number; texto: string } | null>(null);
+  const [lendo, setLendo] = useState<number | null>(null);
+  const docs = painel.documentos ?? [];
+  const emails = docs.filter((d) => d.tipo === 'EMAIL_ORIGINAL');
+  const outros = docs.filter((d) => d.tipo !== 'EMAIL_ORIGINAL');
+  const orcs = painel.orcamentosProcesso ?? [];
+
+  const ver = async (id: number) => {
+    setLendo(id);
+    try {
+      const { data } = await baixarAnexo(id);
+      window.open(URL.createObjectURL(data as Blob), '_blank');
+    } catch {
+      alert('Não consegui abrir este documento agora.');
+    } finally {
+      setLendo(null);
+    }
+  };
+  const lerEmail = async (id: number) => {
+    if (email?.id === id) { setEmail(null); return; }
+    setLendo(id);
+    try {
+      const { data } = await getConteudoEmail(painel.pedido, id);
+      const texto = (data as { texto?: string; corpo?: string })?.texto ?? (data as { corpo?: string })?.corpo ?? JSON.stringify(data);
+      // o e-mail pode vir com a cadeia inteira de encaminhamentos (#1280: 216.916 caracteres) — a tela mostra o começo e DIZ que cortou
+      const LIMITE = 30000;
+      const t = String(texto);
+      setEmail({ id, texto: t.length > LIMITE ? `${t.slice(0, LIMITE)}\n\n[… texto cortado: mostrando ${LIMITE.toLocaleString('pt-BR')} de ${t.length.toLocaleString('pt-BR')} caracteres — o e-mail completo está na ficha do pedido]` : t });
+    } catch {
+      alert('Não consegui ler o e-mail agora.');
+    } finally {
+      setLendo(null);
+    }
+  };
+
+  return (
+    <div className="mb-3 tudo-do-processo" style={{ border: '1px solid #d0d5dd', borderRadius: 8 }}>
+      <button type="button" className="w-full text-left p-2" style={{ background: '#f9fafb', border: 0, borderRadius: 8, cursor: 'pointer' }}
+        onClick={() => setAberto(!aberto)}>
+        <i className={`pi ${aberto ? 'pi-chevron-down' : 'pi-chevron-right'}`} />{' '}
+        <strong>Tudo do processo</strong>
+        <span className="text-600" style={{ fontSize: '.85rem' }}> — {orcs.length} orçamento(s) · {outros.length} documento(s) · {emails.length} e-mail(s) de solicitação</span>
+      </button>
+      {aberto && (
+        <div className="p-2" style={{ fontSize: '.85rem' }}>
+          {!!painel.resumoClinico?.length && (
+            <div className="mb-3">
+              <div className="font-bold mb-1">O que foi pedido (resumo da IA)</div>
+              {painel.resumoClinico.map((c) => (
+                <div key={c.campo}><span className="text-600">{c.campo}:</span> {c.valor}</div>
+              ))}
+            </div>
+          )}
+
+          <div className="mb-3">
+            <div className="font-bold mb-1">Orçamentos encontrados no processo</div>
+            {orcs.length === 0 && <div className="text-600">{painel.semOrcamentoMotivo ?? 'Nenhum orçamento de terceiro no processo.'}</div>}
+            {orcs.map((o) => (
+              <div key={o.id} className="flex align-items-center gap-2 py-1" style={{ borderBottom: '1px solid #f2f4f7' }}>
+                <span style={{ minWidth: 110, fontWeight: 600 }}>{brl(o.valorTotal)}</span>
+                <span className="flex-1">{o.prestador ?? 'prestador não identificado'}{o.pagina ? ` · p. ${o.pagina}` : ''}
+                  {o.procedimento && <span className="text-600"> · {o.procedimento.slice(0, 80)}</span>}</span>
+                <Tag value={o.conferencia === 'VALIDADO' ? 'validado' : o.conferencia === 'DESCARTADO' ? 'descartado' : 'não conferido'}
+                  severity={o.conferencia === 'VALIDADO' ? 'success' : o.conferencia === 'DESCARTADO' ? 'secondary' : 'warning'} />
+                {o.difPctNosso != null && <span className="text-600" style={{ minWidth: 60 }}>{o.difPctNosso > 0 ? '+' : ''}{Math.round(o.difPctNosso)}%</span>}
+                {o.linkAbrir && <a href={o.linkAbrir} target="_blank" rel="noreferrer">abrir</a>}
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-3">
+            <div className="font-bold mb-1">E-mail de solicitação</div>
+            {emails.length === 0 && <div className="text-600">Nenhum e-mail de solicitação guardado.</div>}
+            {emails.map((e) => (
+              <div key={e.id} className="mb-1">
+                <Button link className="p-0" label={`${e.nome ?? 'E-mail original'}${e.em ? ` · ${new Date(e.em).toLocaleDateString('pt-BR')}` : ''}`}
+                  icon="pi pi-envelope" loading={lendo === e.id} onClick={() => lerEmail(e.id)} />
+                {email?.id === e.id && (
+                  <pre className="p-2 mt-1" style={{ whiteSpace: 'pre-wrap', background: '#f9fafb', borderRadius: 6, maxHeight: 260, overflow: 'auto', fontFamily: 'inherit' }}>{email.texto}</pre>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="mb-2">
+            <div className="font-bold mb-1">Documentos (exames, laudos, peças)</div>
+            {outros.length === 0 && <div className="text-600">Nenhum documento anexado.</div>}
+            {outros.map((d) => (
+              <div key={d.id} className="flex align-items-center gap-2 py-1">
+                <span className="text-600" style={{ minWidth: 170 }}>{d.tipoRotulo}</span>
+                <span className="flex-1">{d.nome ?? '—'}</span>
+                <Button size="small" text icon="pi pi-eye" label="Ver" loading={lendo === d.id} onClick={() => ver(d.id)} />
+              </div>
+            ))}
+            {painel.pdfOrcamento && painel.pdfOrcamento.id > 0 && (
+              <div className="flex align-items-center gap-2 py-1">
+                <span style={{ minWidth: 170, color: '#f97316' }}>Nosso orçamento (vai à SES)</span>
+                <span className="flex-1">{painel.pdfOrcamento.nome}</span>
+                <Button size="small" text icon="pi pi-eye" label="Ver" loading={lendo === painel.pdfOrcamento.id} onClick={() => ver(painel.pdfOrcamento!.id)} />
+              </div>
+            )}
+          </div>
+          <Button size="small" outlined icon="pi pi-folder-open" label="Abrir a ficha completa do pedido" onClick={onAbrirFicha} />
+        </div>
+      )}
+    </div>
   );
 }
 
