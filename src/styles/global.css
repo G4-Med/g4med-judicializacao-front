@@ -430,6 +430,19 @@ body.dark-theme .linha-negado-sem-medico > td { background: rgba(220, 38, 38, 0.
 .selo-recusa { display: inline-block; margin-left: .4rem; padding: 0 .4rem; border-radius: 4px; font-size: .72rem;
   font-weight: 600; background: #fef3c7; color: #92400e; white-space: nowrap; text-transform: none; }
 .selo-recusa--sem { background: #dc2626; color: #fff; }
+/* #708 (@R 24/09): pedido de exame na linha do paciente — vermelho não saiu · azul esperando · verde retorno por ver */
+.selo-exame { display: inline-flex; align-items: center; gap: .3rem; margin-left: .4rem; padding: 0 .4rem; border-radius: 4px;
+  font-size: .72rem; font-weight: 600; white-space: nowrap; text-transform: none; }
+.selo-exame--nao-saiu { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.selo-exame--aguardando { background: #e0f2fe; color: #075985; }
+.selo-exame--retorno { background: #16a34a; color: #fff; }
+.selo-exame--visto { background: #f1f5f9; color: #475569; }
+.selo-exame__visto { border: 0; border-radius: 3px; padding: 0 .35rem; font-size: .7rem; font-weight: 700; cursor: pointer;
+  background: #fff; color: #166534; text-transform: none; }
+.aviso-exames { margin: .5rem 0 .75rem; display: grid; gap: .35rem; }
+.aviso-exames__linha { padding: .45rem .75rem; border-radius: 6px; font-size: .88rem; }
+.aviso-exames__linha--retorno { background: #dcfce7; color: #14532d; border: 1px solid #86efac; }
+.aviso-exames__linha--nao-saiu { background: #fef2f2; color: #7f1d1d; border: 1px solid #fca5a5; }
 /* @R 22/09: marcador "está na 3,1" na fase 3, clicável */
 .selo-31 { display: inline-block; margin-left: .4rem; padding: 0 .4rem; border-radius: 4px; font-size: .72rem;
   font-weight: 700; background: #1d4ed8; color: #fff !important; white-space: nowrap; text-decoration: none; text-transform: none; }

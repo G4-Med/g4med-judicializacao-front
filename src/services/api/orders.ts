@@ -91,6 +91,8 @@ export function salvarBlob(data: Blob, nome: string) {
   URL.revokeObjectURL(url);
 }
 export const getEmailsPendentesCount = () => api.get('/orders/emails/pendentes-count/');
+// #708 (@R 24/09): quem abriu o retorno do pedido de exame marca "visto" — o selo verde sai da tela 3
+export const marcarRetornoExameVisto = (orderId: number) => api.post(`/orders/${orderId}/exame-retorno/visto/`);
 export const enviarEmailPendente = (id: number) => api.post(`/orders/emails/${id}/enviar/`);
 export const enviarEmailsPendentesLote = (ids: number[]) => api.post('/orders/emails/enviar-lote/', { ids });
 /** Tira da fila um e-mail que não deve mais sair (o pedido voltou de fase, mudou a decisão).
