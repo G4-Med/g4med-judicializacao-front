@@ -161,7 +161,11 @@ export function JuridicoPage() {
   // aparece ANTES da decisão de cotar, não só na hora de orçar (fase 3).
   const [intel, setIntel] = useState<any | null>(null)
   // Peça de inteiro teor (@R 27/08): obrigatória ao decidir Cotar OU Não Cotar.
-  const [inteiroTeorFile, setInteiroTeorFile] = useState<File | null>(null)
+  // #684 (Carol via @R, 23/09 "Guardar partes, juntar no download"): o PJe entrega a cópia integral de 1 processo em
+  // mais de 1 arquivo — a peça pode ter PARTES. Arquivos escolhidos e ainda não enviados + partes já anexadas (ordem de envio).
+  const [inteiroTeorFiles, setInteiroTeorFiles] = useState<File[]>([])
+  const [pecaPartes, setPecaPartes] = useState<{ id: number; createDate: string }[]>([])
+  const [adicionandoParte, setAdicionandoParte] = useState(false)
   const [trocandoPeca, setTrocandoPeca] = useState<'' | 'removendo' | 'enviando'>('')
   const [avisoPeca, setAvisoPeca] = useState<string>('')
   const [inteiroTeorJaAnexado, setInteiroTeorJaAnexado] = useState(false)
@@ -246,6 +250,29 @@ export function JuridicoPage() {
 
   useEffect(() => { setVisibleProcessos(dataComSequencial); }, [dataComSequencial]);
 
+
+  // #684: partes da peça em ORDEM DE ENVIO (a parte 1 é a primeira anexada — a mesma ordem do "baixar peça", que junta tudo).
+  const carregarPartesPeca = (orderId: number) =>
+    getAnexosOrder(orderId, 'DECISAO_INTEIRO_TEOR')
+      .then((res: any) => {
+        const partes = [...(res.data.anexos ?? [])].sort((a: any, b: any) => (a.createDate < b.createDate ? -1 : a.createDate > b.createDate ? 1 : a.id - b.id))
+        setPecaPartes(partes)
+        setInteiroTeorJaAnexado(partes.length > 0)
+      })
+      .catch(() => { setPecaPartes([]); setInteiroTeorJaAnexado(false) })
+
+  // Envia as partes escolhidas UMA A UMA, na ordem da seleção. O servidor não duplica a mesma parte (mesmo arquivo
+  // → devolve a que já existe com duplicado=true), então reenviar é seguro; aqui só se conta para avisar.
+  const enviarPartesPeca = async (orderId: number, arquivos: File[]) => {
+    let novas = 0, repetidas = 0
+    for (const f of arquivos) {
+      const r: any = await uploadAnexoOrder(orderId, f, 'DECISAO_INTEIRO_TEOR')
+      if (r?.data?.duplicado) repetidas++; else novas++
+    }
+    await carregarPartesPeca(orderId)
+    return { novas, repetidas }
+  }
+
   const kpis = useMemo(() => {
     const total = visibleProcessos.length;
     const somaRefPreco = visibleProcessos.reduce((acc, p) => acc + (p.refPreco ?? 0), 0);
@@ -281,12 +308,12 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
     .catch(() => setIntel(null))
 
   // inteiro teor: se o pedido JÁ tem a peça, não avisar de novo
-  setInteiroTeorFile(null)
+  setInteiroTeorFiles([])
+  setAdicionandoParte(false)
   setInteiroTeorJaAnexado(false)
+  setPecaPartes([])
   setAvisoPeca('')
-  getAnexosOrder(rowData.id, 'DECISAO_INTEIRO_TEOR')
-    .then((res: any) => setInteiroTeorJaAnexado((res.data.anexos ?? []).length > 0))
-    .catch(() => setInteiroTeorJaAnexado(false))
+  carregarPartesPeca(rowData.id)
 
   // só busca candidato quando o pedido ainda não tem CNJ (senão o endpoint devolve 409)
   setCandidatosCnj([])
@@ -347,7 +374,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
     const cnjDigitado = nprocesso.trim();
     const cnjInvalido = cnjDigitado !== '' && cnjDigitado !== (processoEditando.nprocesso ?? '') && !cnjDigitoValido(cnjDigitado);
     const semCnj = statusJuridico === 'Cotar' && (!cnjDigitado || cnjInvalido);
-    const semPeca = decidindo && !inteiroTeorJaAnexado && !inteiroTeorFile;
+    const semPeca = decidindo && !inteiroTeorJaAnexado && inteiroTeorFiles.length === 0;
     if (!confirmado && (conferir || cnjInvalido)) {
       setCienteSemCnj(false);
       setAvisoAvanco({ semCnj, semPeca, cnjInvalido });
@@ -374,9 +401,9 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
 
     try {
         // upload da peça ANTES do salvar — o backend confere a existência dela
-        if (decidindo && !inteiroTeorJaAnexado && inteiroTeorFile) {
-          await uploadAnexoOrder(processoEditando.id, inteiroTeorFile, 'DECISAO_INTEIRO_TEOR');
-          setInteiroTeorJaAnexado(true);
+        if (inteiroTeorFiles.length > 0) {
+          await enviarPartesPeca(processoEditando.id, inteiroTeorFiles);
+          setInteiroTeorFiles([]);
         }
         await salvarJuridico(processoEditando.id, payload);
         carregarDados();
@@ -659,7 +686,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
              no clique. Obrigatório bloqueia; recomendado só avisa (o Salvar pergunta e deixa seguir). */
           const cnjAtual = nprocesso.trim();
           const cnjOk = cnjAtual !== '' && (cnjAtual === (processoEditando.nprocesso ?? '') || cnjDigitoValido(cnjAtual));
-          const pecaOk = inteiroTeorJaAnexado || !!inteiroTeorFile;
+          const pecaOk = inteiroTeorJaAnexado || inteiroTeorFiles.length > 0;
           const decidiu = ['Cotar', 'Não Cotar', 'Pendência jurídica'].includes(statusJuridico);
           const itens: { rotulo: string; ok: boolean; obrig: boolean; dica?: string }[] = [
             { rotulo: readOnly ? 'Seu acesso a esta fase é só de leitura' : 'Você pode salvar nesta fase', ok: !readOnly, obrig: true,
@@ -957,17 +984,41 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                   <span style={{ color: '#b45309', marginLeft: '4px' }}>recomendada — sem ela não dá para extrair os exames</span>
                 )}
               </label>
-              {inteiroTeorJaAnexado ? (
+              {/* #684 (Carol via @R 23/09): processo que veio em VOLUMES — as partes ficam guardadas em ordem e o
+                  "baixar peça" entrega o processo inteiro num PDF só. A promessa da caixa é medida: 100 MB por arquivo
+                  é o teto do servidor (nginx), e a parte repetida o servidor recusa sem duplicar. */}
+              {!readOnly && (
+                <div className="juridico-peca-partes-dica" role="note">
+                  <i className="pi pi-info-circle" /> <strong>O processo veio em mais de um arquivo?</strong> O PJe divide
+                  cópias grandes em volumes. Anexe <strong>todas as partes, na ordem</strong> (a parte 1 primeiro) — dá para
+                  escolher várias de uma vez. O sistema lê cada parte e o botão de baixar a peça entrega o processo inteiro
+                  num PDF só. Até 100 MB por arquivo; a mesma parte enviada de novo não duplica.
+                </div>
+              )}
+              {inteiroTeorJaAnexado && (
                 <div className="juridico-peca-linha">
                   <small style={{ color: '#16a34a' }}>
-                    <i className="pi pi-check-circle" /> Este pedido já tem a peça de inteiro teor anexada.
+                    <i className="pi pi-check-circle" />{' '}
+                    {pecaPartes.length > 1
+                      ? `Peça anexada em ${pecaPartes.length} partes: ` + pecaPartes.map((pt, k) => `parte ${k + 1} (${new Date(pt.createDate.replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1')).toLocaleDateString('pt-BR')})`).join(' · ')
+                      : 'Este pedido já tem a peça de inteiro teor anexada.'}
                   </small>
+                  {!readOnly && processoEditando && !adicionandoParte && (
+                    <Button
+                      type="button"
+                      label="Adicionar outra parte"
+                      icon="pi pi-plus"
+                      size="small"
+                      outlined
+                      onClick={() => { setAdicionandoParte(true); setAvisoPeca('') }}
+                    />
+                  )}
                   {/* Carol 21/09: a peça errada não tinha como sair. A antiga NÃO é apagada — fica no
                       pedido como "Outro", com quem e quando trocou; o pedido volta a pedir a peça. */}
                   {!readOnly && processoEditando && (
                     <Button
                       type="button"
-                      label="Trocar a peça"
+                      label={pecaPartes.length > 1 ? 'Trocar a peça (todas as partes)' : 'Trocar a peça'}
                       icon="pi pi-refresh"
                       size="small"
                       outlined
@@ -978,8 +1029,9 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                         setTrocandoPeca('removendo'); setAvisoPeca('');
                         try {
                           await removerInteiroTeor(processoEditando.id);
-                          setInteiroTeorJaAnexado(false); setInteiroTeorFile(null);
-                          setAvisoPeca('Peça anterior retirada. Escolha o PDF correto e clique em "Enviar esta peça agora".');
+                          setInteiroTeorFiles([]); setAdicionandoParte(false);
+                          await carregarPartesPeca(processoEditando.id);
+                          setAvisoPeca('Peça anterior retirada. Escolha o(s) PDF(s) correto(s) e clique em enviar.');
                         } catch (e: any) {
                           setAvisoPeca(e?.response?.data?.error || 'Não consegui trocar a peça agora. Tente de novo.');
                         } finally { setTrocandoPeca(''); }
@@ -987,32 +1039,39 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                     />
                   )}
                 </div>
-              ) : (
+              )}
+              {(!inteiroTeorJaAnexado || adicionandoParte) && (
                 <div className="juridico-peca-linha">
                   <input
                     type="file"
                     accept="application/pdf"
+                    multiple
                     disabled={readOnly}
-                    onChange={(e) => setInteiroTeorFile(e.target.files?.[0] ?? null)}
+                    aria-label={inteiroTeorJaAnexado ? 'Próxima parte da peça (PDF)' : 'Peça de inteiro teor (PDF) — uma ou mais partes'}
+                    onChange={(e) => setInteiroTeorFiles(Array.from(e.target.files ?? []))}
                   />
-                  {inteiroTeorFile && !readOnly && processoEditando && (
+                  {inteiroTeorFiles.length > 0 && !readOnly && processoEditando && (
                     <Button
                       type="button"
-                      label="Enviar esta peça agora"
+                      label={inteiroTeorFiles.length > 1 ? `Enviar estas ${inteiroTeorFiles.length} partes agora` : (inteiroTeorJaAnexado ? 'Enviar esta parte agora' : 'Enviar esta peça agora')}
                       icon="pi pi-upload"
                       size="small"
                       loading={trocandoPeca === 'enviando'}
                       onClick={async () => {
                         setTrocandoPeca('enviando'); setAvisoPeca('');
                         try {
-                          await uploadAnexoOrder(processoEditando.id, inteiroTeorFile, 'DECISAO_INTEIRO_TEOR');
-                          setInteiroTeorJaAnexado(true); setInteiroTeorFile(null);
-                          setAvisoPeca('Peça anexada.');
+                          const { novas, repetidas } = await enviarPartesPeca(processoEditando.id, inteiroTeorFiles);
+                          setInteiroTeorFiles([]); setAdicionandoParte(false);
+                          setAvisoPeca((novas ? `${novas === 1 ? 'Parte anexada' : `${novas} partes anexadas`}.` : '')
+                            + (repetidas ? ` ${repetidas === 1 ? '1 arquivo já estava anexado' : `${repetidas} arquivos já estavam anexados`} — não dupliquei.` : ''));
                         } catch (e: any) {
                           setAvisoPeca(e?.response?.data?.error || 'O envio falhou. Tente de novo.');
                         } finally { setTrocandoPeca(''); }
                       }}
                     />
+                  )}
+                  {adicionandoParte && !readOnly && (
+                    <Button type="button" label="Cancelar" size="small" text onClick={() => { setAdicionandoParte(false); setInteiroTeorFiles([]) }} />
                   )}
                 </div>
               )}

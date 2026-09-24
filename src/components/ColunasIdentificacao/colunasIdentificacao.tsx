@@ -771,16 +771,18 @@ function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
     <span className="inteiro-teor-wrap">
     {declarado && <Tag value="Sem peça (declarado)" severity="warning" icon="pi pi-info-circle"
       title={`O jurídico declarou que este processo não tem peça de inteiro teor. ${linha.semPecaDeclaracao ?? ''}`} />}
-    <label className="inteiro-teor-anexar" title={declarado ? 'Apareceu a peça? Anexe aqui — a declaração deixa de valer.' : 'Falta a peça de inteiro teor — anexe o PDF aqui (pode ser feito em qualquer fase)'}>
+    <label className="inteiro-teor-anexar" title={(declarado ? 'Apareceu a peça? Anexe aqui — a declaração deixa de valer.' : 'Falta a peça de inteiro teor — anexe o PDF aqui (pode ser feito em qualquer fase)')
+      + ' Se o processo veio em mais de um arquivo, selecione todas as partes de uma vez (a parte 1 primeiro).'}>
       <i className={enviando ? 'pi pi-spin pi-spinner' : 'pi pi-upload'} />
       {enviando ? ' Enviando…' : ' Anexar'}
-      <input type="file" accept="application/pdf" style={{ display: 'none' }} disabled={enviando}
+      <input type="file" accept="application/pdf" multiple style={{ display: 'none' }} disabled={enviando}
         onChange={async (e) => {
-          const f = e.target.files?.[0];
-          if (!f) return;
+          // #684: várias partes (volumes do PJe) na ordem da seleção; o servidor não duplica a mesma parte.
+          const arquivos = Array.from(e.target.files ?? []);
+          if (!arquivos.length) return;
           setEnviando(true);
           try {
-            await uploadAnexoOrder(linha.id as number, f, 'DECISAO_INTEIRO_TEOR');
+            for (const f of arquivos) await uploadAnexoOrder(linha.id as number, f, 'DECISAO_INTEIRO_TEOR');
             setEnviado(true);
           } catch {
             alert('Não foi possível anexar a peça. Tente novamente.');

@@ -449,6 +449,8 @@ body.dark-theme .candidato-cnj { background: rgba(148,98,13,0.15); border-color:
 /* Peça de inteiro teor: estado + ação na mesma linha (Carol 21/09) */
 .juridico-peca-linha { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .juridico-peca-aviso { display: block; margin-top: .35rem; color: #1e3a8a; }
+/* #684: caixa do "processo em mais de um arquivo" — informa, não bloqueia. */
+.juridico-peca-partes-dica { margin: .25rem 0 .5rem; padding: .5rem .7rem; border-left: 3px solid #2563eb; background: #eff6ff; color: #1e3a8a; font-size: .85rem; line-height: 1.4; border-radius: 4px; }
 
 /* @R 21/09 19:46 — versão no título do modal + critério para passar de fase */
 .juridico-dlg-cab { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
