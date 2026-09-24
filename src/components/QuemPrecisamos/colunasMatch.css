@@ -12,3 +12,10 @@
 .match-dif { font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
 .match-dif--acima { color: #b91c1c; }
 .match-dif--ok { color: #15803d; font-weight: 500; }
+.match-celula-botao { all: unset; cursor: pointer; display: flex; flex-direction: column; gap: 2px; width: 100%; }
+.match-celula-botao:hover .match-opcoes { text-decoration: underline; }
+.match-celula-botao:disabled { cursor: default; }
+.match-opcoes { font-size: 0.68rem; color: #2563eb; }
+.match-opcoes-tabela { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.match-opcoes-tabela th, .match-opcoes-tabela td { border-bottom: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; vertical-align: top; }
+.match-opcoes-usado { background: #ecfdf5; }

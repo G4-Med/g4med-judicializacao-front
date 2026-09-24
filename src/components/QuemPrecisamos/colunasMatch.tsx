@@ -1,4 +1,8 @@
+import { useEffect, useState } from 'react';
+import { Button } from 'primereact/button';
 import { Column } from 'primereact/column';
+import { Dialog } from 'primereact/dialog';
+import api from '../../services/api';
 import { Tag } from 'primereact/tag';
 import { FilterService } from 'primereact/api';
 import { cabecalhoComHint, casaOpcaoDosDados, filtroOpcoesDosDados } from '../ColunasIdentificacao/colunasIdentificacao';
@@ -111,24 +115,93 @@ export function colunaMenorOrcamento(largura = '10rem', nosso?: (r: any) => numb
         'Menor orçamento do procedimento inteiro lido da peça, conferido e aprovado pela IA para ir no pedido ' +
         '(o mesmo valor de referência da mensagem do Copiar, já com o desconto do link). Embaixo, de quem é o ' +
         'orçamento. OPME, honorários, internação e taxas sozinhos não contam.')}
-      body={(r: any) => {
-        const m = r?.menorOrcamento;
-        if (!m || m.valor == null) return <span className="ident-vazio match-motivo" title={m?.motivo || 'Não calculado.'}>{m?.motivo || 'não calculado'}</span>;
-        return (
-          <div className="match-pago" title={`${m.local || 'prestador não identificado'} · original ${reais(m.original)} · menor entre ${m.n} aprovado(s) pela IA${m.ressalva ? ' · a IA aprovou COM RESSALVA' : ''}`}>
-            <span className="match-valor">{reais(m.valor)}</span>
-            <span className="match-origem" style={{ whiteSpace: 'normal' }}>{m.local || 'prestador não identificado'}{m.ressalva ? ' · com ressalva' : ''}</span>
-            {nosso && (() => {
-              const n = Number(nosso(r));
-              if (!(n > 0) || !(m.original > 0)) return null;
-              const dif = n - m.original;
-              if (dif <= 0) return <span className="match-dif match-dif--ok" title={`Nosso orçamento ${reais(n)} não passa o menor do processo (${reais(m.original)}, valor original).`}>nosso não é maior</span>;
-              return <span className="match-dif match-dif--acima" title={`Nosso orçamento ${reais(n)} contra o menor do processo ${reais(m.original)} (valor original, sem o desconto do link).`}>
-                nosso +{reais(dif)} ({Math.round((dif / m.original) * 100)}%)</span>;
-            })()}
+      body={(r: any) => <CelulaMenorOrcamento r={r} nosso={nosso} />} />
+  );
+}
+
+/** Célula clicável: abre TODAS as opções do pedido e deixa escolher uma à mão (@R 24/09 03:42). */
+function CelulaMenorOrcamento({ r, nosso }: { r: any; nosso?: (r: any) => number | null | undefined }) {
+  const [m, setM] = useState<any>(r?.menorOrcamento);
+  useEffect(() => { setM(r?.menorOrcamento); }, [r?.menorOrcamento]);   // tabela recarregou: acompanha o dado novo
+  const [aberto, setAberto] = useState(false);
+  const [gravando, setGravando] = useState<number | 'auto' | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const escolher = async (id: number | null) => {
+    setGravando(id ?? 'auto'); setErro(null);
+    try {
+      const { data } = await api.post(`/ia/menor-orcamento/${r.id}/`, { orcamentoId: id });
+      r.menorOrcamento = data.menorOrcamento;     // a ordenação da tabela lê a linha
+      setM(data.menorOrcamento); setAberto(false);
+    } catch (e: any) {
+      setErro(e?.response?.data?.detail || 'Não consegui gravar a escolha.');
+    } finally { setGravando(null); }
+  };
+  const opcoes: any[] = m?.opcoes ?? [];
+  const conteudo = (!m || m.valor == null)
+    ? <span className="ident-vazio match-motivo">{m?.motivo || 'não calculado'}</span>
+    : (
+      <div className="match-pago">
+        <span className="match-valor">{reais(m.valor)}</span>
+        <span className="match-origem" style={{ whiteSpace: 'normal' }}>{m.local || 'prestador não identificado'}{m.ressalva ? ' · com ressalva' : ''}</span>
+        {m.escolhido && <span className="match-origem match-origem-projetado">escolhido por {m.escolhido.por}</span>}
+        {nosso && (() => {
+          const n = Number(nosso(r));
+          if (!(n > 0) || !(m.original > 0)) return null;
+          const dif = n - m.original;
+          if (dif <= 0) return <span className="match-dif match-dif--ok" title={`Nosso orçamento ${reais(n)} não passa o menor do processo (${reais(m.original)}, valor original).`}>nosso não é maior</span>;
+          return <span className="match-dif match-dif--acima" title={`Nosso orçamento ${reais(n)} contra o menor do processo ${reais(m.original)} (valor original, sem o desconto do link).`}>
+            nosso +{reais(dif)} ({Math.round((dif / m.original) * 100)}%)</span>;
+        })()}
+      </div>
+    );
+  return (
+    <>
+      <button type="button" className="match-celula-botao" onClick={(e) => { e.stopPropagation(); setAberto(true); }}
+        title={opcoes.length ? `Ver as ${opcoes.length} opção(ões) de orçamento deste pedido e escolher uma` : 'Nenhum orçamento lido da peça deste pedido'}
+        disabled={!opcoes.length}>
+        {conteudo}
+        {opcoes.length > 0 && <span className="match-opcoes">{opcoes.length} opç{opcoes.length === 1 ? 'ão' : 'ões'} ›</span>}
+      </button>
+      <Dialog header={`Orçamentos do pedido #${r.id}`} visible={aberto} modal onHide={() => setAberto(false)}
+        style={{ width: '56rem', maxWidth: '96vw' }}>
+        <p style={{ margin: '0 0 10px', fontSize: '.82rem', color: '#4b5563' }}>
+          Todos os orçamentos lidos da peça. O automático usa o menor que foi conferido e que a IA aprovou (procedimento inteiro).
+          Você pode escolher qualquer um. A escolha vale para esta coluna e fica registrada com o seu nome.
+        </p>
+        {erro && <p style={{ color: '#b91c1c', fontSize: '.82rem' }}>{erro}</p>}
+        <table className="match-opcoes-tabela">
+          <thead><tr><th>Valor (original)</th><th>Referência</th><th>De quem</th><th>O que é</th><th>Situação</th><th /></tr></thead>
+          <tbody>
+            {[...opcoes].sort((a, b) => a.original - b.original).map((o) => {
+              const usado = m?.valor != null && m?.original === o.original && m?.local === o.local;
+              return (
+                <tr key={o.id} className={usado ? 'match-opcoes-usado' : undefined}>
+                  <td><b>{reais(o.original)}</b></td>
+                  <td>{reais(o.valor)}</td>
+                  <td>{o.local || '—'}</td>
+                  <td>{o.categoria}{o.descricao ? ` · ${o.descricao}` : ''}{o.pagina ? ` (pág. ${o.pagina})` : ''}</td>
+                  <td>{o.fora
+                    ? <span style={{ color: '#b45309' }}>{o.fora}</span>
+                    : <span style={{ color: '#15803d' }}>aprovado pela IA</span>}
+                    {o.ia?.motivo && <div style={{ color: '#6b7280', fontSize: '.72rem' }}>IA: {o.ia.motivo}</div>}</td>
+                  <td>{usado
+                    ? <span style={{ fontSize: '.75rem', color: '#15803d' }}>em uso</span>
+                    : <Button label="Usar este" size="small" outlined loading={gravando === o.id}
+                        onClick={() => escolher(o.id)} />}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {m?.escolhido && (
+          <div style={{ marginTop: 10 }}>
+            <Button label="Voltar ao automático" size="small" text icon="pi pi-replay" loading={gravando === 'auto'}
+              onClick={() => escolher(null)} />
+            <span style={{ fontSize: '.75rem', color: '#6b7280' }}> escolhido por {m.escolhido.por}</span>
           </div>
-        );
-      }} />
+        )}
+      </Dialog>
+    </>
   );
 }
 
