@@ -18,3 +18,10 @@ tr:hover .mc-celula-medico__lapis.p-button.p-button-text,
 }
 .mc-celula-medico__atual { margin: 0 0 1rem; color: #4b5563; }
 body.dark-theme .mc-celula-medico__atual { color: #9aa7b6; }
+
+/* Briefing do médico escolhido (@R 24/09) */
+.briefing-medico {
+  margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+  background: #f5f7f9; border: 1px solid #e5e7eb; color: #1f2937;
+  font-size: 0.85rem; line-height: 1.45; max-height: 160px; overflow: auto;
+}

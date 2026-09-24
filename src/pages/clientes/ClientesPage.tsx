@@ -22,6 +22,7 @@ import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
 import { InputText } from 'primereact/inputtext';
+import { InputTextarea } from 'primereact/inputtextarea';
 import { InputNumber } from 'primereact/inputnumber';
 import { FilterMatchMode } from 'primereact/api';
 import { Dialog } from 'primereact/dialog';
@@ -60,6 +61,7 @@ interface Cliente {
   medicosVinculados?: { id: number; nome: string }[];
   especialidadesNomes?: string[];
   keywords: string;
+  briefing: string;
   /** Escolha do profissional (@R 17/09). DECLARADO pelo cliente — ter atendido uma
    *  criança uma vez não significa que aceite atender; e 'NAO_INFORMADO' é diferente
    *  de 'NAO' (ninguém respondeu ainda ≠ recusou). */
@@ -181,6 +183,7 @@ const clienteInicial: ClienteTableRow = {
   atendeEmNomes: [],
   medicosVinculados: [],
   keywords: '',
+  briefing: '',
   atendePediatrico: 'NAO_INFORMADO',
   telefone: '',
   email: '',
@@ -438,6 +441,7 @@ export function ClientesPage() {
       especialidade: m.especialidade ?? '',
       subespecialidade: m.subespecialidade ?? '',
       keywords: m.keywords ?? '',
+      briefing: m.briefing ?? '',
       atendePediatrico: m.atendePediatrico ?? 'NAO_INFORMADO',
       grupoWhatsapp: m.grupoWhatsapp ?? '',
       takeRate: m.takeRate !== null && m.takeRate !== undefined ? Number(m.takeRate) : null,
@@ -1088,6 +1092,7 @@ const handleSalvarCadastro = async () => {
       especialidade: novoCliente.especialidade,
       subespecialidade: novoCliente.subespecialidade,
       keywords: novoCliente.keywords,
+      briefing: novoCliente.briefing,
       atendePediatrico: novoCliente.atendePediatrico,
       grupoWhatsapp: novoCliente.grupoWhatsapp,
       takeRate: novoCliente.takeRate,
@@ -1203,6 +1208,7 @@ const handleSalvarEdicao = async () => {
       especialidade: clienteEditando.especialidade,
       subespecialidade: clienteEditando.subespecialidade,
       keywords: clienteEditando.keywords,
+      briefing: clienteEditando.briefing,
       atendePediatrico: clienteEditando.atendePediatrico,
       grupoWhatsapp: clienteEditando.grupoWhatsapp,
       takeRate: clienteEditando.takeRate,
@@ -1960,6 +1966,12 @@ const handleSalvarEdicao = async () => {
                 <label>Keywords</label>
                 <InputText value={novoCliente.keywords} onChange={(e) => updateNovoCliente('keywords', e.target.value)} />
               </div>
+              <div className="field field-span-4">
+                <label>Briefing do médico</label>
+                <InputTextarea value={novoCliente.briefing} autoResize rows={5}
+                  onChange={(e) => updateNovoCliente('briefing', e.target.value)} />
+                <small className="ajuda-campo">O que ele faz e o que ele OPERA, em texto livre (procedimentos, técnicas, onde opera). É por aqui que a busca da Seleção de Médico e a sugestão por IA acham quem realiza cada cirurgia.</small>
+              </div>
               <div className="field">
                 <label>Atende pediátrico?</label>
                 <Dropdown
@@ -2170,6 +2182,12 @@ const handleSalvarEdicao = async () => {
                     <small className="ajuda-campo">Para hospital: marque TODAS as especialidades que ele atende. É por elas que o jurídico escolhe na hora de cotar.</small>
                   </div>
                   <div className="field field-span-2"><label>Keywords</label><InputText value={clienteEditando.keywords} onChange={(e) => updateClienteEditando('keywords', e.target.value)} /></div>
+                  <div className="field field-span-4">
+                    <label>Briefing do médico</label>
+                    <InputTextarea value={clienteEditando.briefing} autoResize rows={5}
+                      onChange={(e) => updateClienteEditando('briefing', e.target.value)} />
+                    <small className="ajuda-campo">O que ele faz e o que ele OPERA, em texto livre (procedimentos, técnicas, onde opera). É por aqui que a busca da Seleção de Médico e a sugestão por IA acham quem realiza cada cirurgia.</small>
+                  </div>
                   <div className="field field-span-2"><label>Grupo WhatsApp (campo antigo, texto livre)</label><InputText value={clienteEditando.grupoWhatsapp} onChange={(e) => updateClienteEditando('grupoWhatsapp', e.target.value)} /></div>
                   {/* 1:N com função e JID do catálogo — ver GruposWhatsappCliente (@R 19/09/2026) */}
                   <GruposWhatsappCliente idMedico={clienteEditando.id} />

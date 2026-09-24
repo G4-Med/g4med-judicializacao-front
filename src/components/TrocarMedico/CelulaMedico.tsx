@@ -89,6 +89,10 @@ export function ModalMedico({
       label: m.nomeSistema || m.nomeCompleto,
       value: m.id,
       _atende: atende(m),
+      // Briefing (@R 24/09): a busca do seletor olha o NOME e também o que ele OPERA — quem
+      // digita "aneurisma" ou "hemodiálise" acha o vascular mesmo sem lembrar o nome dele.
+      _busca: [m.nomeSistema, m.nomeCompleto, m.especialidade, ...(m.especialidades ?? []),
+               m.subespecialidade, m.keywords, m.briefing].filter(Boolean).join(' '),
     }));
     const sim = base.filter((o) => o._atende);
     const nao = base.filter((o) => !o._atende);
@@ -172,8 +176,20 @@ export function ModalMedico({
           onChange={(e) => setEscolhido(e.value)}
           placeholder="Selecione o médico"
           filter
+          filterBy="_busca"
+          filterPlaceholder="Nome ou o que ele opera (ex.: aneurisma, joelho)"
           style={{ width: '100%' }}
         />
+        {(() => {
+          const b = (medicos ?? []).find((m: any) => m.id === escolhido)?.briefing;
+          return escolhido ? (
+            <div className="briefing-medico" aria-live="polite">
+              <strong>O que ele opera:</strong>{' '}
+              {b ? <span style={{ whiteSpace: 'pre-wrap' }}>{b}</span>
+                 : <em>sem briefing no cadastro (preencha em Clientes)</em>}
+            </div>
+          ) : null;
+        })()}
       </div>
       {convidados.length > 0 && (
         <div style={{ marginTop: 12 }}>

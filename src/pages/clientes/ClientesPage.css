@@ -793,3 +793,12 @@ body.dark-theme .assinatura-canvas {
 
 /* @R 20/09: ações do CNPJ abaixo do campo, lado a lado, nunca sobrepostas */
 .mc-cnpj-acoes { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .4rem; }
+
+/* Briefing do médico (@R 24/09): a regra acima (.p-inputtext height:42px) também pega o
+   <textarea> e o achata numa linha — o mesmo defeito do modal do 4. Protocolar (#639). */
+.cliente-form-grid textarea.p-inputtextarea {
+  height: auto;
+  min-height: 120px;
+  line-height: 1.5;
+  resize: vertical;
+}
