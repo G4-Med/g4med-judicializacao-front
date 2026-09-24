@@ -270,10 +270,15 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
   };
   // B1 do desenho grau 1: a Valéria era mandada anexar "pela Ficha", que não faz este upload, e o pedido em 1.1
   // está fora da lista da Análise — ficava sem porta. A peça se anexa AQUI, no próprio cartão.
-  const anexarPeca = async (p: PendenciaJuridica, arquivo?: File | null) => {
-    if (!arquivo) return;
+  // #684: a peça pode vir em PARTES (volumes do PJe) — anexa todas, na ordem da seleção; a mesma parte não duplica.
+  const anexarPeca = async (p: PendenciaJuridica, arquivos?: FileList | null) => {
+    const lista = Array.from(arquivos ?? []);
+    if (!lista.length) return;
     setAnexando(p.id);
-    try { await uploadAnexoOrder(p.orderId, arquivo, 'DECISAO_INTEIRO_TEOR'); setAnexadas((s) => ({ ...s, [p.id]: arquivo.name })); }
+    try {
+      for (const f of lista) await uploadAnexoOrder(p.orderId, f, 'DECISAO_INTEIRO_TEOR');
+      setAnexadas((s) => ({ ...s, [p.id]: lista.length > 1 ? `${lista.length} partes` : lista[0].name }));
+    }
     catch (e) { alert(erroDe(e, 'Não foi possível anexar a peça.')); }
     finally { setAnexando(null); }
   };
@@ -294,9 +299,9 @@ export function AbaPendenciasJuridicas({ onAbrirFicha, readOnly }: { onAbrirFich
           {p.tipo === 'INTEIRO_TEOR' && !readOnly && (
             <div>
               <label className="p-button p-button-outlined p-button-sm" style={{ cursor: 'pointer' }}>
-                <i className="pi pi-paperclip" style={{ marginRight: '.4rem' }} />{anexando === p.id ? 'Anexando…' : 'Anexar peça de inteiro teor (PDF)'}
-                <input type="file" accept="application/pdf" hidden disabled={anexando === p.id}
-                  onChange={(e) => { anexarPeca(p, e.target.files?.[0]); e.target.value = ''; }} />
+                <i className="pi pi-paperclip" style={{ marginRight: '.4rem' }} />{anexando === p.id ? 'Anexando…' : 'Anexar peça de inteiro teor (PDF — pode escolher várias partes)'}
+                <input type="file" accept="application/pdf" multiple hidden disabled={anexando === p.id}
+                  onChange={(e) => { anexarPeca(p, e.target.files); e.target.value = ''; }} />
               </label>
               {anexadas[p.id] && <small style={{ marginLeft: '.5rem' }}>✓ anexada: {anexadas[p.id]}</small>}
               <label style={{ display: 'block', marginTop: '.3rem' }}>
