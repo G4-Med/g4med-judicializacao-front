@@ -56,15 +56,29 @@ export function descreverDocumentos(porTipo: Record<string, number>): string {
   return `${partes.slice(0, -1).join(', ')} e ${partes[partes.length - 1]}`;
 }
 
+/** O que a mensagem diz sobre o VALOR DE REFERÊNCIA (#691, @R 24/09 01:20: "se tivermos valor de referência, logo acima
+ *  do link, em negrito (…) o processo tem um valor de referência com o menor preço localizado (…) o valor cotado deve
+ *  ser menor; caso não tenha, informar em cima que não tem"). `null` = a mensagem NÃO fala de referência: há orçamento
+ *  no processo, mas ele não vai no link (quem copia desmarcou) — dizer "não tem" seria falso. */
+export type ReferenciaNaMensagem = { valor: number } | { sem: string } | null;
+
 export function montarTextoPedido(p: PedidoParaCopiar, url: string, porTipo: Record<string, number>,
                                   total: number, comValores: boolean, codigo?: string | null,
-                                  extras: { pagamentos?: boolean; relatorio?: boolean } = {}): string {
-  const oQueTem = total > 0
-    ? `No link abaixo estão ${descreverDocumentos(porTipo)}, extraídos do processo e em ordem de leitura clínica.`
-    : 'Os documentos clínicos deste processo ainda estão sendo reunidos; o link abaixo mostra o que já temos.';
-  const valores = (comValores ? '\nTambém está lá a referência de preço total por procedimento.' : '')
-    + (extras.pagamentos ? '\nE o que o Estado já pagou recentemente por procedimento parecido.' : '')
-    + (extras.relatorio ? '\nNo topo, um resumo médico feito por IA para leitura rápida, com a página de cada documento citado.' : '');
+                                  extras: { pagamentos?: boolean; relatorio?: boolean; referencia?: ReferenciaNaMensagem } = {}): string {
+  const ref = extras.referencia ?? null;
+  const linhaRef = !ref ? ''
+    : 'valor' in ref
+      ? `*VALOR DE REFERÊNCIA: ${brl(ref.valor)}* — o menor preço localizado para este procedimento.\n*O valor cotado deve ser menor que o valor de referência.*\n\n`
+      : `*${ref.sem}*\n\n`;
+  // ABAIXO do link: o que tem DENTRO dele — o médico sabe o que vai encontrar antes de abrir (@R 24/09 01:20)
+  const itens = Object.entries(porTipo).map(([rotulo, n]) =>
+    `• ${n > 1 ? `${n} ${PLURAL[rotulo] || rotulo.toLowerCase()}` : `1 ${rotulo.charAt(0).toLowerCase()}${rotulo.slice(1)}`}`);
+  if (comValores) itens.push('• a referência de preço total por procedimento');
+  if (extras.pagamentos) itens.push('• o que o Estado já pagou recentemente por procedimento parecido');
+  if (extras.relatorio) itens.push('• no topo, um resumo médico feito por IA para leitura rápida, com a página de cada documento citado');
+  const noLink = total > 0
+    ? `*NO LINK VOCÊ ENCONTRA* (${total} ${total === 1 ? 'documento' : 'documentos'}, em ordem de leitura clínica)\n${itens.join('\n')}`
+    : `*NO LINK*\nOs documentos clínicos deste processo ainda estão sendo reunidos; o link mostra o que já temos.${itens.length ? `\n${itens.join('\n')}` : ''}`;
   const hoje = new Date();
   const data = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
   return `*G4MED · SOLICITAÇÃO DE ORÇAMENTO*
@@ -77,11 +91,10 @@ Processo judicial de saúde — Secretaria de Estado de Saúde de MG
 Doutor(a), este paciente aguarda decisão judicial para o procedimento acima e precisamos
 do seu orçamento para dar seguimento.
 
-*DOCUMENTOS DO PROCESSO*${total ? ` (${total})` : ''}
-${oQueTem}${valores}
-
-🔒 ${url}${codigo ? `\n*Código de acesso:* ${codigo}` : ''}
+${linhaRef}🔒 ${url}${codigo ? `\n*Código de acesso:* ${codigo}` : ''}
 *Validade:* 72 horas a partir deste envio.
+
+${noLink}
 
 Ambiente seguro da G4MED, conforme a LGPD e a política de informação: os arquivos abrem
 só para leitura (sem download) e cada acesso é registrado (data, hora, IP, localização e
@@ -98,6 +111,23 @@ para acompanhamento da cotação, conforme a transparência acordada junto à en
 órgão solicitante.
 
 _Pedido #${p.id} · G4MED · ${data}_`;
+}
+
+/** O menor preço localizado que vai NA MENSAGEM (#691): só do que vai no LINK (quem copia decide o que vai), só
+ *  orçamento do procedimento INTEIRO (OPME, honorários, internação, taxas são fatias: medido 24/09, 174 de 1.815
+ *  orçamentos são fatias) e nunca o que a IA leu e diz que NÃO cobre a cirurgia pedida. Valor = o que o médico vê
+ *  no link (com deflator ou o ajustado por quem copia) — nunca o original. */
+export function menorReferencia(refs: any[], comValores: boolean, refsFora: Set<number>, ajustes: Record<number, number>,
+                                compat: Record<string, ParecerCompat>): { valor: number; local: string | null; n: number } | null {
+  if (!comValores) return null;
+  const inteiras = refs.filter((x) => !x.ocultoAoMedico && !refsFora.has(x.id) && x.categoria === 'Procedimento'
+    && compat[String(x.idFolha ?? x.id)]?.compativel !== 'NAO');
+  let menor: { valor: number; local: string | null; n: number } | null = null;
+  for (const x of inteiras) {
+    const v = ajustes[x.id] ?? x.valorReferencia;
+    if (typeof v === 'number' && v > 0 && (!menor || v < menor.valor)) menor = { valor: v, local: x.local || x.prestador || null, n: inteiras.length };
+  }
+  return menor;
 }
 
 /* Devolve se REALMENTE copiou (¬se "não lançou exceção"). Achado @R 21/09 23:27: entre o clique
@@ -240,6 +270,13 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [previa]);
   const deflatorPct = previa ? `${(previa.deflator * 100).toFixed(2).replace('.', ',')}%` : '';
+  // #691: a linha de REFERÊNCIA da mensagem (acima do link) — a mesma regra que a tela mostra antes de copiar
+  const menorRef = menorReferencia(refs, comValores, refsFora, ajustes, compat);
+  const semRefAfirmado = !refs.length || (avisoSemRef && semValoresNoLink && !!previa?.temInteiroTeor);
+  const referenciaMsg: ReferenciaNaMensagem = menorRef ? { valor: menorRef.valor }
+    : semRefAfirmado ? { sem: previa?.temInteiroTeor ? 'Este processo não tem valor de referência.'
+      : 'Ainda não há valor de referência localizado para este processo.' }
+    : null;
 
   const gerarECopiar = async () => {
     if (!pedido) return;
@@ -266,7 +303,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
       }
       const d = r.data;
       const texto = montarTextoPedido(pedido, d.url, d.documentosPorTipo || {}, d.documentos || 0, !!d.mostrarValores, d.codigoAcesso,
-        { pagamentos: enviarPag && pagVao.length > 0, relatorio: enviarRel && !!rel });
+        { pagamentos: enviarPag && pagVao.length > 0, relatorio: enviarRel && !!rel, referencia: referenciaMsg });
       const copiou = await copiarTexto(texto);
       if (!copiou) {
         // FALLBACK MANUAL — o link JÁ foi gerado (custou uma escrita no banco); perder o texto
@@ -500,6 +537,20 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
               </label>
             </section>
           )}
+
+          <section className="copiar-ref-msg" style={{ borderRadius: 8, padding: '10px 12px', background: menorRef ? '#ecfdf5' : '#f8fafc',
+            border: `1px solid ${menorRef ? '#a7f3d0' : '#e5e7eb'}` }}>
+            <div style={{ fontWeight: 600, marginBottom: 2 }}>Na mensagem, acima do link (em negrito):</div>
+            {menorRef ? (
+              <div><b>VALOR DE REFERÊNCIA: {brl(menorRef.valor)}</b> — o menor preço localizado. <b>O valor cotado deve ser menor.</b>
+                <div style={{ color: '#6b7280', fontSize: 12 }}>Menor entre {menorRef.n} orçamento(s) do procedimento inteiro que vão no link{menorRef.local ? ` (${menorRef.local})` : ''}. OPME, honorários, internação e taxas sozinhos não contam; orçamento que a IA diz não cobrir a cirurgia também não.</div>
+              </div>
+            ) : referenciaMsg && 'sem' in referenciaMsg ? <div><b>{referenciaMsg.sem}</b></div>
+              : <div style={{ color: '#6b7280' }}>Nada sobre valor de referência — {comValores
+                  ? 'nenhum orçamento do procedimento inteiro está marcado para ir no link.'
+                  : 'os valores não vão no link (marque "Incluir os valores de referência" para a mensagem dizer o menor preço).'}</div>}
+            <div style={{ color: '#6b7280', fontSize: 12, marginTop: 4 }}>Abaixo do link, a mensagem lista os documentos que estão dentro dele.</div>
+          </section>
 
           <section style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: 12 }}>
             <div style={{ fontWeight: 600, marginBottom: 4 }}>Quanto o Estado já pagou por procedimento parecido</div>
