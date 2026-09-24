@@ -16,7 +16,8 @@ import type { AcordoValor } from '../../services/api/baterValores';
 import { readAuthProfile } from '../../access/authProfile';
 import type { ComparativoComponentes } from '../../services/api/baterValores';
 import { EntradaManualDialog } from './EntradaManualDialog';
-import { baixarAnexo, getConteudoEmail, registrarRespostaCotacao, salvarOrcamentoMedico, uploadAnexoOrder } from '../../services/api/orders';
+import { baixarAnexo, getAnotacoes, getConteudoEmail, lerOrcamentoDoArquivo, registrarRespostaCotacao, salvarOrcamentoMedico, uploadAnexoOrder } from '../../services/api/orders';
+import api from '../../services/api';
 
 /* Fase 3.1 "bater valores" (@R 22/09/2026 14:24: "quando recebemos um orçamento e vemos que tem um valor
    menor no próprio processo, nós tentamos bater o processo").
@@ -236,13 +237,29 @@ function DialogDecisao({ painel, onFechar, onDecidido, onAbrirFicha }: {
   // é o 2º clique. Trocar a saída desfaz o 1º passo.
   const [passo2, setPasso2] = useState(false);
   const setSaida = (s: Saida) => { setSaidaCrua(s); setPasso2(false); };
-  const usuario = readAuthProfile().username || 'o seu usuário';
+  // o token nem sempre traz o username (print do @R 24/09 12:44: "no nome de o seu usuário") — quem diz é o servidor
+  const [usuario, setUsuario] = useState<string>(readAuthProfile().username || '');
+  useEffect(() => {
+    api.get('/auth/eu/').then((r) => r.data?.username && setUsuario(r.data.username)).catch(() => undefined);
+  }, []);
   const [motivo, setMotivo] = useState<string | null>(null);
   const [valorNovo, setValorNovo] = useState<number | null>(null);
   const [obs, setObs] = useState('');
   const [salvando, setSalvando] = useState(false);
 
   const [pdf, setPdf] = useState(painel.pdfOrcamento ?? null);
+  // #711 (@R 24/09 12:45: "na mesma tela do modal eu poder ver o orçamento grande... não consegui ver o orçamento"):
+  // o PDF que vai à SES fica ABERTO na própria janela; o mesmo arquivo alimenta a checagem por visão.
+  const [pdfArquivo, setPdfArquivo] = useState<File | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    if (painel.pdfOrcamento && painel.pdfOrcamento.id > 0) {
+      baixarAnexo(painel.pdfOrcamento.id)
+        .then((r) => vivo && setPdfArquivo(new File([r.data as Blob], painel.pdfOrcamento!.nome || 'orcamento.pdf', { type: 'application/pdf' })))
+        .catch(() => undefined);
+    }
+    return () => { vivo = false; };
+  }, [painel.pdfOrcamento]);
   const [enviandoPdf, setEnviandoPdf] = useState(false);
   const arquivoRef = useRef<HTMLInputElement | null>(null);
 
@@ -261,6 +278,7 @@ function DialogDecisao({ painel, onFechar, onDecidido, onAbrirFicha }: {
     try {
       await uploadAnexoOrder(painel.pedido, arquivo, 'ORCAMENTO');
       setPdf({ id: 0, nome: arquivo.name, em: new Date().toISOString() });
+      setPdfArquivo(arquivo);
     } catch {
       alert('Não consegui anexar o PDF agora. Tente de novo.');
     } finally {
@@ -314,7 +332,14 @@ function DialogDecisao({ painel, onFechar, onDecidido, onAbrirFicha }: {
 
   return (
     <Dialog header={`Conferência de valor — pedido #${painel.pedido}`} visible onHide={onFechar}
-      style={{ width: 'min(880px, 96vw)' }}>
+      style={{ width: 'min(1560px, 98vw)' }} contentStyle={{ paddingBottom: 12 }}>
+      <div className="grid">
+      <div className="col-12 lg:col-7 visor-orcamento-col">
+        <VisorOrcamento arquivo={pdfArquivo} nome={pdf?.nome ?? null} />
+      </div>
+      <div className="col-12 lg:col-5">
+      <ChecagemOrcamento pedido={painel.pedido} arquivo={pdfArquivo} nossoTotal={painel.nossoTotal} />
+      <AnotacoesDoPedido pedido={painel.pedido} />
       <div className="mb-3">
         <div><strong>{painel.paciente}</strong></div>
         <div className="text-600" style={{ fontSize: '.85rem' }}>{painel.procedimento}</div>
@@ -422,7 +447,7 @@ function DialogDecisao({ painel, onFechar, onDecidido, onAbrirFicha }: {
             <li>PDF anexo: <b>{pdf?.nome ?? 'nenhum'}</b></li>
             <li>{painel.temEmailRetido ? 'O e-mail de orçamento parado SAI AGORA para a Secretaria de Estado de Saúde' : 'Não há e-mail parado: a confirmação só fica registrada'}</li>
             <li>Depois: o pedido segue para <b>4. Protocolar</b> (ou <b>5.1</b>, se for segredo de justiça ou sem processo)</li>
-            <li>A aprovação fica registrada no nome de <b>{usuario}</b>, com data e hora</li>
+            <li>A aprovação fica registrada no nome de <b>{usuario || 'quem está logado'}</b>, com data e hora</li>
           </ul>
           <div className="flex justify-content-end gap-2 mt-2">
             <Button label="Voltar" text onClick={() => setPasso2(false)} />
@@ -430,10 +455,150 @@ function DialogDecisao({ painel, onFechar, onDecidido, onAbrirFicha }: {
           </div>
         </div>
       )}
+      </div>
+      </div>
     </Dialog>
   );
 }
 
+
+
+/* ── #711 (@R 24/09 12:45) o orçamento GRANDE na própria janela ─────────────────────────────────────────────── */
+function VisorOrcamento({ arquivo, nome }: { arquivo: File | null; nome: string | null }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!arquivo) { setUrl(null); return undefined; }
+    const u = URL.createObjectURL(arquivo);
+    setUrl(u);
+    return () => URL.revokeObjectURL(u);
+  }, [arquivo]);
+  if (!nome) {
+    return <div className="p-4 text-600" style={{ border: '1px dashed #d0d5dd', borderRadius: 8 }}>Nenhum PDF de orçamento neste pedido — anexe à direita.</div>;
+  }
+  if (!url) return <div className="p-4 text-600"><i className="pi pi-spin pi-spinner" /> Abrindo o orçamento…</div>;
+  return (
+    <div style={{ position: 'sticky', top: 0 }}>
+      <div className="text-600 mb-1" style={{ fontSize: '.8rem' }}>Orçamento que vai à SES — {nome}</div>
+      <iframe title="Orçamento que vai à SES" src={url} className="visor-orcamento" style={{ width: '100%', height: '76vh', border: '1px solid #d0d5dd', borderRadius: 8 }} />
+    </div>
+  );
+}
+
+/* ── #711 checagem do orçamento por VISÃO (a leitura que já existia no envio manual; não grava nada) ─────────────
+   @R 24/09 12:45: ⟦"verificar se o orçamento está com a data, nome do médico, o valor, a descrição, se tem informação
+   para contato, se está discriminado em OPME, hospital e equipe médica, e se tem diárias, apartamento, e se o nome do
+   paciente bate com o pedido"⟧. Cada linha diz OK, ATENÇÃO ou PROBLEMA com o que foi lido — quem aprova é a pessoa. */
+type LeituraOrc = {
+  ok: boolean; motivo?: string; valorTotal: number | null; paciente: string | null; medicoOuPrestador: string | null;
+  dataDocumento: string | null; validadeDias: number | null; procedimento: string | null;
+  itens: { descricao: string; valor: number; bloco?: string }[]; confianca: string; observacao: string | null;
+  alertas: { nivel: string; campo: string; texto: string }[]; contato?: string | null; registroProfissional?: string | null;
+  diarias?: number | null; acomodacao?: string | null;
+};
+type LinhaChecagem = { item: string; estado: 'OK' | 'ATENCAO' | 'PROBLEMA'; texto: string };
+
+export function montarChecagem(l: LeituraOrc, nossoTotal: number | null): LinhaChecagem[] {
+  const alerta = (campo: string) => l.alertas.find((a) => a.campo === campo);
+  const linhas: LinhaChecagem[] = [];
+  const ap = alerta('paciente');
+  linhas.push(ap ? { item: 'Paciente', estado: 'PROBLEMA', texto: ap.texto }
+    : l.paciente ? { item: 'Paciente', estado: 'OK', texto: `${l.paciente} — bate com o pedido` }
+      : { item: 'Paciente', estado: 'ATENCAO', texto: 'o nome do paciente não foi lido no PDF' });
+  const av = alerta('validade') ?? alerta('dataDocumento');
+  linhas.push(!l.dataDocumento ? { item: 'Data', estado: 'ATENCAO', texto: 'sem data no orçamento' }
+    : { item: 'Data', estado: av ? (av.nivel === 'grave' ? 'PROBLEMA' : 'ATENCAO') : 'OK',
+        texto: `${l.dataDocumento.split('-').reverse().join('/')}${l.validadeDias ? ` · validade ${l.validadeDias} dias` : ''}${av ? ` — ${av.texto}` : ''}` });
+  const am = alerta('medico');
+  linhas.push(!l.medicoOuPrestador ? { item: 'Médico / prestador', estado: 'PROBLEMA', texto: 'não identificado no PDF' }
+    : { item: 'Médico / prestador', estado: am ? 'ATENCAO' : 'OK',
+        texto: `${l.medicoOuPrestador}${l.registroProfissional ? ` · ${l.registroProfissional}` : ''}${am ? ` — ${am.texto}` : ''}` });
+  if (l.valorTotal == null) linhas.push({ item: 'Valor', estado: 'PROBLEMA', texto: 'o total não foi lido no PDF' });
+  else if (nossoTotal != null && Math.abs(l.valorTotal - nossoTotal) > 1) {
+    linhas.push({ item: 'Valor', estado: 'PROBLEMA', texto: `o PDF diz ${brl(l.valorTotal)} e o registrado no pedido (o que vai à SES) é ${brl(nossoTotal)}` });
+  } else linhas.push({ item: 'Valor', estado: 'OK', texto: `${brl(l.valorTotal)} — igual ao registrado` });
+  const ai = alerta('itens');
+  if (ai) linhas.push({ item: 'Soma dos itens', estado: 'ATENCAO', texto: ai.texto });
+  linhas.push(l.procedimento ? { item: 'Descrição', estado: 'OK', texto: l.procedimento } : { item: 'Descrição', estado: 'ATENCAO', texto: 'sem descrição do procedimento' });
+  const temFone = /\d{4}[-\s]?\d{4}/.test(l.contato ?? '');
+  linhas.push(!l.contato ? { item: 'Contato', estado: 'PROBLEMA', texto: 'o PDF não traz telefone nem e-mail' }
+    : { item: 'Contato', estado: temFone ? 'OK' : 'ATENCAO', texto: temFone ? l.contato : `sem telefone — só: ${l.contato}` });
+  const soma = (b: string[]) => l.itens.filter((i) => b.includes(i.bloco ?? '')).reduce((a, i) => a + (Number(i.valor) || 0), 0);
+  const equipe = soma(['EQUIPE_MEDICA', 'ANESTESIA']); const hosp = soma(['HOSPITAL']); const opme = soma(['OPME']);
+  const partes = [equipe ? `equipe médica ${brl(equipe)}` : null, hosp ? `hospital ${brl(hosp)}` : null, opme ? `OPME ${brl(opme)}` : null].filter(Boolean);
+  linhas.push({ item: 'Discriminação', estado: equipe && hosp ? 'OK' : 'ATENCAO',
+    texto: partes.length ? `${partes.join(' · ')}${!opme ? ' · OPME não consta' : ''}` : 'o PDF não separa equipe médica, hospital e OPME' });
+  linhas.push(l.diarias && l.acomodacao ? { item: 'Diárias', estado: 'OK', texto: `${l.diarias} diária(s) · ${l.acomodacao}` }
+    : { item: 'Diárias', estado: 'ATENCAO', texto: l.diarias ? `${l.diarias} diária(s), acomodação não informada` : l.acomodacao ? `${l.acomodacao}, sem número de diárias` : 'sem diárias nem acomodação' });
+  if (l.confianca === 'baixa' || l.observacao) linhas.push({ item: 'Leitura', estado: 'ATENCAO', texto: `confiança ${l.confianca}${l.observacao ? ` — ${l.observacao}` : ''}` });
+  return linhas;
+}
+
+const COR_CHECAGEM: Record<LinhaChecagem['estado'], [string, string]> = {
+  OK: ['pi-check-circle', '#067647'], ATENCAO: ['pi-exclamation-triangle', '#b54708'], PROBLEMA: ['pi-times-circle', '#b42318'],
+};
+
+function ChecagemOrcamento({ pedido, arquivo, nossoTotal }: { pedido: number; arquivo: File | null; nossoTotal: number | null }) {
+  const [leitura, setLeitura] = useState<LeituraOrc | null>(null);
+  const [lendo, setLendo] = useState(false);
+  const [erro, setErro] = useState<string | null>(null);
+  const ler = useCallback(async () => {
+    if (!arquivo) return;
+    setLendo(true); setErro(null);
+    try {
+      const { data } = await lerOrcamentoDoArquivo(pedido, arquivo);
+      if (data?.ok === false && data?.motivo) setErro(String(data.motivo));
+      setLeitura(data as LeituraOrc);
+    } catch {
+      setErro('Não consegui ler o orçamento agora.');
+    } finally {
+      setLendo(false);
+    }
+  }, [pedido, arquivo]);
+  useEffect(() => { ler(); }, [ler]);
+  const linhas = leitura && leitura.ok !== false ? montarChecagem(leitura, nossoTotal) : [];
+  const n = (e: LinhaChecagem['estado']) => linhas.filter((x) => x.estado === e).length;
+  return (
+    <div className="mb-3 p-2 checagem-orcamento" style={{ border: '1px solid #d0d5dd', borderRadius: 8, fontSize: '.85rem' }}>
+      <div className="flex align-items-center justify-content-between mb-1">
+        <strong>Checagem do orçamento (IA lendo o PDF)</strong>
+        {linhas.length > 0 && <span className="text-600">{n('OK')} ok · {n('ATENCAO')} atenção · {n('PROBLEMA')} problema</span>}
+      </div>
+      {!arquivo && <div className="text-600">Sem PDF para checar.</div>}
+      {lendo && <div className="text-600"><i className="pi pi-spin pi-spinner" /> Lendo o orçamento…</div>}
+      {erro && <div style={{ color: '#b42318' }}>{erro}</div>}
+      {linhas.map((x) => (
+        <div key={x.item} className="flex gap-2 py-1" style={{ borderBottom: '1px solid #f2f4f7' }}>
+          <i className={`pi ${COR_CHECAGEM[x.estado][0]}`} style={{ color: COR_CHECAGEM[x.estado][1], marginTop: 2 }} />
+          <span style={{ minWidth: 130, fontWeight: 600 }}>{x.item}</span>
+          <span className="flex-1">{x.texto}</span>
+        </div>
+      ))}
+      {leitura && !lendo && <Button className="mt-1" size="small" text icon="pi pi-refresh" label="Ler de novo" onClick={ler} />}
+    </div>
+  );
+}
+
+/* ── anotações do pedido (a porteira da eliza-urgência grava o veredito do lote aqui — R4, 24/09) ─────────────── */
+function AnotacoesDoPedido({ pedido }: { pedido: number }) {
+  const [itens, setItens] = useState<{ id: number; texto: string; usuario: string | null; createDate: string }[]>([]);
+  const [aberto, setAberto] = useState(false);
+  useEffect(() => {
+    getAnotacoes(pedido).then((r) => setItens(((r.data?.itens ?? []) as typeof itens).slice().reverse())).catch(() => undefined);
+  }, [pedido]);
+  if (!itens.length) return null;
+  const mostrar = aberto ? itens : itens.slice(0, 2);
+  return (
+    <div className="mb-3 p-2 anotacoes-pedido" style={{ background: '#f9fafb', borderRadius: 8, fontSize: '.8rem' }}>
+      <div className="font-bold mb-1">Anotações do pedido ({itens.length})</div>
+      {mostrar.map((a) => (
+        <div key={a.id} className="mb-1" style={{ whiteSpace: 'pre-wrap' }}>
+          <span className="text-600">{a.usuario ?? 'sistema'} · {new Date(a.createDate).toLocaleString('pt-BR')}:</span> {a.texto}
+        </div>
+      ))}
+      {itens.length > 2 && <Button size="small" text label={aberto ? 'mostrar menos' : `ver todas (${itens.length})`} onClick={() => setAberto(!aberto)} />}
+    </div>
+  );
+}
 
 /* ── #706 (@R 24/09): o MENOR do processo sempre à vista — valor, onde está em relação ao nosso, ou por que não há ── */
 function textoPosicao(m: MenorDoProcesso): string {
