@@ -493,7 +493,7 @@ type LeituraOrc = {
   dataDocumento: string | null; validadeDias: number | null; procedimento: string | null;
   itens: { descricao: string; valor: number; bloco?: string }[]; confianca: string; observacao: string | null;
   alertas: { nivel: string; campo: string; texto: string }[]; contato?: string | null; registroProfissional?: string | null;
-  diarias?: number | null; acomodacao?: string | null;
+  diarias?: number | null; acomodacao?: string | null; telefones?: string[]; emails?: string[];
 };
 type LinhaChecagem = { item: string; estado: 'OK' | 'ATENCAO' | 'PROBLEMA'; texto: string };
 
@@ -519,9 +519,14 @@ export function montarChecagem(l: LeituraOrc, nossoTotal: number | null): LinhaC
   const ai = alerta('itens');
   if (ai) linhas.push({ item: 'Soma dos itens', estado: 'ATENCAO', texto: ai.texto });
   linhas.push(l.procedimento ? { item: 'Descrição', estado: 'OK', texto: l.procedimento } : { item: 'Descrição', estado: 'ATENCAO', texto: 'sem descrição do procedimento' });
-  const temFone = /\d{4}[-\s]?\d{4}/.test(l.contato ?? '');
-  linhas.push(!l.contato ? { item: 'Contato', estado: 'PROBLEMA', texto: 'o PDF não traz telefone nem e-mail' }
-    : { item: 'Contato', estado: temFone ? 'OK' : 'ATENCAO', texto: temFone ? l.contato : `sem telefone — só: ${l.contato}` });
+  // @R 24/09 13:53: "contato são todos os e-mails e telefones presentes no orçamento" — a leitura devolve as listas
+  // completas (back #711b); servidor antigo sem as listas cai no resumo em texto.
+  const fones = l.telefones ?? (/\d{4}[-\s]?\d{4}/.test(l.contato ?? '') ? [l.contato as string] : []);
+  const mails = l.emails ?? [];
+  const todos = [...fones, ...mails];
+  linhas.push(!todos.length && !l.contato ? { item: 'Contato', estado: 'PROBLEMA', texto: 'o PDF não traz telefone nem e-mail' }
+    : !fones.length ? { item: 'Contato', estado: 'ATENCAO', texto: `sem telefone no PDF — ${mails.length ? `só e-mail: ${mails.join(' · ')}` : l.contato}` }
+      : { item: 'Contato', estado: 'OK', texto: todos.join(' · ') });
   const soma = (b: string[]) => l.itens.filter((i) => b.includes(i.bloco ?? '')).reduce((a, i) => a + (Number(i.valor) || 0), 0);
   const equipe = soma(['EQUIPE_MEDICA', 'ANESTESIA']); const hosp = soma(['HOSPITAL']); const opme = soma(['OPME']);
   const partes = [equipe ? `equipe médica ${brl(equipe)}` : null, hosp ? `hospital ${brl(hosp)}` : null, opme ? `OPME ${brl(opme)}` : null].filter(Boolean);
