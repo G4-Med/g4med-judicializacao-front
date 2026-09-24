@@ -23,6 +23,7 @@ import {
   type SugestaoIAResposta,
 } from '../../services/api/orders';
 import { getPrecosDoMedico } from '../../services/api/orders';
+import { SeloExame, AvisoExames, type ExameSolicitado } from '../../components/ExameSolicitado/ExameSolicitado';
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
@@ -48,6 +49,8 @@ import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 interface ProcessoResumo {
   id: number;
   paciente: string;
+  /** #708: pedido de exame e o retorno dele — também aparece aqui (4 dos 5 abertos estavam na fase 2, 24/09) */
+  exameSolicitado?: ExameSolicitado | null;
   procedimento: string;
   area: string;
   subarea: string;
@@ -581,6 +584,7 @@ export function SelecionarMedicoPage() {
       </div>
       </PainelKpis>
 
+      <AvisoExames linhas={processos} onAbrirEmails={() => { window.location.href = `${import.meta.env.BASE_URL}emails`; }} />
       <div className="card">
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />Pedidos aguardando seleção de médico</h2>
           <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>
@@ -646,6 +650,7 @@ export function SelecionarMedicoPage() {
             body={(r: any) => (
               <>
                 {nomeComCopiar(r.paciente, r.id)}
+                <SeloExame r={r} onVisto={carregarDados} />
                 {/* #510 (@R 20/09): o médico recusou cotar e o pedido voltou para cá — é o mais urgente
                     da fila (já perdeu um cotador). O aviso some quando outro médico é escolhido. */}
                 {r.cotacaoRecusadaPor && (
