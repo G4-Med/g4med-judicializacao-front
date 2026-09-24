@@ -34,6 +34,9 @@ export interface PedidoParaCopiar {
   subarea?: string | null;
   idMedico?: number | null;
   medico?: string | null;
+  // Menor orç. proc. da tabela (ia/match_pedido, @R 24/09): automático ou escolhido à mão
+  menorOrcamento?: { id?: number | null; valor?: number | null; original?: number | null; local?: string | null;
+    escolhido?: { por?: string; em?: string } | null } | null;
 }
 
 // singular → plural, para a frase "3 laudos médicos, 1 exame…" (chaves = rótulos do servidor)
@@ -117,11 +120,34 @@ _Pedido #${p.id} · G4MED · ${data}_`;
  *  orçamento do procedimento INTEIRO (OPME, honorários, internação, taxas são fatias: medido 24/09, 174 de 1.815
  *  orçamentos são fatias) e nunca o que a IA leu e diz que NÃO cobre a cirurgia pedida. Valor = o que o médico vê
  *  no link (com deflator ou o ajustado por quem copia) — nunca o original. */
+/** A referência da prévia que É o Menor orç. proc. da tabela (@R 24/09 10:05: "já marcado no Copiar"). Casa por
+ *  id/idFolha; o valor original só como último recurso, com tolerância de centavo e só se casar EXATAMENTE 1 —
+ *  com 2+ não escolhe (regra combinada com a sessão medcheck). */
+export function refDoMenorOrcamento(refs: any[], mo: PedidoParaCopiar['menorOrcamento']): any | null {
+  if (!mo || mo.valor == null) return null;
+  if (mo.id != null) {
+    const porId = refs.find((x) => x.id === mo.id || x.idFolha === mo.id);
+    if (porId) return porId;
+  }
+  if (mo.original == null) return null;
+  const porValor = refs.filter((x) => typeof x.valorOriginal === 'number' && Math.abs(x.valorOriginal - (mo.original as number)) < 0.01);
+  return porValor.length === 1 ? porValor[0] : null;
+}
+
 export function menorReferencia(refs: any[], comValores: boolean, refsFora: Set<number>, ajustes: Record<number, number>,
-                                compat: Record<string, ParecerCompat>): { valor: number; local: string | null; n: number } | null {
+                                compat: Record<string, ParecerCompat>, preferida: any | null = null
+                                ): { valor: number; local: string | null; n: number; daTabela?: boolean } | null {
   if (!comValores) return null;
   const inteiras = refs.filter((x) => !x.ocultoAoMedico && !refsFora.has(x.id) && x.categoria === 'Procedimento'
     && compat[String(x.idFolha ?? x.id)]?.compativel !== 'NAO');
+  // A escolhida na tabela (Menor orç. proc.) vence o mínimo, SE ela vai no link. O valor é o que o médico vê
+  // (ajuste de quem copia ou o de referência, com deflator) — nunca o valor da coluna.
+  if (preferida && inteiras.some((x) => x.id === preferida.id)) {
+    const v = ajustes[preferida.id] ?? preferida.valorReferencia;
+    if (typeof v === 'number' && v > 0) {
+      return { valor: v, local: preferida.local || preferida.prestador || null, n: inteiras.length, daTabela: true };
+    }
+  }
   let menor: { valor: number; local: string | null; n: number } | null = null;
   for (const x of inteiras) {
     const v = ajustes[x.id] ?? x.valorReferencia;
@@ -199,6 +225,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   const [gerandoRel, setGerandoRel] = useState(false);
   const [erroRel, setErroRel] = useState<string | null>(null);
   const [addEsp, setAddEsp] = useState<'nao' | 'enviando' | 'feito' | string>('nao');
+  const pedidoAberto = useRef<number | null>(null);   // a resposta da prévia só vale para o pedido que está ABERTO
   const alternar = (set: Set<number>, id: number, fn: (s: Set<number>) => void) => {
     const n = new Set(set); if (n.has(id)) n.delete(id); else n.add(id); fn(n);
   };
@@ -215,10 +242,19 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
     // @R 24/09 02:47 (#1251): o ajuste de valor e o aviso 'sem referência' ficavam do pedido ANTERIOR — o ajuste do
     // orçamento 1563 (#536) ia junto no link do #1251 e o servidor recusava ('a referência 1563 não é deste pedido').
     setAjustes({}); setAvisoSemRef(false);
+    pedidoAberto.current = pedido?.id ?? null;
     if (!pedido) return;
-    previaLinkDocumentos(pedido.id)
-      .then((r) => { setPrevia(r.data); setRelatorio(r.data?.relatorio ?? null); })
-      .catch((e) => setErro(e?.response?.data?.error || 'Não foi possível montar a prévia do link.'));
+    const idPedido = pedido.id;
+    previaLinkDocumentos(idPedido)
+      .then((r) => {
+        // resposta atrasada de OUTRO pedido (abriu A e depois B) não pode pintar B — classe #1251/1563
+        if (pedidoAberto.current !== idPedido) return;
+        setPrevia(r.data); setRelatorio(r.data?.relatorio ?? null);
+        // @R 24/09 10:05: o Menor orç. proc. da tabela já vem MARCADO — liga os valores se ele pode ir no link
+        const ref = refDoMenorOrcamento(r.data?.referencias || [], pedido.menorOrcamento);
+        if (ref && !ref.ocultoAoMedico) setComValores(true);
+      })
+      .catch((e) => { if (pedidoAberto.current === idPedido) setErro(e?.response?.data?.error || 'Não foi possível montar a prévia do link.'); });
   }, [pedido]);
 
   const refs: any[] = previa?.referencias || [];
@@ -274,7 +310,10 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   }, [previa]);
   const deflatorPct = previa ? `${(previa.deflator * 100).toFixed(2).replace('.', ',')}%` : '';
   // #691: a linha de REFERÊNCIA da mensagem (acima do link) — a mesma regra que a tela mostra antes de copiar
-  const menorRef = menorReferencia(refs, comValores, refsFora, ajustes, compat);
+  const refTabela = refDoMenorOrcamento(refs, pedido?.menorOrcamento);
+  const menorRef = menorReferencia(refs, comValores, refsFora, ajustes, compat, refTabela);
+  // a escolhida na tabela existe mas NÃO pode ir (não conferida / desmarcada / IA diz que não cobre): dizer, ¬esconder
+  const tabelaNaoVai = !!refTabela && !!menorRef && !menorRef.daTabela;
   const semRefAfirmado = !refs.length || (avisoSemRef && semValoresNoLink && !!previa?.temInteiroTeor);
   const referenciaMsg: ReferenciaNaMensagem = menorRef ? { valor: menorRef.valor }
     : semRefAfirmado ? { sem: previa?.temInteiroTeor ? 'Este processo não tem valor de referência.'
@@ -547,7 +586,10 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
             <div style={{ fontWeight: 600, marginBottom: 2 }}>Na mensagem, acima do link (em negrito):</div>
             {menorRef ? (
               <div><b>VALOR DE REFERÊNCIA: {brl(menorRef.valor)}</b> — o menor preço localizado. <b>O valor cotado deve ser menor.</b>
-                <div style={{ color: '#6b7280', fontSize: 12 }}>Menor entre {menorRef.n} orçamento(s) do procedimento inteiro que vão no link{menorRef.local ? ` (${menorRef.local})` : ''}. OPME, honorários, internação e taxas sozinhos não contam; orçamento que a IA diz não cobrir a cirurgia também não.</div>
+                <div style={{ color: '#6b7280', fontSize: 12 }}>{menorRef.daTabela
+                  ? <>É o <b>Menor orç. proc.</b> da tabela{pedido?.menorOrcamento?.escolhido?.por ? ` (escolhido por ${pedido.menorOrcamento.escolhido.por})` : ''}{menorRef.local ? `: ${menorRef.local}` : ''}, no valor que o médico vê no link.</>
+                  : <>Menor entre {menorRef.n} orçamento(s) do procedimento inteiro que vão no link{menorRef.local ? ` (${menorRef.local})` : ''}. OPME, honorários, internação e taxas sozinhos não contam; orçamento que a IA diz não cobrir a cirurgia também não.</>}</div>
+                {tabelaNaoVai && <div style={{ color: '#b45309', fontSize: 12 }}>O Menor orç. proc. da tabela ({refTabela.local || refTabela.prestador || 'sem prestador'}) não vai neste link {refTabela.ocultoAoMedico ? '— não passou na conferência' : '— está desmarcado ou a IA diz que não cobre'}; por isso vale o menor entre os que vão.</div>}
               </div>
             ) : referenciaMsg && 'sem' in referenciaMsg ? <div><b>{referenciaMsg.sem}</b></div>
               : <div style={{ color: '#6b7280' }}>Nada sobre valor de referência — {comValores
@@ -707,5 +749,7 @@ export const prepararCopiaPedido = async (
     id: rowData.id, paciente: rowData.paciente, idade: rowData.idade, procedimento: rowData.procedimento,
     area: rowData.area, subarea: rowData.subarea,
     idMedico: m.idMedico ?? m.medicoId ?? m.medico_id ?? null, medico: m.nomeMedico ?? m.medico ?? null,
+    // o Menor orç. proc. da linha (@R 24/09 10:05) — sem ele aqui o diálogo nunca pré-marca (achado no teste de tela)
+    menorOrcamento: m.menorOrcamento ?? null,
   }, recarregar)
 }

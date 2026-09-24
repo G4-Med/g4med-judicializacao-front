@@ -124,10 +124,10 @@ function CelulaMenorOrcamento({ r, nosso }: { r: any; nosso?: (r: any) => number
   const [m, setM] = useState<any>(r?.menorOrcamento);
   useEffect(() => { setM(r?.menorOrcamento); }, [r?.menorOrcamento]);   // tabela recarregou: acompanha o dado novo
   const [aberto, setAberto] = useState(false);
-  const [gravando, setGravando] = useState<number | 'auto' | null>(null);
+  const [gravando, setGravando] = useState<number | 'auto' | 'nenhum' | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const escolher = async (id: number | null) => {
-    setGravando(id ?? 'auto'); setErro(null);
+    setGravando(id === 0 ? 'nenhum' : id ?? 'auto'); setErro(null);
     try {
       const { data } = await api.post(`/ia/menor-orcamento/${r.id}/`, { orcamentoId: id });
       r.menorOrcamento = data.menorOrcamento;     // a ordenação da tabela lê a linha
@@ -185,7 +185,13 @@ function CelulaMenorOrcamento({ r, nosso }: { r: any; nosso?: (r: any) => number
                     : <span style={{ color: '#15803d' }}>aprovado pela IA</span>}
                     {o.ia?.motivo && <div style={{ color: '#6b7280', fontSize: '.72rem' }}>IA: {o.ia.motivo}</div>}</td>
                   <td>{usado
-                    ? <span style={{ fontSize: '.75rem', color: '#15803d' }}>em uso</span>
+                    ? <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: '.75rem', color: '#15803d' }}>em uso</span>
+                        {/* @R 24/09 10:12: desmarcar o que está em uso e deixar o pedido SEM menor orçamento */}
+                        <Button label="Desmarcar" size="small" text severity="danger" loading={gravando === 'nenhum'}
+                          title="Tira este orçamento e deixa o pedido sem menor orçamento (não volta ao automático)"
+                          onClick={() => escolher(0)} />
+                      </div>
                     : <Button label="Usar este" size="small" outlined loading={gravando === o.id}
                         onClick={() => escolher(o.id)} />}</td>
                 </tr>
@@ -197,7 +203,7 @@ function CelulaMenorOrcamento({ r, nosso }: { r: any; nosso?: (r: any) => number
           <div style={{ marginTop: 10 }}>
             <Button label="Voltar ao automático" size="small" text icon="pi pi-replay" loading={gravando === 'auto'}
               onClick={() => escolher(null)} />
-            <span style={{ fontSize: '.75rem', color: '#6b7280' }}> escolhido por {m.escolhido.por}</span>
+            <span style={{ fontSize: '.75rem', color: '#6b7280' }}> {m.escolhido.nenhum ? 'desmarcado' : 'escolhido'} por {m.escolhido.por}</span>
           </div>
         )}
       </Dialog>
