@@ -88,10 +88,13 @@ export function montarTextoPedido(p: PedidoParaCopiar, url: string, porTipo: Rec
     : `*NO LINK*\nOs documentos clínicos deste processo ainda estão sendo reunidos; o link mostra o que já temos.${itens.length ? `\n${itens.join('\n')}` : ''}`;
   const hoje = new Date();
   const data = `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`;
+  // #709 (@R 24/09 12:14): o PACIENTE vai na 2ª linha. Quando o médico responde citando a mensagem, o WhatsApp mostra
+  // só as 2 primeiras linhas — com "Processo judicial de saúde…" ali, a resposta do Bruno às 21:57 não dizia de QUEM
+  // era o orçamento. O nome vem antes do número (a citação corta a linha no fim).
   return `*G4MED · SOLICITAÇÃO DE ORÇAMENTO*
+*PACIENTE: ${p.paciente || ''}*${p.idade ? ` · ${p.idade} anos` : ''} · Pedido #${p.id}
 Processo judicial de saúde — Secretaria de Estado de Saúde de MG
 
-*PACIENTE:* ${p.paciente || ''}${p.idade ? ` · ${p.idade} anos` : ''}
 *PROCEDIMENTO:* ${p.procedimento || ''}
 *ESPECIALIDADE:* ${p.area || ''}${p.subarea ? ` · ${p.subarea}` : ''}
 
