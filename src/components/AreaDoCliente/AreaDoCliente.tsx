@@ -40,7 +40,9 @@ type Metricas = {
   respostaOrcamento: Taxa;
   perda: { peloMedico: Taxa; porOrcamento: Taxa; outrosMotivos: number; porStatus: Record<string, number>; nota: string };
   pedidosDeExame: { quantidade: number; taxaSustentada: boolean; nota: string };
-  sla: { medianaDias: number | null; medidos: number; semResposta: number; nota: string };
+  sla: { medianaDias: number | null; medidos: number; semResposta: number; nota: string;
+    // #698: contado do ENVIO ao médico; o que não tem envio registrado fica fora e é dito
+    minimo?: number; poucoMedido?: boolean; semEnvioRegistrado?: number };
   experiencia: { subarea: string; pedidos: number }[];
   pediatricos: { declarado: string; jaAtendidos: number; contradiz: boolean };
   cidade: string | null; uf: string | null;
@@ -85,16 +87,23 @@ export function AreaDoCliente({ medicoId, nome, aberto, aoFechar }: {
   useEffect(() => { if (!aberto) setComPacientes(false); }, [aberto]);
   useEffect(() => {
     if (!aberto || !medicoId) return;
+    // #698 (achado no teste de tela 24/09): ao trocar de médico a janela mostrava os números do
+    // ANTERIOR enquanto carregava (e com o nome dele no título); se a carga falhasse, ficavam na tela
+    // ao lado do erro. Agora limpa ao trocar de médico e descarta resposta que chega atrasada.
+    let vivo = true;
     setCarregando(true); setErro('');
+    setM((atual) => (atual && atual.medicoId === medicoId ? atual : null));
     getMetricasMedico(medicoId, comPacientes)
-      .then((r) => setM(r.data))
-      .catch((e: { response?: { data?: { detail?: string } } }) =>
-        setErro(e?.response?.data?.detail ?? 'Não foi possível carregar os dados deste cliente.'))
-      .finally(() => setCarregando(false));
+      .then((r) => { if (vivo) setM(r.data); })
+      .catch((e: { response?: { data?: { detail?: string } } }) => {
+        if (vivo) setErro(e?.response?.data?.detail ?? 'Não foi possível carregar os dados deste cliente.');
+      })
+      .finally(() => { if (vivo) setCarregando(false); });
+    return () => { vivo = false; };
   }, [aberto, medicoId, comPacientes]);
 
   return (
-    <Dialog header={`Área do cliente — ${m?.nome ?? nome ?? ''}`} visible={aberto}
+    <Dialog header={`Área do cliente — ${(m && m.medicoId === medicoId ? m.nome : null) ?? nome ?? ''}`} visible={aberto}
       style={{ width: 'min(1040px, 96vw)' }} onHide={aoFechar}>
       {carregando && <p>Carregando os dados…</p>}
       {erro && <p className="adc__erro">{erro}</p>}
@@ -126,12 +135,16 @@ export function AreaDoCliente({ medicoId, nome, aberto, aoFechar }: {
                 <CaixaTaxa titulo="Perda pelo médico" taxa={m.perda.peloMedico} bom="baixo" />
                 <CaixaTaxa titulo="Perda por orçamento" taxa={m.perda.porOrcamento} bom="baixo" />
                 <div className="adc__caixa">
-                  <span className="adc__rotulo">SLA — resposta do orçamento</span>
-                  <strong>{m.sla.medianaDias === null ? '—' : `${m.sla.medianaDias} d`}</strong>
+                  <span className="adc__rotulo" title={m.sla.nota}>SLA — do envio a ele até o orçamento</span>
+                  <strong>{m.sla.medianaDias === null ? '—' : `${m.sla.medianaDias.toLocaleString('pt-BR')} d`}</strong>
                   <span className="adc__regua">
-                    {m.sla.medianaDias === null ? 'nenhuma resposta medida'
-                      : `mediana de ${m.sla.medidos} resposta(s)`}
+                    {m.sla.medianaDias !== null ? `mediana de ${m.sla.medidos} resposta(s) desde o envio`
+                      : m.sla.poucoMedido ? `poucos casos (${m.sla.medidos} de ${m.sla.minimo ?? 10} necessários)`
+                        : 'nenhuma resposta com envio registrado'}
                   </span>
+                  {(m.sla.semEnvioRegistrado ?? 0) > 0 && (
+                    <span className="adc__aviso">{m.sla.semEnvioRegistrado} resposta(s) sem envio registrado — fora da conta (não usamos a data do pedido)</span>
+                  )}
                   {m.sla.semResposta > 0 && (
                     <span className="adc__aviso">{m.sla.semResposta} pedido(s) sem resposta — fora da média</span>
                   )}
