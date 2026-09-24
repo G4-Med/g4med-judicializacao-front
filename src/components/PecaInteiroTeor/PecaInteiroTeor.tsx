@@ -8,10 +8,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
-import { getAnexosOrder, uploadAnexoOrder, removerInteiroTeor, baixarAnexoDoTipo, salvarBlob } from '../../services/api/orders';
+import { getPartesPeca, uploadAnexoOrder, removerInteiroTeor, baixarAnexoDoTipo, baixarAnexo, salvarBlob } from '../../services/api/orders';
 import './PecaInteiroTeor.css';
 
-type Parte = { id: number; createDate: string };
+/* #690 (@R 24/09 00:4x): "preciso ver a peça para saber o tamanho e o número de páginas e poder visualizar para eu
+   saber que peça é" + "ao subir uma nova peça ou trocar (…) devem ser adicionadas a processamento automaticamente".
+   O envio JÁ põe a parte na fila (servidor); o que faltava era a tela DIZER isso — por isso cada parte mostra a leitura.
+   Tamanho e páginas vêm do servidor, lidos do próprio arquivo (1ª abertura mede; depois fica guardado). */
+type Leitura = { estado: 'NUNCA' | 'NA_FILA' | 'LENDO' | 'LIDA' | 'PARCIAL' | 'ERRO' | string; desde: string | null;
+  lidaEm: string | null; documentos: number; copiaDe: number | null; detalhe: string | null };
+type Parte = { id: number; ordem: number; enviadaEm: string; nome: string | null; tamanhoBytes: number | null;
+  numeroPaginas: number | null; medida: 'OK' | 'FALHOU' | 'PENDENTE'; erroMedida: string | null; leitura: Leitura };
+
+const tamanho = (b: number | null) => (b == null ? '' : b >= 1024 * 1024
+  ? `${(b / (1024 * 1024)).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`
+  : `${Math.max(1, Math.round(b / 1024))} KB`);
+
+function TextoLeitura({ l }: { l: Leitura }) {
+  const docs = `${l.documentos} ${l.documentos === 1 ? 'documento extraído' : 'documentos extraídos'}`;
+  if (l.copiaDe) return <><i className="pi pi-clone" /> Mesmo arquivo da peça #{l.copiaDe}, que já foi lida — não é lida de novo ({docs}, que seguem no pedido).</>;
+  switch (l.estado) {
+    case 'NA_FILA': return <><i className="pi pi-clock" /> Na fila de leitura — o leitor passa a cada 10 minutos. Não precisa clicar em Reprocessar.</>;
+    case 'LENDO': return <><i className="pi pi-spin pi-spinner" /> Sendo lida agora.</>;
+    case 'LIDA': return <><i className="pi pi-check" /> Lida — {docs}.</>;
+    case 'PARCIAL': return <><i className="pi pi-exclamation-triangle" /> Lida em parte — {docs}; há páginas não analisadas.</>;
+    case 'ERRO': return <><i className="pi pi-times-circle" /> A leitura falhou{l.detalhe ? `: ${l.detalhe}` : ''}.</>;
+    default: return <><i className="pi pi-minus-circle" /> Ainda não foi para a leitura.</>;
+  }
+}
 
 // O servidor manda "2026-09-20 10:00:00.123456+00:00" (espaço + microssegundos) — normaliza antes de ler.
 const dataBr = (s: string) => new Date(s.replace(' ', 'T').replace(/(\.\d{3})\d+/, '$1')).toLocaleDateString('pt-BR');
@@ -22,19 +46,23 @@ export function GerenciadorPeca({ orderId, readOnly = false, onMudou }: {
   const [partes, setPartes] = useState<Parte[] | null>(null);
   const [arquivos, setArquivos] = useState<File[]>([]);
   const [ocupado, setOcupado] = useState<'' | 'enviando' | 'trocando' | 'baixando'>('');
+  const [vendo, setVendo] = useState<Parte | null>(null);
   const [aviso, setAviso] = useState('');
   const input = useRef<HTMLInputElement | null>(null);
 
   const carregar = useCallback(async () => {
     try {
-      const r: any = await getAnexosOrder(orderId, 'DECISAO_INTEIRO_TEOR');
-      const lista: Parte[] = [...(r.data?.anexos ?? [])].sort((a: any, b: any) =>
-        (a.createDate < b.createDate ? -1 : a.createDate > b.createDate ? 1 : a.id - b.id));
+      // 1º sem baixar nada (a lista aparece na hora); se faltar medir alguma parte, 2ª chamada mede e completa.
+      const r: any = await getPartesPeca(orderId, false);
+      const lista: Parte[] = r.data?.partes ?? [];
       setPartes(lista);
-      return lista.length;
+      if (lista.some((p) => p.medida !== 'OK')) {
+        getPartesPeca(orderId, true).then((m: any) => setPartes(m.data?.partes ?? lista)).catch(() => {});
+      }
+      return lista;
     } catch {
       setPartes([]); setAviso('Não consegui ler as partes da peça agora.');
-      return 0;
+      return [] as Parte[];
     }
   }, [orderId]);
 
@@ -49,10 +77,12 @@ export function GerenciadorPeca({ orderId, readOnly = false, onMudou }: {
         if (r?.data?.duplicado) repetidas++; else novas++;
       }
       setArquivos([]); if (input.current) input.current.value = '';
-      const n = await carregar();
-      setAviso((novas ? `${novas === 1 ? 'Parte anexada' : `${novas} partes anexadas`}.` : '')
-        + (repetidas ? ` ${repetidas === 1 ? '1 arquivo já estava anexado' : `${repetidas} arquivos já estavam anexados`} — não dupliquei.` : ''));
-      onMudou?.(n);
+      const lista = await carregar();
+      const copias = lista.filter((p) => p.leitura.copiaDe).length;
+      setAviso((novas ? `${novas === 1 ? 'Parte anexada' : `${novas} partes anexadas`} e posta na fila de leitura automaticamente — não precisa clicar em Reprocessar.` : '')
+        + (repetidas ? ` ${repetidas === 1 ? '1 arquivo já estava anexado' : `${repetidas} arquivos já estavam anexados`} — não dupliquei.` : '')
+        + (copias ? ` ${copias === 1 ? '1 parte é o mesmo arquivo de uma peça já lida' : `${copias} partes são o mesmo arquivo de peças já lidas`} — não será lida de novo.` : ''));
+      onMudou?.(lista.length);
     } catch (e: any) {
       setAviso(e?.response?.data?.error || 'O envio falhou. Tente de novo.');
       await carregar();
@@ -68,8 +98,8 @@ export function GerenciadorPeca({ orderId, readOnly = false, onMudou }: {
     try {
       await removerInteiroTeor(orderId);
       const m = await carregar();
-      setAviso('Peça anterior retirada. Escolha o(s) PDF(s) correto(s) e envie.');
-      onMudou?.(m);
+      setAviso('Peça anterior retirada. Escolha o(s) PDF(s) correto(s) e envie — a leitura começa sozinha.');
+      onMudou?.(m.length);
     } catch (e: any) {
       setAviso(e?.response?.data?.error || 'Não consegui trocar a peça agora. Tente de novo.');
     } finally { setOcupado(''); }
@@ -91,9 +121,33 @@ export function GerenciadorPeca({ orderId, readOnly = false, onMudou }: {
     <div className="pit">
       <p className="pit__estado" role="status">
         {tem
-          ? <><i className="pi pi-check-circle" /> Peça anexada em <strong>{partes.length} {partes.length === 1 ? 'parte' : 'partes'}</strong>: {partes.map((p, k) => `parte ${k + 1} (${dataBr(p.createDate)})`).join(' · ')}</>
+          ? <><i className="pi pi-check-circle" /> Peça anexada em <strong>{partes.length} {partes.length === 1 ? 'parte' : 'partes'}</strong>{partes.length > 1 ? ' — o download junta na ordem abaixo' : ''}:</>
           : <><i className="pi pi-exclamation-circle" /> Este pedido ainda não tem a peça de inteiro teor.</>}
       </p>
+      {tem && (
+        <ol className="pit__partes">
+          {partes.map((p) => (
+            <li key={p.id} className="pit__parte">
+              <div className="pit__parte-cab">
+                <strong>Parte {p.ordem}</strong>
+                <span className="pit__parte-meta">
+                  enviada {dataBr(p.enviadaEm)}
+                  {p.medida === 'OK' && <> · <strong>{p.numeroPaginas} {p.numeroPaginas === 1 ? 'página' : 'páginas'}</strong> · {tamanho(p.tamanhoBytes)}</>}
+                  {p.medida === 'PENDENTE' && <> · <i className="pi pi-spin pi-spinner" /> medindo…</>}
+                  {p.medida === 'FALHOU' && <> · {p.tamanhoBytes ? `${tamanho(p.tamanhoBytes)} · ` : ''}<span className="pit__erro">{p.erroMedida}</span></>}
+                </span>
+                <Button type="button" size="small" text icon="pi pi-eye" label="Ver" onClick={() => setVendo(p)}
+                  aria-label={`Ver a parte ${p.ordem} da peça`} />
+              </div>
+              {p.nome && <small className="pit__parte-nome" title={p.nome}>{p.nome}</small>}
+              <small className={`pit__leitura pit__leitura--${(p.leitura.copiaDe ? 'copia' : p.leitura.estado).toLowerCase()}`}>
+                <TextoLeitura l={p.leitura} />
+              </small>
+            </li>
+          ))}
+        </ol>
+      )}
+      {vendo && <DialogVerParte parte={vendo} total={partes.length} onHide={() => setVendo(null)} />}
       {!readOnly && (
         <div className="pit__dica" role="note">
           <i className="pi pi-info-circle" /> <strong>O processo veio em mais de um arquivo?</strong> O PJe divide cópias
@@ -126,6 +180,33 @@ export function GerenciadorPeca({ orderId, readOnly = false, onMudou }: {
       </div>
       {aviso && <small className="pit__aviso" role="status">{aviso}</small>}
     </div>
+  );
+}
+
+/* VER uma parte (#690): o PDF abre DENTRO da plataforma, no visualizador do navegador (tem as páginas e a busca).
+   Passa pelo servidor (permissão + o R2 é outra origem) e vira um endereço local do navegador, apagado ao fechar. */
+function DialogVerParte({ parte, total, onHide }: { parte: Parte; total: number; onHide: () => void }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [erro, setErro] = useState('');
+  useEffect(() => {
+    let vivo = true, u: string | null = null;
+    baixarAnexo(parte.id)
+      .then(({ data }: any) => {
+        u = URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
+        if (vivo) setUrl(u); else URL.revokeObjectURL(u);
+      })
+      .catch(() => vivo && setErro('Não consegui abrir esta parte agora. Tente de novo ou use "Baixar".'));
+    return () => { vivo = false; if (u) URL.revokeObjectURL(u); };
+  }, [parte.id]);
+  const titulo = `Parte ${parte.ordem}${total > 1 ? ` de ${total}` : ''}`
+    + (parte.numeroPaginas ? ` — ${parte.numeroPaginas} ${parte.numeroPaginas === 1 ? 'página' : 'páginas'}` : '')
+    + (parte.tamanhoBytes ? ` · ${tamanho(parte.tamanhoBytes)}` : '');
+  return (
+    <Dialog header={titulo} visible onHide={onHide} style={{ width: 'min(1100px, 96vw)' }} contentStyle={{ padding: 0 }} modal dismissableMask>
+      {erro ? <p className="pit__erro" style={{ padding: '1rem' }}>{erro}</p>
+        : url ? <iframe className="pit__visor" src={url} title={titulo} />
+          : <p className="pit__carregando" style={{ padding: '1rem' }}><i className="pi pi-spin pi-spinner" /> Abrindo a parte {parte.ordem}{parte.tamanhoBytes ? ` (${tamanho(parte.tamanhoBytes)})` : ''}…</p>}
+    </Dialog>
   );
 }
 

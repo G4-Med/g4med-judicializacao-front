@@ -19,7 +19,7 @@ import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import { CabecalhoFase } from '../../components/CabecalhoFase/CabecalhoFase';
 import { ContadorRegistros } from '../../components/ContadorRegistros/ContadorRegistros';
 import {
-  colunaCnj, colunaSei, colunaComarca, colunaCadastro, colunaSegredo, colunaInteiroTeor,
+  colunaCnj, colunaSei, colunaComarca, colunaCadastro, colunaSegredo, colunaInteiroTeor, colunaEmailOrgao,
   colunaSolicitante, tagTipoPaciente, FILTROS_IDENTIFICACAO, nomeComCopiar, cabecalhoComHint, colunaOrigem, filtroMaiorQue, casaPeriodo, OPCOES_PERIODO, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
@@ -317,6 +317,7 @@ export function EnviadoSesPage() {
           {colunaComarca()}
           {colunaCadastro()}
           {colunaInteiroTeor()}
+          {colunaEmailOrgao()}
           {colunaSolicitante('13rem', linhas)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}

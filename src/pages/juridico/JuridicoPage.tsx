@@ -17,7 +17,7 @@ import { getJuridico, salvarJuridico, getStatusOrders, getAnexosOrder, getCnjCan
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import './JuridicoPage.css';
-import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaSegredo, colunaProcedimento, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaCnj, colunaSei, colunaComarca, filtroMaiorQue, casaPeriodo, OPCOES_PERIODO, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, tagTipoPaciente , cabecalhoComHint, colunaSegredo, colunaProcedimento, colunaOrigem, colunaCadastro, colunaInteiroTeor, colunaEmailOrgao, colunaCnj, colunaSei, colunaComarca, filtroMaiorQue, casaPeriodo, OPCOES_PERIODO, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { PainelPrecos } from '../../components/PainelPrecos/PainelPrecos';
@@ -194,6 +194,7 @@ export function JuridicoPage() {
     sesAnexos: { value: null, matchMode: 'custom' },
     cadastro: { value: null, matchMode: FilterMatchMode.CUSTOM },
     temInteiroTeor: { value: null, matchMode: FilterMatchMode.CUSTOM },
+    emailOrgaoEstado: { value: null, matchMode: FilterMatchMode.EQUALS },   // #689
     tipoPaciente: { value: null, matchMode: 'custom' },
     chegouEm: { value: null, matchMode: FilterMatchMode.CUSTOM },
     ...FILTRO_PAGAMENTO,   // já pago no CNJ? decide se vale cotar
@@ -654,6 +655,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
               return <span className="juridico-geo-vazio">—</span>;
             }} />
           {colunaInteiroTeor()}
+          {colunaEmailOrgao()}
           {colunaSolicitante('13rem', dataComSequencial)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}

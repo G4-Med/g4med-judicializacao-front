@@ -13,7 +13,7 @@ import { getPerdas, getOrders, getMedicosCompleto, reabrirPerda } from '../../se
 import { getStatusTagStyle } from '../../utils/statusTag';
 import './PerdasPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
-import { colunaOrigem, colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaOrigem, colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor, colunaEmailOrgao , cabecalhoComHint, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -531,6 +531,7 @@ export function PerdasPage() {
           {colunaComarca()}
           {colunaCadastro()}
           {colunaInteiroTeor()}
+          {colunaEmailOrgao()}
           {colunaSolicitante('13rem', linhasVisiveis)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}

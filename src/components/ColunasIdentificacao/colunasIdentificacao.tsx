@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DialogGerenciadorPeca } from '../PecaInteiroTeor/PecaInteiroTeor';
+import { CelulaEmailOrgao, type ResumoEmailOrgao } from '../EmailOrgao/EmailOrgao';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
@@ -46,6 +47,9 @@ export interface LinhaIdentificada {
   id?: number;
   segredo?: 'sim' | 'possivel' | 'nao' | null;
   temInteiroTeor?: boolean | null;
+  /** #689: o e-mail ao órgão chegou/foi aberto? (servidor: backend/email_rastreio.py) */
+  emailOrgaoEstado?: string | null;
+  emailOrgao?: ResumoEmailOrgao;
   /** Estado da LEITURA da peça pelo robô (@R 21/09: erro na leitura tem de aparecer na tela). */
   inteiroTeorLeitura?: { status: string | null; mensagem: string; em: string | null } | null;
   semPecaInteiroTeor?: boolean | null;
@@ -89,6 +93,9 @@ export const FILTROS_IDENTIFICACAO = {
   nprocesso: { value: '', matchMode: 'contains' as const },
   numeroSei: { value: '', matchMode: 'contains' as const },
   comarca: { value: '', matchMode: 'contains' as const },
+  // #689: a coluna 'E-mail ao órgão' filtra por estado; sem a chave aqui o dropdown do filtro quebrava com
+  // "Cannot set properties of undefined (setting 'value')" (teste de tela 24/09) e a tabela não filtrava.
+  emailOrgaoEstado: { value: null, matchMode: 'equals' as const },
 };
 
 /* ── FILTROS DE COLUNA (@R 17/09) ───────────────────────────────────────────────────
@@ -315,6 +322,16 @@ export const OPCOES_CADASTRO = [
 export const OPCOES_INTEIRO_TEOR = [
   { label: 'Tem a peça', value: 'sim' },
   { label: 'Sem a peça', value: 'nao' },
+];
+
+export const OPCOES_EMAIL_ORGAO = [
+  { label: 'Aberto (confirmado)', value: 'ABERTO' },
+  { label: 'Entregue', value: 'ENTREGUE' },
+  { label: 'Aguardando confirmação', value: 'AGUARDANDO' },
+  { label: 'Devolvido', value: 'DEVOLVIDO' },
+  { label: 'Spam', value: 'SPAM' },
+  { label: 'Sem rastreio (antes de 23/09)', value: 'SEM_RASTREIO' },
+  { label: 'Nenhum e-mail', value: 'NENHUM' },
 ];
 
 export const OPCOES_ANEXOS = [
@@ -794,6 +811,21 @@ function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
   );
 }
 
+/* #689 (@R 24/09 00:2x): "uma coluna em toda a tabela para ver para cada paciente se o e-mail já foi aberto e
+   recebido" — o e-mail do ORÇAMENTO (sem ele, o último ao órgão). Filtra pelo estado; clicar lista os e-mails. */
+export function colunaEmailOrgao(largura = '13rem') {
+  return (
+    <Column key="col-email-orgao" field="emailOrgaoEstado"
+      header={cabecalhoComHint('E-mail ao órgão', EXPLICA.emailOrgao)} sortable
+      style={{ minWidth: largura }}
+      {...{
+        filter: true, showFilterMenu: false, filterMatchMode: 'equals',
+        filterElement: filtroOpcoes(OPCOES_EMAIL_ORGAO, 'Todos'),
+      }}
+      body={(r: LinhaIdentificada) => <CelulaEmailOrgao orderId={r.id} estado={r.emailOrgaoEstado} resumo={r.emailOrgao ?? null} />} />
+  );
+}
+
 export function colunaInteiroTeor(largura = '10rem') {
   return (
     <Column key="col-inteiro-teor" field="temInteiroTeor"
@@ -908,6 +940,14 @@ export function cabecalhoComHint(titulo: string, explicacao: React.ReactNode) {
 }
 
 const EXPLICA = {
+  emailOrgao: <>
+    <p>O <strong>e-mail enviado ao órgão</strong> (SES) chegou? Foi aberto? Vale o e-mail do <strong>orçamento</strong>;
+    sem ele, o último enviado ao órgão. Clique para ver todos.</p>
+    <p><strong>Entregue</strong> = o servidor do órgão aceitou (a pasta de spam também conta). <strong>Aberto</strong> =
+    abertura confirmada (as imagens foram carregadas) — não é o mesmo que lido.</p>
+    <p>O rastreio existe desde 23/09 (entrega 22:18 · abertura 23:52). E-mails anteriores aparecem como
+    <em> sem rastreio</em>: não dá para saber, o que é diferente de "não aberto".</p>
+  </>,
   inteiroTeor: <>
     <p>A <strong>peça de inteiro teor</strong> é o PDF da decisão judicial completa,
     guardado no servidor junto ao pedido.</p>

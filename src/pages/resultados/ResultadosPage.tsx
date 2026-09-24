@@ -30,7 +30,7 @@ import './ResultadosPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 // Reaproveita estilos do dialog Atualizar (timeline, update-section, anexo, etc).
 import '../protocolados/ProtocoladosPage.css';
-import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor , cabecalhoComHint, colunaOrigem, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar, colunaInteiroTeor, colunaEmailOrgao , cabecalhoComHint, colunaOrigem, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -722,6 +722,7 @@ const kpis = useMemo(() => {
           {colunaComarca()}
           {colunaCadastro()}
           {colunaInteiroTeor()}
+          {colunaEmailOrgao()}
           {colunaSolicitante('13rem', dataComCamposCalculados)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}

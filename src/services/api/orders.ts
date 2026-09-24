@@ -178,6 +178,12 @@ export const uploadAnexoOrder = (orderId: number, file: File, tipo: string, opco
  *  'Outro' renomeada com quem/quando trocou, e o pedido fica pronto para receber a nova. */
 export const removerInteiroTeor = (orderId: number, motivo?: string) =>
   api.post(`/orders/${orderId}/inteiro-teor/remover/`, { motivo: motivo ?? '' });
+/** #689: os e-mails do pedido ao ÓRGÃO, cada um com o estado (entregue/aberto/devolvido/sem rastreio). */
+export const getEmailsOrgao = (orderId: number) => api.get(`/orders/${orderId}/emails-orgao/`);
+/** #690: as partes da peça (ordem do PDF juntado) com tamanho, páginas e o estado da leitura. medir=false responde
+ *  na hora (sem baixar); medir=true mede o que falta (1 download por parte na vida dela). */
+export const getPartesPeca = (orderId: number, medir = true) =>
+  api.get(`/orders/${orderId}/peca/partes/?medir=${medir ? 1 : 0}`);
 export const getAnexosOrder = (orderId: number, tipo?: string) => {
   const params = tipo ? `?tipo=${tipo}` : '';
   return api.get(`/orders/${orderId}/anexos/${params}`);

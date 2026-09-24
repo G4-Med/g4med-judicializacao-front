@@ -29,7 +29,7 @@ import './SegredoJusticaPage.css';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { PrimeiraVisitaInfo } from '../../components/PrimeiraVisitaInfo/PrimeiraVisitaInfo';
 import { CabecalhoFase } from '../../components/CabecalhoFase/CabecalhoFase';
-import { colunaSolicitante, tagTipoPaciente, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar , cabecalhoComHint, colunaInteiroTeor, colunaOrigem, colunaSegredo, filtroMaiorQue, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
+import { colunaSolicitante, tagTipoPaciente, colunaCnj, colunaSei, colunaComarca, colunaCadastro, FILTROS_IDENTIFICACAO, nomeComCopiar , cabecalhoComHint, colunaInteiroTeor, colunaEmailOrgao, colunaOrigem, colunaSegredo, filtroMaiorQue, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
@@ -665,6 +665,7 @@ useEffect(() => { carregarDados(); }, [fila, versaoDados]);
           {colunaComarca()}
           {colunaCadastro()}
           {colunaInteiroTeor()}
+          {colunaEmailOrgao()}
           {colunaSolicitante('13rem', dataComCamposCalculados)}
           {colunaBaixarOrcamento()}
           {colunaEmpenhoEstado()}

@@ -1,0 +1,10 @@
+/* #689 — coluna "E-mail ao órgão" e a janela com os e-mails do pedido. */
+.eo-celula { display: inline-flex; }
+.eo-botao { background: transparent; border: 0; padding: 0; cursor: pointer; display: inline-flex; flex-direction: column; align-items: flex-start; gap: .15rem; font: inherit; text-align: left; }
+.eo-botao .p-tag { white-space: nowrap; }
+.eo-tipo { color: var(--mc-ink-2, #6b7280); font-size: .72rem; }
+.eo-tabela { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.eo-tabela th, .eo-tabela td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--mc-border, #e5e7eb); vertical-align: middle; }
+.eo-para { word-break: break-all; color: var(--mc-ink-2, #6b7280); }
+.eo-nota { margin-top: .8rem; font-size: .8rem; color: var(--mc-ink-2, #6b7280); line-height: 1.4; }
+.eo-erro { color: #b91c1c; }

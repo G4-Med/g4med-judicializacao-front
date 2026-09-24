@@ -7,3 +7,16 @@
 .pit__linha { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .pit__aviso { display: block; color: #1e3a8a; }
 .pit__carregando { margin: 0; color: var(--mc-ink-2, #6b7280); }
+/* #690 — cada parte com páginas, tamanho, leitura e o botão Ver. */
+.pit__partes { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: .4rem; }
+.pit__parte { border: 1px solid var(--mc-border, #e5e7eb); border-radius: 6px; padding: .45rem .6rem; display: flex; flex-direction: column; gap: .15rem; }
+.pit__parte-cab { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; font-size: .9rem; }
+.pit__parte-meta { color: var(--mc-ink-2, #4b5563); flex: 1; min-width: 12rem; }
+.pit__parte-nome { color: var(--mc-ink-2, #6b7280); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pit__leitura { font-size: .8rem; }
+.pit__leitura--lida { color: #15803d; }
+.pit__leitura--na_fila, .pit__leitura--lendo { color: #1d4ed8; }
+.pit__leitura--parcial { color: #b45309; }
+.pit__leitura--erro, .pit__erro { color: #b91c1c; }
+.pit__leitura--copia, .pit__leitura--nunca { color: var(--mc-ink-2, #6b7280); }
+.pit__visor { display: block; width: 100%; height: min(80vh, 900px); border: 0; }
