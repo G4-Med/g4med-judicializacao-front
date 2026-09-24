@@ -37,6 +37,7 @@ import { useFichaPedido } from '../../components/FichaPedido/FichaPedidoContext'
 import { AbaPendenciasJuridicas, usePendenciasAbertas, usePendenciasParaAgir } from '../../components/PendenciaJuridica/PendenciaJuridica';
 import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
 import { AvisoEmailsJuridico } from '../emailsJuridico/EmailsJuridicoPage';
+import { EmailsARevisar } from '../../components/RevisarEmail/EmailsARevisar';
 
 // Meta desta fase (triagem jurídica) — espelha backend/funil.py FASES['triagem'].meta_dias.
 // "a análise sai no dia seguinte — libera para mim até meio-dia" (fala do @R na reunião).
@@ -500,6 +501,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
       </div>
       </PainelKpis>
 
+      <EmailsARevisar onMudou={carregarDados} />
       <div className="card">
         <h2 className="mc-tabela-titulo">
           <i className="pi pi-table" />Pedidos aguardando triagem jurídica

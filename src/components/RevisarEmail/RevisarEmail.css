@@ -1,0 +1,51 @@
+/* #712 — modal de revisão do e-mail pendente: texto à esquerda, porquê/checagem/histórico à direita */
+.revisar-email { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 1rem; }
+.revisar-email__texto { display: flex; flex-direction: column; gap: .35rem; }
+.revisar-email__texto label { font-size: .78rem; font-weight: 600; color: #475569; margin-top: .35rem; }
+.revisar-email__corpo { font-family: inherit; font-size: .9rem; line-height: 1.45; }
+.revisar-email__acoes-texto { display: flex; gap: .5rem; margin-top: .4rem; }
+.revisar-email__ia { margin-top: .8rem; padding: .7rem; border: 1px dashed #c4b5fd; border-radius: 8px; background: #faf5ff; }
+.revisar-email__ia-linha { display: flex; gap: .5rem; margin-top: .3rem; }
+.revisar-email__proposta { margin-top: .6rem; padding: .6rem; background: #fff; border: 1px solid #ddd6fe; border-radius: 6px; }
+.revisar-email__proposta-cab { font-size: .75rem; font-weight: 700; color: #6d28d9; margin-bottom: .3rem; }
+.revisar-email__proposta pre { white-space: pre-wrap; font-family: inherit; font-size: .85rem; margin: .3rem 0; max-height: 18rem; overflow: auto; }
+.revisar-email__obs { font-size: .8rem; color: #5b21b6; margin-bottom: .3rem; }
+.revisar-email__lado { display: flex; flex-direction: column; gap: .75rem; }
+.revisar-email__bloco { border: 1px solid #e2e8f0; border-radius: 8px; padding: .65rem .8rem; background: #fff; }
+.revisar-email__bloco h4, .revisar-email__texto h4 { margin: 0 0 .45rem; font-size: .92rem; }
+.revisar-email__bloco dl { display: grid; grid-template-columns: max-content 1fr; gap: .2rem .6rem; margin: 0; font-size: .85rem; }
+.revisar-email__bloco dt { color: #64748b; }
+.revisar-email__bloco dd { margin: 0; }
+.revisar-email__just { white-space: pre-wrap; }
+.revisar-email__aviso { grid-column: 1 / -1; color: #b45309; font-weight: 600; }
+.revisar-email__fase { margin-top: .45rem; font-size: .82rem; color: #334155; }
+.revisar-email__check { display: flex; gap: .5rem; align-items: flex-start; font-size: .84rem; padding: .3rem 0; border-bottom: 1px dotted #e2e8f0; }
+.revisar-email__check:last-child { border-bottom: 0; }
+.revisar-email__check--ok i { color: #16a34a; }
+.revisar-email__check--atencao i { color: #d97706; }
+.revisar-email__check--problema i { color: #dc2626; }
+.revisar-email__check--problema { background: #fef2f2; }
+.revisar-email__como { color: #475569; font-size: .8rem; margin-top: .15rem; }
+.revisar-email__hist { list-style: none; margin: 0; padding: 0; font-size: .8rem; max-height: 14rem; overflow: auto; }
+.revisar-email__hist li { padding: .15rem 0; }
+.revisar-email__hist span { color: #64748b; margin-right: .3rem; }
+.revisar-email__hist em { color: #94a3b8; }
+.revisar-email__rodape { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem;
+  border-top: 1px solid #e2e8f0; padding-top: .7rem; }
+.revisar-email__enviar { display: flex; align-items: flex-end; gap: .7rem; }
+.revisar-email__bloqueio { max-width: 34rem; font-size: .82rem; color: #7f1d1d; background: #fef2f2; border: 1px solid #fca5a5;
+  border-radius: 6px; padding: .45rem .6rem; display: flex; flex-direction: column; gap: .3rem; }
+.revisar-email__forcar { display: flex; gap: .35rem; align-items: center; font-weight: 600; }
+.revisar-email__cancelar { display: flex; gap: .5rem; align-items: center; }
+.revisar-email__erro { color: #b91c1c; font-size: .85rem; margin: .3rem 0; }
+.revisar-email__tag-erro { font-size: .72rem; background: #fee2e2; color: #991b1b; border-radius: 4px; padding: 0 .35rem; margin-left: .4rem; }
+.revisar-email__vazio { color: #94a3b8; font-size: .85rem; }
+@media (max-width: 900px) { .revisar-email { grid-template-columns: 1fr; } }
+
+/* a faixa "E-mails a revisar" das fases 1-2-3 */
+.emails-a-revisar { margin: .5rem 0 .75rem; padding: .5rem .75rem; border-radius: 6px; background: #eff6ff; border: 1px solid #bfdbfe;
+  font-size: .88rem; display: flex; flex-wrap: wrap; gap: .4rem .6rem; align-items: center; }
+.emails-a-revisar b { color: #1e3a8a; }
+.emails-a-revisar__item { border: 1px solid #93c5fd; background: #fff; border-radius: 999px; padding: .1rem .55rem; cursor: pointer; font-size: .8rem; }
+.emails-a-revisar__item--problema { border-color: #fca5a5; background: #fef2f2; color: #991b1b; }
+.emails-a-revisar__item:hover { background: #dbeafe; }

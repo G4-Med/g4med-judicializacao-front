@@ -64,8 +64,14 @@ export const getMedicosCompleto = () => api.get('client/medico-completo/lista/')
 export const getRelatorioResumido = (medicoId: number) => api.get(`/relatorios/resumido/${medicoId}/`);
 export const enviarRelatorioResumido = (medicoId: number, destinatario?: string) =>
   api.post(`/relatorios/resumido/${medicoId}/enviar/`, destinatario ? { destinatario } : {});
-export const getEmailsPendentes = (params?: { status?: string; tipoEmail?: string }) =>
+export const getEmailsPendentes = (params?: { status?: string; tipoEmail?: string; id?: number }) =>
   api.get('/orders/emails/', { params });
+// #712 (@R 24/09): revisar o e-mail pendente — salvar a edição (devolve o item com a checagem nova) e pedir à IA
+// uma PROPOSTA a partir de uma instrução (não grava, não envia; 503 com a frase quando a IA está sem crédito)
+export const salvarEdicaoEmailPendente = (id: number, dados: { destinatario?: string; assunto?: string; corpo?: string }) =>
+  api.post(`/orders/emails/${id}/editar/`, dados);
+export const editarEmailPendenteComIA = (id: number, instrucao: string) =>
+  api.post(`/orders/emails/${id}/editar-ia/`, { instrucao });
 export const getEmailsPendentesKpis = () => api.get('/orders/emails/kpis/');
 
 /** BAIXAR ANEXO — precisa passar pelo axios, ¬por <a href> (cicatriz @R 18/09).
@@ -122,6 +128,10 @@ export const enviarEmailDireto = (payload: {
   assunto: string;
   corpo: string;
   anexoUrl?: string;
+  confirmarContradicao?: boolean;
+  /** #712: enviar apesar de um PROBLEMA na checagem — só com motivo, que fica registrado */
+  forcar?: boolean;
+  motivo?: string;
 }) => api.post('/emails/enviar/', payload);
 export const getConfiguracoesEmails = () => api.get('/emails/configuracoes/');
 export const salvarConfiguracaoEmail = (payload: {

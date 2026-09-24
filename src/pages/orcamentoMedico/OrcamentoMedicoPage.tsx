@@ -28,6 +28,7 @@ import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { listarBaterValores } from '../../services/api/baterValores';
 import { SeloExame, AvisoExames, type ExameSolicitado } from '../../components/ExameSolicitado/ExameSolicitado';
+import { EmailsARevisar } from '../../components/RevisarEmail/EmailsARevisar';
 import { atualizarOrder, getOrcamentoMedico, salvarOrcamentoMedico, getAnexosOrder, uploadAnexoOrder, getMedicosCompleto, aplicarStatusOrcamentoManual, trocarMedicoOrcamento } from '../../services/api/orders';
 import { getBaseOrcamento, getStatusOrcamentoPersonalizado, criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { EnviarOrcamentoDialog } from './EnviarOrcamentoDialog';
@@ -647,6 +648,7 @@ ${blocos}
       </div>
 
       <AvisoExames linhas={dataComMedico} onAbrirEmails={() => navigate('/emails')} />
+      <EmailsARevisar onMudou={carregarDados} />
       <ListagemPorMedico visible={porMedicoVisible} onHide={() => setPorMedicoVisible(false)} onMudou={carregarDados} />
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid">

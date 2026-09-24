@@ -437,6 +437,7 @@ body.dark-theme .linha-negado-sem-medico > td { background: rgba(220, 38, 38, 0.
 .selo-exame--aguardando { background: #e0f2fe; color: #075985; }
 .selo-exame--retorno { background: #16a34a; color: #fff; }
 .selo-exame--visto { background: #f1f5f9; color: #475569; }
+.selo-exame--clicavel { cursor: pointer; text-decoration: underline dotted; }
 .selo-exame__visto { border: 0; border-radius: 3px; padding: 0 .35rem; font-size: .7rem; font-weight: 700; cursor: pointer;
   background: #fff; color: #166534; text-transform: none; }
 .aviso-exames { margin: .5rem 0 .75rem; display: grid; gap: .35rem; }

@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { marcarRetornoExameVisto } from '../../services/api/orders';
+import { RevisarEmail } from '../RevisarEmail/RevisarEmail';
 
 /** #708 (@R 24/09): pedido de exame e o retorno dele (back exame_solicitado.py). Usado nas telas 2 e 3 — medido 24/09,
  *  4 dos 5 pedidos com exame em aberto estavam na fase 2 (entre eles o #607, com retorno da SES desde 31/08). */
@@ -22,6 +24,7 @@ const _dm = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString('pt
 /** O selo na linha do paciente. Vermelho = o e-mail não saiu (ninguém responde o que não chegou); azul = saiu e espera;
  *  verde = o retorno chegou e ninguém viu ainda (botão "vi"); cinza = retorno já visto. */
 export function SeloExame({ r, onVisto }: { r: ComExame; onVisto: () => void }) {
+  const [revisar, setRevisar] = useState<number | null>(null);   // #712: o vermelho abre o e-mail parado para revisar e enviar
   const x = r.exameSolicitado;
   if (!x) return null;
   const porVer = x.estado === 'RETORNO' && x.retornosNaoVistos > 0;
@@ -41,7 +44,9 @@ export function SeloExame({ r, onVisto }: { r: ComExame; onVisto: () => void }) 
     u?.vistoPor ? `Visto por ${u.vistoPor}` : null,
   ].filter(Boolean).join('\n');
   return (
-    <span className={`selo-exame ${classe}`} title={dica}>
+    <span className={`selo-exame ${classe}${x.estado === 'NAO_SAIU' ? ' selo-exame--clicavel' : ''}`}
+      title={x.estado === 'NAO_SAIU' ? `${dica}\nClique para revisar e enviar o e-mail.` : dica}
+      onClick={x.estado === 'NAO_SAIU' ? (e) => { e.stopPropagation(); setRevisar(x.emailId); } : undefined}>
       {texto}
       {porVer && (
         <button type="button" className="selo-exame__visto" title="Marcar que você viu o retorno — o selo verde sai"
@@ -49,6 +54,7 @@ export function SeloExame({ r, onVisto }: { r: ComExame; onVisto: () => void }) 
           vi
         </button>
       )}
+      {revisar != null && <RevisarEmail emailId={revisar} onClose={() => setRevisar(null)} onMudou={onVisto} />}
     </span>
   );
 }

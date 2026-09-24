@@ -24,6 +24,7 @@ import {
 } from '../../services/api/orders';
 import { getPrecosDoMedico } from '../../services/api/orders';
 import { SeloExame, AvisoExames, type ExameSolicitado } from '../../components/ExameSolicitado/ExameSolicitado';
+import { EmailsARevisar } from '../../components/RevisarEmail/EmailsARevisar';
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
@@ -585,6 +586,7 @@ export function SelecionarMedicoPage() {
       </PainelKpis>
 
       <AvisoExames linhas={processos} onAbrirEmails={() => { window.location.href = `${import.meta.env.BASE_URL}emails`; }} />
+      <EmailsARevisar onMudou={carregarDados} />
       <div className="card">
         <h2 className="mc-tabela-titulo"><i className="pi pi-table" />Pedidos aguardando seleção de médico</h2>
           <AcoesTabela filtros={filters} aoMudarFiltros={setFilters}>

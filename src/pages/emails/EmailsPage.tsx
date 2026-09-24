@@ -24,6 +24,7 @@ import {
 import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import './EmailsPage.css';
+import { RevisarEmail, type ItemChecagem, type Porque } from '../../components/RevisarEmail/RevisarEmail';
 import { PainelKpis } from '../../components/PainelKpis/PainelKpis';
 import { cabecalhoComHint, filtroMaiorQue } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { FiltroTexto } from '../../components/Tabela/FiltroTexto';
@@ -49,7 +50,16 @@ interface EmailPendente {
   statusPerda?: string | null;
   grupoEtario?: string | null;
   contradicao?: string | null;
+  /* #712 (@R 24/09): o porquê, a checagem "para ficar 100% certo" e o bloqueio — vêm do servidor */
+  porque?: Porque | null;
+  checagem?: ItemChecagem[];
+  podeEnviar?: boolean;
+  bloqueio?: string | null;
 }
+
+/** #712: perda e pedido de exames abrem o modal de revisão (porquê + checagem + histórico + editar/IA); o orçamento à SES
+ *  segue no modal antigo, que tem as ferramentas de anexo (e esse envio já passa pela 3,1). */
+const TIPOS_REVISAO = new Set(['DAR_PERDA', 'PEDIR_EXAMES', 'PEDIDO_EXAMES_PEDIATRICO']);
 
 interface EmailPendenteTableRow extends EmailPendente {
   sequencial: number;
@@ -286,6 +296,12 @@ export function EmailsPage() {
     };
   };
 
+  const [revisarId, setRevisarId] = useState<number | null>(null);
+  const abrirEmail = (rowData: EmailPendenteTableRow) => {
+    if (TIPOS_REVISAO.has(rowData.tipoEmail)) { setRevisarId(rowData.id); return; }
+    void abrirDialogEmail(rowData);
+  };
+
   const abrirDialogEmail = async (rowData: EmailPendenteTableRow) => {
     const template = templatesEmails[rowData.tipoEmail];
     const destinatario = rowData.destinatario ?? '';
@@ -460,6 +476,7 @@ export function EmailsPage() {
     for (const row of selectedEmails) {
       // @R 22/09: e-mail que contradiz a fase do pedido NUNCA sai em massa — só um a um, confirmando.
       if (row.contradicao) { contraditos += 1; continue; }
+      if (row.podeEnviar === false) { contraditos += 1; continue; }   // #712: checagem com PROBLEMA não sai em massa
       try {
         const payload = await construirPayloadEmail(row);
         if (!payload.destinatario.trim() || !payload.assunto.trim() || !payload.corpo.trim()) {
@@ -519,6 +536,7 @@ export function EmailsPage() {
       await carregarDados();
     } catch (err: any) {
       const mensagemErro =
+        err?.response?.data?.bloqueio ??   // #712: o 409 da checagem diz POR QUE não saiu
         err?.response?.data?.error ??
         err?.response?.data?.message ??
         'Erro ao enviar email.';
@@ -585,7 +603,7 @@ export function EmailsPage() {
         tooltip="Ver o e-mail (destinatário, assunto, texto e anexos) antes de enviar"
         tooltipOptions={{ position: 'top' }}
         disabled={enviandoId !== null}
-        onClick={() => void abrirDialogEmail(rowData)}
+        onClick={() => abrirEmail(rowData)}
       />
       <Button
         label={enviandoId === rowData.id ? 'Enviando...' : 'Enviar Email'}
@@ -593,7 +611,7 @@ export function EmailsPage() {
         size="small"
         loading={enviandoId === rowData.id}
         disabled={enviandoId !== null}
-        onClick={() => void abrirDialogEmail(rowData)}
+        onClick={() => abrirEmail(rowData)}
       />
       <Button
         icon="pi pi-ban"
@@ -791,6 +809,35 @@ export function EmailsPage() {
             filterElement={(options) => filterElement(options, 'Buscar')}
             body={(r: EmailPendenteTableRow) => r.grupoEtario ?? <span style={{ color: '#94a3b8' }}>sem data de nascimento</span>}
             style={{ minWidth: '9rem' }}
+          />
+
+          <Column
+            header={cabecalhoComHint('Por quê', 'Por que este e-mail existe: o motivo da perda ou do pedido de exames, como o servidor registrou. Vazio em perda = ninguém escreveu o porquê.')}
+            body={(r: EmailPendenteTableRow) => {
+              const p = r.porque;
+              const t = p?.motivo || p?.justificativa || p?.categoria;
+              return t ? <span title={[p?.motivo, p?.categoria, p?.justificativa].filter(Boolean).join('\n')}>{t.length > 70 ? `${t.slice(0, 70)}…` : t}</span>
+                : <span style={{ color: r.tipoEmail === 'DAR_PERDA' ? '#b45309' : '#94a3b8' }}>{r.tipoEmail === 'DAR_PERDA' ? 'sem porquê registrado' : '—'}</span>;
+            }}
+            style={{ minWidth: '14rem' }}
+          />
+
+          <Column
+            header={cabecalhoComHint('Checagem', 'O que o servidor conferiu antes do envio (destinatário, fase do pedido, texto, repetição, nº do processo no assunto). Vermelho não sai sem motivo.')}
+            body={(r: EmailPendenteTableRow) => {
+              const c = r.checagem ?? [];
+              if (!c.length) return <span style={{ color: '#94a3b8' }}>—</span>;
+              const pr = c.filter((x) => x.estado === 'PROBLEMA').length; const at = c.filter((x) => x.estado === 'ATENCAO').length;
+              const dica = c.filter((x) => x.estado !== 'OK').map((x) => `${x.item}: ${x.texto}`).join('\n') || 'tudo ok';
+              return (
+                <span title={dica} style={{ display: 'inline-flex', gap: '.3rem', cursor: 'pointer' }} onClick={() => abrirEmail(r)}>
+                  {pr > 0 && <Tag severity="danger" value={`${pr} problema(s)`} />}
+                  {at > 0 && <Tag severity="warning" value={`${at} atenção`} />}
+                  {!pr && !at && <Tag severity="success" value="ok" />}
+                </span>
+              );
+            }}
+            style={{ minWidth: '10rem' }}
           />
 
           <Column
@@ -1008,6 +1055,7 @@ export function EmailsPage() {
           <Button label="Fechar" onClick={() => setPreviewVisible(false)} />
         </div>
       </Dialog>
+      <RevisarEmail emailId={revisarId} onClose={() => setRevisarId(null)} onMudou={() => { void carregarDados(); }} />
     </div>
   );
 }
