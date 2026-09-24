@@ -31,6 +31,7 @@ import { colunaSolicitante, colunaSegredo, colunaCnj, colunaSei, colunaComarca, 
 import { BotaoExportarExcel } from '../../components/BotaoExportarExcel/BotaoExportarExcel';
 import { AcoesTabela } from '../../components/AcoesTabela/AcoesTabela';
 import { useColunasVisiveis } from '../../components/ColunasVisiveis/useColunasVisiveis';
+import { colunaMenorOrcamento } from '../../components/QuemPrecisamos/colunasMatch';
 import { FILTRO_PAGAMENTO, colunaEmpenhoEstado, colunaPagoEm, colunaDiferenca, colunaBaixarOrcamento } from '../../components/ColunasEmpenho/colunasEmpenho';
 import { ExpansorPedido } from '../../components/ExpansorPedido/ExpansorPedido';
 import { colunaRepedido, rowClassRepedido } from '../../components/Repedido/repedido';
@@ -891,6 +892,9 @@ const handleConfirmarProtocolacao = async () => {
             body={precoBodyTemplate}
             style={{ minWidth: '10rem' }}
           />
+          {/* @R 24/09 03:37: o menor orçamento do processo também na fase 4, ao lado do NOSSO, com a diferença
+              quando o nosso é maior. */}
+          {colunaMenorOrcamento('11rem', (r: any) => r?.valor)}
           <Column
             field="dataEnvioOrcamento"
             header={cabecalhoComHint('Data Envio Orçamento', 'Data em que o orçamento foi enviado ao Estado.')}

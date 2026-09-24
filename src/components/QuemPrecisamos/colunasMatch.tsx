@@ -99,7 +99,12 @@ export function colunaOportunidade(largura = '9rem') {
  * pela IA para ir no pedido — o mesmo "valor de referência" da mensagem do Copiar (servidor:
  * ia/match_pedido._menores_orcamentos). Valor com o nome do orçamento; vazio diz o porquê.
  */
-export function colunaMenorOrcamento(largura = '10rem') {
+/**
+ * `nosso` (fase 4, @R 24/09 03:37: ⟦"caso o nosso orçamento seja maior ele indica a diferença"⟧): lê o valor
+ * do NOSSO orçamento na linha. A diferença é contra o valor ORIGINAL do concorrente — o desconto do link é só
+ * o que o médico vê; na fase 4 a pergunta é "estamos mais caros que o orçamento que está no processo?".
+ */
+export function colunaMenorOrcamento(largura = '10rem', nosso?: (r: any) => number | null | undefined) {
   return (
     <Column key="col-menor-orcamento" field="menorOrcamento.valor" sortable style={{ minWidth: largura, maxWidth: '14rem' }}
       header={cabecalhoComHint('Menor orç. proc.',
@@ -113,6 +118,14 @@ export function colunaMenorOrcamento(largura = '10rem') {
           <div className="match-pago" title={`${m.local || 'prestador não identificado'} · original ${reais(m.original)} · menor entre ${m.n} aprovado(s) pela IA${m.ressalva ? ' · a IA aprovou COM RESSALVA' : ''}`}>
             <span className="match-valor">{reais(m.valor)}</span>
             <span className="match-origem" style={{ whiteSpace: 'normal' }}>{m.local || 'prestador não identificado'}{m.ressalva ? ' · com ressalva' : ''}</span>
+            {nosso && (() => {
+              const n = Number(nosso(r));
+              if (!(n > 0) || !(m.original > 0)) return null;
+              const dif = n - m.original;
+              if (dif <= 0) return <span className="match-dif match-dif--ok" title={`Nosso orçamento ${reais(n)} não passa o menor do processo (${reais(m.original)}, valor original).`}>nosso não é maior</span>;
+              return <span className="match-dif match-dif--acima" title={`Nosso orçamento ${reais(n)} contra o menor do processo ${reais(m.original)} (valor original, sem o desconto do link).`}>
+                nosso +{reais(dif)} ({Math.round((dif / m.original) * 100)}%)</span>;
+            })()}
           </div>
         );
       }} />

@@ -9,3 +9,6 @@
 .match-motivo { font-size: 0.72rem; font-style: italic; white-space: normal; line-height: 1.25; }
 .match-origem { font-size: 0.68rem; color: #6b7280; }
 .match-origem-projetado { color: #b45309; }
+.match-dif { font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
+.match-dif--acima { color: #b91c1c; }
+.match-dif--ok { color: #15803d; font-weight: 500; }
