@@ -33,14 +33,15 @@ const ROTULO_TIPO: Record<string, string> = {
 
 /** Rótulo do filtro de Quem precisamos (@R 24/09 02:53: "filtrar o nome"). */
 export const rotuloQuem = (m: any): string | null => {
-  if (!m) return null;                                       // não calculado → "(sem preenchimento)"
+  if (!m) return 'Não calculado';
   if (m.erro || m.temos == null) return 'Leitura falhou';
-  return m.temos ? `Temos: ${m.medicoNome}` : `Procurar · ${m.especialidade || 'sem especialidade'}`;
+  // maiúsculas: a IA escreve "Cirurgia Geral" e "CIRURGIA GERAL" — é a mesma opção no filtro
+  return m.temos ? `Temos: ${m.medicoNome}` : `Procurar · ${(m.especialidade || 'sem especialidade').toUpperCase()}`;
 };
 
 /** Rótulo do filtro de Link e acessos (@R 24/09 02:53: "com acessos, sem acessos"). */
 export const rotuloAcessos = (l: any): string | null => {
-  if (!l) return null;                                       // sem link enviado → "(sem preenchimento)"
+  if (!l) return 'Sem link';                                 // nenhum link enviado deste pedido
   return l.acessos > 0 ? 'Com acessos' : 'Sem acessos';
 };
 
