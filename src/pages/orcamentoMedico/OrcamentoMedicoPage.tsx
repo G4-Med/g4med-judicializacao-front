@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { StatusClicavel } from '../../components/StatusClicavel/StatusClicavel';
 import { useNavigate } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgencia';
@@ -28,7 +29,6 @@ import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { listarBaterValores } from '../../services/api/baterValores';
 import { atualizarOrder, getOrcamentoMedico, salvarOrcamentoMedico, getAnexosOrder, uploadAnexoOrder, getMedicosCompleto, aplicarStatusOrcamentoManual, trocarMedicoOrcamento } from '../../services/api/orders';
 import { getBaseOrcamento, getStatusOrcamentoPersonalizado, criarStatusOrcamentoPersonalizado } from '../../services/api/client';
-import { getStatusTagStyle } from '../../utils/statusTag';
 import { EnviarOrcamentoDialog } from './EnviarOrcamentoDialog';
 import { DialogAbrirPendencia, DialogRetornosDoJuridico, usePendenciasParaAgir } from '../../components/PendenciaJuridica/PendenciaJuridica';
 import { useAccess } from '../../access/AccessContext';
@@ -980,7 +980,7 @@ ${blocos}
           <Column field="statusOrcamento" header={cabecalhoComHint('Status', 'O que está acontecendo dentro da fase (statusOrcamento). O lápis abre o leque desta fase e permite criar um status novo nela.')}
             body={(r) => (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '.35rem' }}>
-                <Tag value={r.statusOrcamento} style={getStatusTagStyle(r.statusOrcamento)} className="status-tag-custom" />
+                <StatusClicavel valor={r.statusOrcamento} campo="statusOrcamento" orderId={r.id} />
                 <i className="pi pi-pencil" title="Mudar o status nesta fase"
                    style={{ cursor: 'pointer', opacity: .55, fontSize: '.8rem' }}
                    onClick={(e) => { e.stopPropagation(); setPedidoStatus({ id: r.id, status: r.statusOrcamento }); }} />

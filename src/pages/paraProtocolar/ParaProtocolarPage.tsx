@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
+import { StatusClicavel } from '../../components/StatusClicavel/StatusClicavel';
 import { DataTable } from 'primereact/datatable';
 import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgencia';
 import type {
@@ -280,7 +281,7 @@ export function ParaProtocolarPage() {
   const diasBodyTemplate = (rowData: ParaProtocolarTableRow) => <span className="dias-cell">{rowData.dias}</span>;
 
   const statusBodyTemplate = (rowData: ParaProtocolarTableRow) => (
-    <Tag value={rowData.status} style={getStatusTagStyle(rowData.status)} className="status-tag-custom" />
+    <StatusClicavel valor={rowData.status} campo="statusProcesso" orderId={rowData.id} />
   );
 
   const abrirPreview = (url: string, nome: string, tipo: 'pdf' | 'imagem' | 'outro') => {

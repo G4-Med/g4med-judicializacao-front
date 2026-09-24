@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
+import { StatusClicavel } from '../../components/StatusClicavel/StatusClicavel';
 import { DataTable } from 'primereact/datatable';
 import type {
   DataTableFilterMeta,
@@ -293,11 +294,7 @@ export function PerdasPage() {
   );
 
   const statusPerdaBodyTemplate = (rowData: PerdaProcessoTableRow) => (
-    <Tag
-      value={rowData.statusPerda}
-      style={getStatusTagStyle(rowData.statusPerda)}
-      className="status-tag-custom"
-    />
+    <StatusClicavel valor={rowData.statusPerda} campo="statusPerda" orderId={rowData.id} />
   );
 
   const filterElement = (options: any, placeholder: string) => {

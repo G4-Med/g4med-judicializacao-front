@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { StatusClicavel } from '../../components/StatusClicavel/StatusClicavel';
 import { DataTable } from 'primereact/datatable';
 import type {
   DataTableFilterMeta,
@@ -15,7 +16,6 @@ import { Dialog } from 'primereact/dialog';
 import { Timeline } from 'primereact/timeline';
 import { getProtocolados, salvarResultadoProtocolado, adicionarAcompanhamento, getAnexosOrder, uploadAnexoOrder, getMedicosCompleto } from '../../services/api/orders';
 import { InputNumber } from 'primereact/inputnumber';
-import { getStatusTagStyle } from '../../utils/statusTag';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import { useAccess } from '../../access/AccessContext';
 import './ProtocoladosPage.css';
@@ -400,7 +400,7 @@ export function ProtocoladosPage() {
   const precoBodyTemplate = (rowData: ProtocoladoTableRow) => formatarMoeda(rowData.valor);
   const diasBodyTemplate = (rowData: ProtocoladoTableRow) => <span className="dias-cell">{rowData.dias}</span>;
   const statusBodyTemplate = (rowData: ProtocoladoTableRow) => (
-    <Tag value={rowData.status} style={getStatusTagStyle(rowData.status)} className="status-tag-custom" />
+    <StatusClicavel valor={rowData.status} campo="statusProcesso" orderId={rowData.id} />
   );
   const resultadoBodyTemplate = (rowData: ProtocoladoTableRow) => (
     <Tag value={rowData.resultado} severity={getResultadoSeverity(rowData.resultado)} />

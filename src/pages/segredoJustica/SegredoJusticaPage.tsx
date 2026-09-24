@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { StatusClicavel } from '../../components/StatusClicavel/StatusClicavel';
 import { useSearchParams } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import type {
@@ -22,7 +23,6 @@ import {
   getCandidatosSegredoJustica, marcarSegredoJusticaRetroativo, desmarcarSegredoJustica,
 } from '../../services/api/orders';
 import { Dialog } from 'primereact/dialog';
-import { getStatusTagStyle } from '../../utils/statusTag';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import { useAccess } from '../../access/AccessContext';
 import './SegredoJusticaPage.css';
@@ -277,7 +277,7 @@ useEffect(() => { carregarDados(); }, [fila, versaoDados]);
   const precoBodyTemplate = (rowData: SegredoJusticaTableRow) => formatarMoeda(rowData.valor);
   const diasBodyTemplate = (rowData: SegredoJusticaTableRow) => <span className="dias-cell">{rowData.dias}</span>;
   const statusBodyTemplate = (rowData: SegredoJusticaTableRow) => (
-    <Tag value={rowData.statusProcesso} style={getStatusTagStyle(rowData.statusProcesso)} className="status-tag-custom" />
+    <StatusClicavel valor={rowData.statusProcesso} campo="statusProcesso" orderId={rowData.id} />
   );
   const atualizarBodyTemplate = (rowData: SegredoJusticaTableRow) => {
     return (

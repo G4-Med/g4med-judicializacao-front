@@ -133,3 +133,26 @@ body.dark-theme .fic__situacao-novo { color: #7fb2ff; }
 .fic__rubricas p{grid-column:1/-1}
 
 .fic__badge-refeita { margin-left: .4rem; padding: 0 .4rem; border-radius: .3rem; background: #FFEDD5; color: #7C2D12; font-size: .72rem; letter-spacing: .03em; }
+
+/* ── #682 (@R 23/09 17:01): Ficha em seções numeradas, fechadas ao abrir ─────────
+   Cabeçalho = número + título + resumo de 1 linha. Os botões de ação da seção só
+   aparecem com o mouse em cima ou com o foco dentro dela (teclado chega neles pelo
+   Tab: :focus-within os mostra). Em tela de toque, sem hover, ficam sempre à vista. */
+.fic__sec{border:1px solid #e5e7eb;border-radius:8px;margin-bottom:.6rem;background:#fff}
+.fic__sec[open]{border-color:#cbd5e1}
+.fic__sec-cab{display:flex;align-items:baseline;gap:.6rem;padding:.6rem .9rem;cursor:pointer;list-style:none;flex-wrap:wrap}
+.fic__sec-cab::-webkit-details-marker{display:none}
+.fic__sec-cab::after{content:'▸';margin-left:auto;color:#94a3b8;transition:transform .15s}
+.fic__sec[open]>.fic__sec-cab::after{transform:rotate(90deg)}
+.fic__sec-cab:hover{background:#f8fafc}
+.fic__sec-cab:focus-visible{outline:2px solid #0A3D62;outline-offset:-2px}
+.fic__sec-n{display:inline-grid;place-items:center;min-width:1.5rem;height:1.5rem;border-radius:999px;background:#0A3D62;color:#fff;font-size:.78rem;font-weight:700}
+.fic__sec-resumo{color:#64748b;font-size:.86rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60ch}
+.fic__sec-corpo{padding:0 .9rem .8rem}
+.fic__sec-corpo>.fic__situacao,.fic__sec--dedup .fic__sec-corpo>.fic__bloco{border:0;padding-left:0;padding-right:0;margin-bottom:.4rem}
+.fic__sec--dedup .fic__sec-corpo>.fic__bloco>.fic__fase>strong:first-child{display:none}
+.fic__sec-corpo>.fic__topo{border-bottom:0;padding-bottom:0;margin-bottom:0}
+.fic__acao-hover{opacity:0;transition:opacity .15s}
+.fic__sec:hover .fic__acao-hover,.fic__sec:focus-within .fic__acao-hover{opacity:1}
+@media (hover:none){.fic__acao-hover{opacity:1}}
+.fic__sec--dedup .fic__sec-corpo>.fic__situacao>.fic__situacao-cab>strong:first-child{display:none}

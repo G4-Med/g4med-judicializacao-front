@@ -1,0 +1,16 @@
+/* #674 — status da tabela clicável: significado, status da fase e trajetória */
+.stc__botao{all:unset;cursor:pointer;display:inline-block;border-radius:6px}
+.stc__botao:hover .p-tag{filter:brightness(.95);box-shadow:0 0 0 2px rgba(10,61,98,.18)}
+.stc__botao:focus-visible{outline:2px solid #0A3D62;outline-offset:2px}
+.stc__bloco{margin-bottom:1rem}
+.stc__bloco h4{margin:0 0 .4rem;font-size:.82rem;text-transform:uppercase;letter-spacing:.04em;color:#475569}
+.stc__nota{color:#64748b;font-size:.86rem}
+.stc__erro{color:#b91c1c}
+.stc__opcoes{display:flex;flex-wrap:wrap;gap:.35rem}
+.stc__op{padding:.15rem .55rem;border-radius:999px;border:1px solid #e2e8f0;font-size:.82rem;color:#334155}
+.stc__op--atual{background:#0A3D62;border-color:#0A3D62;color:#fff;font-weight:600}
+.stc__linha{list-style:none;margin:0;padding:0 0 0 1rem;border-left:2px solid #cbd5e1}
+.stc__passo{position:relative;padding:.25rem 0 .55rem .6rem;display:flex;flex-direction:column;gap:.1rem;font-size:.9rem}
+.stc__passo::before{content:'';position:absolute;left:-1.42rem;top:.5rem;width:.7rem;height:.7rem;border-radius:999px;background:#cbd5e1}
+.stc__passo--atual::before{background:#00A651}
+.stc__passo span{color:#64748b;font-size:.84rem}

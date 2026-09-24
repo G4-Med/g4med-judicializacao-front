@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Dialog } from 'primereact/dialog';
 import { listarCandidatosCotacao, convidarCandidatoCotacao, getMedicosCompleto, conferirOrcamentoPeca, getFichaPedido, getLogAuditoria, reverterHistorico, getConteudoEmail, moverSituacao } from '../../services/api/orders';
 import { baixarAnexoEmailOriginal } from '../../services/api/emailsJuridico';
@@ -88,6 +89,22 @@ function valorLegivel(v: unknown): string {
   if (v === null || v === undefined || v === '') return '';
   if (typeof v === 'object') return JSON.stringify(v);
   return String(v);
+}
+
+/** #682: parte da Ficha — fechada ao abrir, número + título + resumo de 1 linha no cabeçalho. */
+function SecaoFicha({ n, titulo, resumo, className, children }: {
+  n: number; titulo: string; resumo?: string; className?: string; children: ReactNode;
+}) {
+  return (
+    <details className={className ?? 'fic__sec'}>
+      <summary className="fic__sec-cab">
+        <span className="fic__sec-n" aria-hidden="true">{n}</span>
+        <strong>{titulo}</strong>
+        {resumo ? <span className="fic__sec-resumo">{resumo}</span> : null}
+      </summary>
+      <div className="fic__sec-corpo">{children}</div>
+    </details>
+  );
 }
 
 export function FichaPedido({
@@ -421,6 +438,20 @@ export function FichaPedido({
     }
   };
 
+  // #682: numeração contada na ordem em que as seções aparecem (seção vazia não deixa buraco).
+  const ordemSecoes: string[] = [];
+  const prox = (chave: string) => { if (!ordemSecoes.includes(chave)) ordemSecoes.push(chave); return ordemSecoes.indexOf(chave) + 1; };
+  const resumoSituacao = dados
+    ? [dados.situacao?.faseExibida ?? dados.statusAtual, dados.situacao?.statusOrcamento, dados.situacao?.statusPerda]
+        .filter(Boolean).join(' · ') + ((dados.urgencia?.vezesPedido ?? 1) > 1 ? ` · urgência ${dados.urgencia!.vezesPedido}×` : '')
+    : '';
+  const resumoMedicos = dados
+    ? `${dados.medicoAtual?.nome ?? 'sem médico principal'}${candidatos.length ? ` · ${candidatos.length} convidado(s)` : ''}`
+    : '';
+  const resumoEmails = dados?.emails
+    ? `${dados.emails.recebidos.length} registrado(s) · ${dados.emails.originais.length} original(is)`
+    : '';
+
   return (
     <Dialog
       header={`Ficha do pedido #${orderId ?? ''}`}
@@ -433,542 +464,574 @@ export function FichaPedido({
 
       {dados && (
         <>
-          {/* SITUAÇÃO COMPLETA (@R 17/09: "na ficha não mostra a fase e os status, é
-              importante também para podermos ver e alterar corretamente caso precise").
-              Os quatro juntos porque é a COMBINAÇÃO que conta a história: "Perda" com
-              "Perda pelo Medico" é o médico que recusou; "Perda" com "Perda Pelo
-              Juridico" é decisão nossa. Ver um sem o outro fez o #1248 parecer
-              consertado quando só um dos três campos tinha voltado. */}
-          <section className="fic__situacao">
-            <header className="fic__situacao-cab">
-              <strong>Situação do pedido</strong>
-              {podeVoltarFase
-                ? <small>Alterar aqui corrige o cadastro e fica no histórico — nenhum e-mail é enviado.</small>
-                : <small>Somente leitura — seu perfil não altera a situação.</small>}
-            </header>
-            <div className="fic__situacao-grade">
-              {(['statusProcesso', 'statusJuridico', 'statusOrcamento', 'statusPerda'] as const).map((campo) => {
-                // Fase: o que a tela mostra é a fase EXIBIDA (fase 2 e 3 dividem o mesmo status;
-                // o servidor diz qual é pelo médico) — reunião 20/09, 00:38:51.
-                const atual = campo === 'statusProcesso'
-                  ? (dados.situacao?.faseExibida ?? dados.situacao?.statusProcesso ?? null)
-                  : ((dados.situacao as Record<string, string | null> | undefined)?.[campo] ?? null);
-                const opcoes = dados.situacaoOpcoes?.[campo] ?? [];
-                return (
-                  <div className="fic__situacao-item" key={campo}>
-                    <label>{rotuloCampo(campo).replace(/^(a|o) /, '')}</label>
-                    {podeVoltarFase && opcoes.length > 0 ? (
-                      <Dropdown
-                        value={atual}
-                        options={opcoes.map((o) => ({ label: o, value: o }))}
-                        onChange={(e) => mudarSituacao(campo, e.value)}
-                        placeholder="— não definido"
-                        // só statusPerda pode ficar vazio: pedido que deixou de ser perda
-                        // não tem motivo de perda. Fase vazia não é um estado que exista.
-                        showClear={campo === 'statusPerda'}
-                        disabled={mudandoCampo !== null}
-                        loading={mudandoCampo === campo}
-                        className="fic__situacao-drop"
-                      />
-                    ) : (
-                      <strong>{atual ?? '— não definido'}</strong>
-                    )}
-                    {podeVoltarFase && campo === 'statusOrcamento' && (
-                      <button
-                        type="button"
-                        className="fic__situacao-novo"
-                        onClick={criarStatusDaFase}
-                        disabled={mudandoCampo !== null}
-                        title="Criar um status novo para esta fase e aplicá-lo agora"
-                      >
-                        <i className="pi pi-pencil" /> novo status
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {dados.situacao?.dataStatusPerda && (
-              <small className="fic__situacao-nota">
-                Perda registrada em {new Date(dados.situacao.dataStatusPerda).toLocaleDateString('pt-BR')}
-                {' '}— limpar o motivo da perda também limpa esta data.
-              </small>
-            )}
-          </section>
-
-          {/* Reunião 20/09 (Fase 5): anotações INTERNAS — memória da equipe sobre o caso; nas filas
-              o nome do paciente ganha "!" enquanto houver anotação. Nunca sai para fora. */}
-          {orderId && <BlocoAnotacoes orderId={orderId} />}
-          {orderId && <BlocoLinksDocumentos orderId={orderId} />}
-          {/* #684 (@R 24/09 00:02): trocar a peça de inteiro teor ou adicionar partes (processo em volumes) pela FICHA. */}
-          {orderId && <BlocoPecaInteiroTeor orderId={orderId} />}
-
-          {/* Pedido do Fabrício (reunião 20/09): bilhete de ida e volta ao jurídico — o pedido vai para
-              a 1.1 com o que falta e volta sozinho para onde estava quando a Valéria responde. */}
-          {orderId && <BlocoPendenciaJuridica orderId={orderId} onMudou={aoMudarSituacao} />}
-          <DialogAbrirPendencia orderId={orderId ?? null} visible={pendenciaPelaSituacao}
-            onHide={() => setPendenciaPelaSituacao(false)}
-            onFeito={async () => { if (orderId) { const r = await getFichaPedido(orderId); setDados(r.data); } aoMudarSituacao?.(); }} />
-
-          <section className="fic__situacao">
-            <header className="fic__situacao-cab">
-              <strong>Médicos deste pedido</strong>
-              <small>Quem está cotando. Adicionar não tira o atual — os dois recebem o pedido.</small>
-            </header>
-            {/* Reunião 20/09 (00:31:43): "ele tem médico como hospital Santa Rita, mas aqui não
-                apareceu". O prestador PRINCIPAL agora vem no payload (medicoAtual) e abre a lista;
-                os convidados seguem abaixo. */}
-            {dados.medicoAtual ? (
-              <p style={{ margin: '.2rem 0 .4rem' }}>
-                <strong>{dados.medicoAtual.nome}</strong>
-                <small style={{ opacity: .7 }}> · principal{dados.medicoAtual.categoria ? ` · ${dados.medicoAtual.categoria.toLowerCase()}` : ''}</small>
-              </p>
-            ) : (
-              <p style={{ margin: '.2rem 0 .4rem', opacity: .7 }}>Sem médico principal (pedido em Selecionar Médico).</p>
-            )}
-            {candidatos.length === 0 && !dados.medicoAtual && (
-              <p style={{ margin: '.2rem 0 .5rem', opacity: .7 }}>
-                Nenhum médico convidado ainda por este caminho.
-              </p>
-            )}
-            {candidatos.length > 0 && (
-              <ul style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem' }}>
-                {candidatos.map((c: any) => (
-                  <li key={c.id ?? c.idMedico}>
-                    {c.nomeMedico || c.medico || `médico ${c.idMedico}`}
-                    {c.situacao ? <small style={{ opacity: .7 }}> · {c.situacao}</small> : null}
-                    {c.valorRespondido ? <small style={{ opacity: .7 }}> · R$ {c.valorRespondido}</small> : null}
-                    {c.vencedor ? <strong> · vencedor</strong> : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <select
-                className="fic__situacao-drop"
-                value={convidando ?? ''}
-                onChange={(e) => setConvidando(e.target.value ? Number(e.target.value) : null)}
-              >
-                <option value="">Adicionar outro médico ao orçamento…</option>
-                {medicosLista.map((m: any) => (
-                  <option key={m.id} value={m.id}>{m.nomeSistema || m.nomeCompleto}</option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="fic__situacao-novo"
-                disabled={!convidando || !orderId}
-                onClick={async () => {
-                  if (!convidando || !orderId) return;
-                  setErroMedico(null);
-                  try {
-                    await convidarCandidatoCotacao(orderId, convidando);
-                    setConvidando(null);
-                    await recarregarCandidatos();
-                  } catch (err: any) {
-                    setErroMedico(err?.response?.data?.error || 'Não consegui adicionar este médico.');
-                  }
-                }}
-              >
-                <i className="pi pi-user-plus" /> adicionar
-              </button>
-            </div>
-            {erroMedico && <p style={{ color: '#b91c1c', marginBottom: 0 }}>{erroMedico}</p>}
-          </section>
-
-          <div className="fic__topo">
-            <span>
-              Fase atual: <strong>{dados.statusAtual}</strong>
-            </span>
-            <span>{dados.totalArquivos} arquivo(s) no pedido</span>
-            {(dados.urgencia?.vezesPedido ?? 1) > 1 && (
-              <span className={`fic__urgencia fic__urgencia--${(dados.urgencia?.repedidosManuais ?? 0) > 0 ? 'max' : (dados.urgencia!.vezesPedido >= 3 ? 'tres' : 'dois')}`}>
-                <i className="pi pi-exclamation-triangle" aria-hidden="true" /> Urgência {dados.urgencia!.vezesPedido}×
-                {dados.urgencia?.ultimoPedidoEm && <> — último pedido em {dataHora(dados.urgencia.ultimoPedidoEm)}</>}
-                {(dados.urgencia?.repedidosManuais ?? 0) > 0 && (
-                  <> · {dados.urgencia!.repedidosManuais} cobrança(s) por telefone</>
-                )}
-              </span>
-            )}
-            {podeVoltarFase && (
-              <button type="button" className="fic__voltar" onClick={voltarFase} disabled={revertendo}>
-                {revertendo ? 'Voltando…' : '↩ Voltar para a fase anterior'}
-              </button>
-            )}
-          </div>
-
-          {dados.blocos.map((b) => (
-            <section className="fic__bloco" key={b.fase}>
-              <header className="fic__fase">
-                <strong>{b.fase}</strong>
-                <span className="fic__quando">{dataHora(b.quando)}</span>
-                {b.rastro.medido && (
-                  <span className="fic__rastro">
-                    por {b.rastro.por} em {dataHora(b.rastro.em)}
-                  </span>
-                )}
+          {/* #682 (@R 23/09 17:01): "vir todo fechado com hover os botões de ação e a ordem estar
+              coerente e numerada". Cada parte vira uma seção fechada com resumo de 1 linha; a ordem
+              segue o caminho do pedido (situação → chegada → médicos → orçamento → documentos →
+              e-mails → jurídico → anotações → histórico). O número é contado na hora, então some
+              uma seção vazia e a numeração continua sem buraco. */}
+          <SecaoFicha n={prox('situacao')} titulo="Situação do pedido" resumo={resumoSituacao} className="fic__sec">
+            {/* SITUAÇÃO COMPLETA (@R 17/09: "na ficha não mostra a fase e os status, é
+                importante também para podermos ver e alterar corretamente caso precise").
+                Os quatro juntos porque é a COMBINAÇÃO que conta a história: "Perda" com
+                "Perda pelo Medico" é o médico que recusou; "Perda" com "Perda Pelo
+                Juridico" é decisão nossa. Ver um sem o outro fez o #1248 parecer
+                consertado quando só um dos três campos tinha voltado. */}
+            <section className="fic__situacao">
+              <header className="fic__situacao-cab">
+                {podeVoltarFase
+                  ? <small>Alterar aqui corrige o cadastro e fica no histórico — nenhum e-mail é enviado.</small>
+                  : <small>Somente leitura — seu perfil não altera a situação.</small>}
               </header>
-
-              <dl className="fic__campos">
-                {b.campos.map((c, i) => (
-                  <div key={`${b.fase}-${i}`} className={c.preenchido ? '' : 'fic__vazio'}>
-                    <dt>{c.rotulo}</dt>
-                    <dd>{c.preenchido ? valorLegivel(c.valor) : 'não preenchido nesta fase'}</dd>
-                  </div>
-                ))}
-              </dl>
-
-              {b.arquivos.length > 0 && (
-                <ul className="fic__arquivos">
-                  {b.arquivos.map((a) => (
-                    <li key={a.id}>
-                      <a href={a.link} target="_blank" rel="noreferrer">
-                        {a.nome}
-                      </a>
-                      {/* BAIXAR de verdade (@R 18/09). O link acima ABRE (o R2 não manda
-                          Content-Disposition e `download` é ignorado em cross-origin); este passa
-                          pelo backend, que força o attachment. Os dois ficam: abrir é útil para
-                          conferir rápido, baixar é o que a equipe pediu. */}
-                      {a.id != null && (
-                        <button type="button" className="fic__baixar-anexo"
-                          title="Baixar este arquivo"
-                          onClick={async () => {
-                            try {
-                              const { data } = await baixarAnexo(a.id as number);
-                              salvarBlob(data, `${(a.tipo || 'anexo').toLowerCase()}-${a.id}.pdf`);
-                            } catch {
-                              alert('Não foi possível baixar este arquivo agora.');
-                            }
-                          }}>
-                          <i className="pi pi-download" /> baixar
+              <div className="fic__situacao-grade">
+                {(['statusProcesso', 'statusJuridico', 'statusOrcamento', 'statusPerda'] as const).map((campo) => {
+                  // Fase: o que a tela mostra é a fase EXIBIDA (fase 2 e 3 dividem o mesmo status;
+                  // o servidor diz qual é pelo médico) — reunião 20/09, 00:38:51.
+                  const atual = campo === 'statusProcesso'
+                    ? (dados.situacao?.faseExibida ?? dados.situacao?.statusProcesso ?? null)
+                    : ((dados.situacao as Record<string, string | null> | undefined)?.[campo] ?? null);
+                  const opcoes = dados.situacaoOpcoes?.[campo] ?? [];
+                  return (
+                    <div className="fic__situacao-item" key={campo}>
+                      <label>{rotuloCampo(campo).replace(/^(a|o) /, '')}</label>
+                      {podeVoltarFase && opcoes.length > 0 ? (
+                        <Dropdown
+                          value={atual}
+                          options={opcoes.map((o) => ({ label: o, value: o }))}
+                          onChange={(e) => mudarSituacao(campo, e.value)}
+                          placeholder="— não definido"
+                          // só statusPerda pode ficar vazio: pedido que deixou de ser perda
+                          // não tem motivo de perda. Fase vazia não é um estado que exista.
+                          showClear={campo === 'statusPerda'}
+                          disabled={mudandoCampo !== null}
+                          loading={mudandoCampo === campo}
+                          className="fic__situacao-drop"
+                        />
+                      ) : (
+                        <strong>{atual ?? '— não definido'}</strong>
+                      )}
+                      {podeVoltarFase && campo === 'statusOrcamento' && (
+                        <button
+                          type="button"
+                          className="fic__situacao-novo fic__acao-hover"
+                          onClick={criarStatusDaFase}
+                          disabled={mudandoCampo !== null}
+                          title="Criar um status novo para esta fase e aplicá-lo agora"
+                        >
+                          <i className="pi pi-pencil" /> novo status
                         </button>
                       )}
-                      <span className="fic__tipo">{a.tipo}</span>
-                      <span className="fic__quando">{dataHora(a.quando)}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          ))}
-
-          {/* ═══ O QUE AS PEÇAS DISSERAM SOBRE PREÇO (@R 18/09) ═══
-              ⟦"processamento das peças para ganhar a área na ficha técnica e dos
-              orçamentos, para termos os orçamentos para enviar corretamente"⟧
-
-              A extração já rodava e já gravava — 683 orçamentos vindos de peça de inteiro
-              teor na base (medido 18/09). O que faltava era exatamente isto: aparecer.
-              Enquanto não aparecia, a equipe reabria o PDF de 300 páginas para procurar
-              um número que o sistema já tinha lido e guardado.
-
-              CADA LINHA CARREGA DE ONDE VEIO (documento + página). Valor sem origem é
-              boato: quem for usá-lo para julgar uma cotação precisa poder abrir a página
-              e ver com os próprios olhos. */}
-          {(waGrupos.length > 0 || waEnvios.length > 0) && (
-            <section className="fic__bloco fic__wa">
-              <header className="fic__fase">
-                <strong>Grupo WhatsApp do cliente</strong>
-                <small>Manda a cotação no grupo (texto + link com login). Só grupos com envio ligado na ficha do cliente.</small>
-              </header>
-              <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', marginBottom: '.4rem' }}>
-                {waGrupos.map((g) => (
-                  <button key={g.id} type="button" className="fic__btn fic__btn--primario" disabled={waEnviando} onClick={() => void enviarWa(g)}>
-                    Enviar no grupo "{g.grupoNome}"{g.funcao === 'SOLICITACAO' ? '' : ` (${g.funcao.toLowerCase()})`}
-                  </button>
-                ))}
-                {waGrupos.length === 0 && waMotivo && <span className="fic__nota">{waMotivo}</span>}
+                    </div>
+                  );
+                })}
               </div>
-              {waEnvios.length > 0 && (
-                <ul className="fic__orcpeca-lista">
-                  {waEnvios.map((e) => (
-                    <li key={e.id} className="fic__orcpeca-item">
-                      <span className="fic__orcpeca-valor">{e.grupoNome}</span>
-                      <span className="fic__orcpeca-quem">
-                        {e.status === 'ENVIADO' ? <b style={{ color: '#0F766E' }}>enviado {dataHora(e.enviadoEm)}</b>
-                          : e.status === 'ERRO' ? <b style={{ color: '#B91C1C' }}>erro: {e.erro}</b>
-                          : <em style={{ color: '#B45309' }}>na fila (o relay envia em até 5 min)</em>}
-                        {e.criadoPor ? ` · pedido por ${e.criadoPor} ${dataHora(e.criadoEm)}` : ''}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+              {dados.situacao?.dataStatusPerda && (
+                <small className="fic__situacao-nota">
+                  Perda registrada em {new Date(dados.situacao.dataStatusPerda).toLocaleDateString('pt-BR')}
+                  {' '}— limpar o motivo da perda também limpa esta data.
+                </small>
               )}
             </section>
-          )}
 
-          {(versoes.length > 0 || valorPedido != null) && (
-            <section className="fic__bloco fic__versoes">
-              <header className="fic__fase">
-                <strong>Versões do nosso orçamento ({versoes.length})</strong>
-                <small>
-                  Orçamento atual do pedido: <b>{brl(valorPedido)}</b>
-                  {troca.anterior != null && (
-                    <> · <span style={{ color: '#7C2D12' }}>anterior {brl(troca.anterior)}, trocado {dataHora(troca.em)}{troca.por ? ` por ${troca.por}` : ''}</span></>
+            <div className="fic__topo">
+              <span>
+                Fase atual: <strong>{dados.statusAtual}</strong>
+              </span>
+              <span>{dados.totalArquivos} arquivo(s) no pedido</span>
+              {(dados.urgencia?.vezesPedido ?? 1) > 1 && (
+                <span className={`fic__urgencia fic__urgencia--${(dados.urgencia?.repedidosManuais ?? 0) > 0 ? 'max' : (dados.urgencia!.vezesPedido >= 3 ? 'tres' : 'dois')}`}>
+                  <i className="pi pi-exclamation-triangle" aria-hidden="true" /> Urgência {dados.urgencia!.vezesPedido}×
+                  {dados.urgencia?.ultimoPedidoEm && <> — último pedido em {dataHora(dados.urgencia.ultimoPedidoEm)}</>}
+                  {(dados.urgencia?.repedidosManuais ?? 0) > 0 && (
+                    <> · {dados.urgencia!.repedidosManuais} cobrança(s) por telefone</>
                   )}
-                  <br />
-                  A versão refeita entra como <b>proposta</b>: o orçamento atual continua até alguém clicar em
-                  &quot;Trocar pelo atual&quot;. O reenvio ao solicitante é outro clique e diz que substitui a anterior. PDF antigo nunca some.
-                </small>
-                <button type="button" className="fic__btn" onClick={() => { setErroVersao(null); setNovaVersaoAberta(true); }}>
-                  Refazer orçamento (nova versão)
+                </span>
+              )}
+              {podeVoltarFase && (
+                <button type="button" className="fic__voltar fic__acao-hover" onClick={voltarFase} disabled={revertendo}>
+                  {revertendo ? 'Voltando…' : '↩ Voltar para a fase anterior'}
                 </button>
-              </header>
-              {versoes.length === 0 && (
-                <p className="fic__nota">Ainda sem versão registrada; o valor atual do pedido é {brl(valorPedido)}.</p>
               )}
-              <ul className="fic__orcpeca-lista">
-                {versoes.map((v) => (
-                  <li key={v.id} className="fic__orcpeca-item" style={{ opacity: v.vigente ? 1 : 0.75 }}>
-                    <span className="fic__orcpeca-valor">
-                      v{v.numeroVersao ?? '?'} · {brl(v.valorTotal)}
-                      {v.refeita && <b className="fic__badge-refeita" title={v.origemRefacao ?? ''}> REFEITA</b>}
-                    </span>
-                    {v.refeita && (
-                      <span className="fic__orcpeca-proc" style={{ color: '#7C2D12' }}>
-                        refeita{v.substituiNumero != null ? ` · substitui a v${v.substituiNumero}` : ''}{v.origemRefacao ? ` · ${v.origemRefacao}` : ''}
-                      </span>
-                    )}
-                    <span className="fic__orcpeca-quem">
-                      {v.vigente ? <b style={{ color: '#0F766E' }}>vigente</b> : (versoes.some((x) => x.vigente && (x.numeroVersao ?? 0) > (v.numeroVersao ?? 0)) ? 'substituída' : <b style={{ color: '#B45309' }}>proposta (não trocada)</b>)}
-                      {' · emitido '}{dataBr(v.dataEmissao ?? v.criadoEm)}
-                      {' · '}{v.semValidadeDeclarada ? <em style={{ color: '#B45309' }}>sem validade declarada</em> : `válido até ${dataBr(v.validade)}`}
-                    </span>
-                    {v.somaRubricas != null && (
-                      <span className="fic__orcpeca-proc">
-                        equipe {brl(v.equipeMedicaValor)} · anestesista {brl(v.anestesistaValor)} · taxas {brl(v.taxasHospitalaresValor)} · OPME {brl(v.opmeMateriaisValor)}
-                        {v.divergencia != null && Math.abs(v.divergencia) >= 0.01 && (
-                          <em style={{ color: '#B91C1C' }}> · soma das rubricas difere do total em {brl(v.divergencia)}</em>
-                        )}
-                      </span>
-                    )}
-                    {v.somaRubricas == null && <span className="fic__orcpeca-proc"><em>sem decomposição declarada</em></span>}
-                    <span className="fic__orcpeca-origem">
-                      {v.anexoUrl ? <a href={v.anexoUrl} target="_blank" rel="noreferrer">{v.anexoNome || 'PDF'}</a> : 'sem PDF anexado'}
-                      {v.criadoPor ? ` · por ${v.criadoPor}` : ''}
-                      {v.reenviadoEm ? ` · reenviado ${dataHora(v.reenviadoEm)}${v.reenviadoPor ? ` por ${v.reenviadoPor}` : ''}` : ''}
-                      {v.observacao ? ` · ${v.observacao}` : ''}
-                      {v.vigente && v.anexoUrl && (
-                        <>
-                          {' · '}
-                          <button type="button" className="fic__link" onClick={() => void reenviar(v)}>reenviar ao solicitante (substitui)</button>
-                        </>
-                      )}
-                      {!v.vigente && (
-                        <>
-                          {' · '}
-                          <button type="button" className="fic__link" onClick={() => void trocar(v)}>trocar o orçamento atual por esta versão</button>
-                        </>
-                      )}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <Dialog header="Refazer orçamento — nova versão" visible={novaVersaoAberta} style={{ width: '46rem', maxWidth: '96vw' }} modal onHide={() => setNovaVersaoAberta(false)}>
-                <div className="fic__form">
-                  <p className="fic__nota">A versão nova entra como PROPOSTA: o orçamento atual do pedido continua até a troca manual. Nada é enviado por e-mail agora.</p>
-                  <label style={{ flexDirection: 'row', alignItems: 'center', gap: '.5rem' }}>
-                    <input type="checkbox" checked={nv.jaTrocar} onChange={(e) => setNv({ ...nv, jaTrocar: e.target.checked })} />
-                    Já trocar o orçamento atual por esta versão agora (o valor do pedido muda; o anterior fica guardado)
-                  </label>
-                  <label>Por que está refazendo? (quem pediu, onde, quando) — fica registrado como REFAÇÃO
-                    <input value={nv.origemRefacao} onChange={(e) => setNv({ ...nv, origemRefacao: e.target.value })} placeholder="ex.: pedido do Dr. X no grupo Y em 18/09 · desconto sai da equipe" />
-                  </label>
-                  <label>Valor total (R$) *<input value={nv.valorTotal} onChange={(e) => setNv({ ...nv, valorTotal: e.target.value })} placeholder="0,00" /></label>
-                  <label>Data de emissão<input type="date" value={nv.dataEmissao} onChange={(e) => setNv({ ...nv, dataEmissao: e.target.value })} /></label>
-                  <label>Validade <small>(vazio = "sem validade declarada", fica visível)</small><input type="date" value={nv.validade} onChange={(e) => setNv({ ...nv, validade: e.target.value })} /></label>
-                  <label>Total impresso no PDF (R$) <small>(se diferente do valor)</small><input value={nv.totalImpresso} onChange={(e) => setNv({ ...nv, totalImpresso: e.target.value })} placeholder="0,00" /></label>
-                  <fieldset className="fic__rubricas">
-                    <legend>Decomposição (opcional — as 4 rubricas das petições)</legend>
-                    <label>Equipe médica<input value={nv.equipeMedicaValor} onChange={(e) => setNv({ ...nv, equipeMedicaValor: e.target.value })} /></label>
-                    <label>Anestesista<input value={nv.anestesistaValor} onChange={(e) => setNv({ ...nv, anestesistaValor: e.target.value })} /></label>
-                    <label>Taxas hospitalares<input value={nv.taxasHospitalaresValor} onChange={(e) => setNv({ ...nv, taxasHospitalaresValor: e.target.value })} /></label>
-                    <label>OPME / materiais<input value={nv.opmeMateriaisValor} onChange={(e) => setNv({ ...nv, opmeMateriaisValor: e.target.value })} /></label>
-                    {somaRubricasNv != null && totalRefNv != null && (
-                      <p className="fic__nota">
-                        Soma das rubricas: <b>{brl(somaRubricasNv)}</b>
-                        {Math.abs(somaRubricasNv - totalRefNv) >= 0.01
-                          ? <span style={{ color: '#B91C1C' }}> · difere do total em {brl(totalRefNv - somaRubricasNv)} (fica registrado, não some)</span>
-                          : <span style={{ color: '#0F766E' }}> · bate com o total</span>}
-                      </p>
-                    )}
-                  </fieldset>
-                  <label>PDF da nova versão<input type="file" accept="application/pdf" onChange={(e) => setNv({ ...nv, arquivo: e.target.files?.[0] ?? null })} /></label>
-                  <label>Observação<input value={nv.observacao} onChange={(e) => setNv({ ...nv, observacao: e.target.value })} placeholder="ex.: OPME renegociado com o Lauro" /></label>
-                  {erroVersao && <p className="fic__erro">{erroVersao}</p>}
-                  <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
-                    <button type="button" className="fic__btn" onClick={() => setNovaVersaoAberta(false)}>Cancelar</button>
-                    <button type="button" className="fic__btn fic__btn--primario" disabled={salvandoVersao} onClick={() => void salvarNovaVersao()}>
-                      {salvandoVersao ? 'Salvando…' : 'Salvar como versão vigente'}
-                    </button>
-                  </div>
-                </div>
-              </Dialog>
-            </section>
-          )}
+            </div>
 
-          {dados.orcamentosDaPeca && dados.orcamentosDaPeca.length > 0 && (
-            <section className="fic__bloco fic__orcpeca">
-              <header className="fic__fase">
-                <strong>Orçamentos encontrados nas peças ({dados.orcamentosDaPeca.length})</strong>
-                <small>
-                  Lidos automaticamente da decisão de inteiro teor — são <em>proposta de
-                  leitura</em>, não valor conferido. Servem para julgar a cotação que chegar
-                  e montar o que vai à SES; não são enviados ao médico que vai cotar (o
-                  número ancoraria o preço dele).
-                </small>
-              </header>
-              <ul className="fic__orcpeca-lista">
-                {dados.orcamentosDaPeca.map((o) => (
-                  <li key={o.id} className="fic__orcpeca-item">
-                    <span className="fic__orcpeca-valor">
-                      {o.valorTotal != null
-                        ? o.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                        : 'valor não lido'}
+          </SecaoFicha>
+          <SecaoFicha n={prox('chegada')} titulo="Chegada e dados por fase" resumo={`${dados.blocos.length} fase(s) · ${dados.totalArquivos} arquivo(s)`} className="fic__sec">
+            {dados.blocos.map((b) => (
+              <section className="fic__bloco" key={b.fase}>
+                <header className="fic__fase">
+                  <strong>{b.fase}</strong>
+                  <span className="fic__quando">{dataHora(b.quando)}</span>
+                  {b.rastro.medido && (
+                    <span className="fic__rastro">
+                      por {b.rastro.por} em {dataHora(b.rastro.em)}
                     </span>
-                    <span className="fic__orcpeca-quem"
-                      title={o.prestador && o.prestadorExibicao !== o.prestador
-                        ? `na peça está escrito: ${o.prestador}`
-                        : undefined}>
-                      {o.prestadorExibicao || o.prestador || 'prestador não identificado'}
-                    </span>
-                    {o.procedimento && <span className="fic__orcpeca-proc">{o.procedimento}</span>}
-                    <span className="fic__orcpeca-origem">
-                      {o.anexoOrigemNome || 'peça'}
-                      {o.paginaOrigem != null ? ` · pág. ${o.paginaOrigem}` : ''}
-                      {o.linkArquivo && (
-                        <>
-                          {' · '}
-                          <a href={o.linkArquivo} target="_blank" rel="noreferrer">abrir</a>
-                        </>
-                      )}
-                      {o.confirmado
-                        ? <em className="fic__orcpeca-ok"> · conferido por {o.confirmadoPor}</em>
-                        : <em className="fic__orcpeca-prop"> · não conferido</em>}
-                      {/* O GESTO DE CONFERIR (@R 18/09): ⟦"quem for usar o número abre a
-                          página do link, confere e marca. Sem mutirão"⟧. Fica aqui, ao
-                          lado do link, porque é aqui que a pessoa acabou de abrir a
-                          fonte — pedir que ela vá a outra tela marcar seria garantir
-                          que ninguém marca. */}
-                      {!o.confirmado && (
-                        <button type="button" className="fic__orcpeca-conferir"
-                          title="Abri a página do documento e confirmei que este valor está certo"
-                          onClick={async () => {
-                            try {
-                              await conferirOrcamentoPeca(o.id);
-                              // relê a ficha: a marca precisa aparecer no MESMO clique,
-                              // senão a pessoa clica de novo achando que não funcionou
-                              if (orderId) {
-                                const r = await getFichaPedido(orderId);
-                                setDados(r.data);
+                  )}
+                </header>
+
+                <dl className="fic__campos">
+                  {b.campos.map((c, i) => (
+                    <div key={`${b.fase}-${i}`} className={c.preenchido ? '' : 'fic__vazio'}>
+                      <dt>{c.rotulo}</dt>
+                      <dd>{c.preenchido ? valorLegivel(c.valor) : 'não preenchido nesta fase'}</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                {b.arquivos.length > 0 && (
+                  <ul className="fic__arquivos">
+                    {b.arquivos.map((a) => (
+                      <li key={a.id}>
+                        <a href={a.link} target="_blank" rel="noreferrer">
+                          {a.nome}
+                        </a>
+                        {/* BAIXAR de verdade (@R 18/09). O link acima ABRE (o R2 não manda
+                            Content-Disposition e `download` é ignorado em cross-origin); este passa
+                            pelo backend, que força o attachment. Os dois ficam: abrir é útil para
+                            conferir rápido, baixar é o que a equipe pediu. */}
+                        {a.id != null && (
+                          <button type="button" className="fic__baixar-anexo"
+                            title="Baixar este arquivo"
+                            onClick={async () => {
+                              try {
+                                const { data } = await baixarAnexo(a.id as number);
+                                salvarBlob(data, `${(a.tipo || 'anexo').toLowerCase()}-${a.id}.pdf`);
+                              } catch {
+                                alert('Não foi possível baixar este arquivo agora.');
                               }
-                            } catch {
-                              alert('Não foi possível registrar a conferência.');
-                            }
-                          }}>conferi</button>
+                            }}>
+                            <i className="pi pi-download" /> baixar
+                          </button>
+                        )}
+                        <span className="fic__tipo">{a.tipo}</span>
+                        <span className="fic__quando">{dataHora(a.quando)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            ))}
+
+          </SecaoFicha>
+          <SecaoFicha n={prox('medicos')} titulo="Médicos deste pedido" resumo={resumoMedicos} className="fic__sec">
+            <section className="fic__situacao">
+              <header className="fic__situacao-cab">
+                <small>Quem está cotando. Adicionar não tira o atual — os dois recebem o pedido.</small>
+              </header>
+              {/* Reunião 20/09 (00:31:43): "ele tem médico como hospital Santa Rita, mas aqui não
+                  apareceu". O prestador PRINCIPAL agora vem no payload (medicoAtual) e abre a lista;
+                  os convidados seguem abaixo. */}
+              {dados.medicoAtual ? (
+                <p style={{ margin: '.2rem 0 .4rem' }}>
+                  <strong>{dados.medicoAtual.nome}</strong>
+                  <small style={{ opacity: .7 }}> · principal{dados.medicoAtual.categoria ? ` · ${dados.medicoAtual.categoria.toLowerCase()}` : ''}</small>
+                </p>
+              ) : (
+                <p style={{ margin: '.2rem 0 .4rem', opacity: .7 }}>Sem médico principal (pedido em Selecionar Médico).</p>
+              )}
+              {candidatos.length === 0 && !dados.medicoAtual && (
+                <p style={{ margin: '.2rem 0 .5rem', opacity: .7 }}>
+                  Nenhum médico convidado ainda por este caminho.
+                </p>
+              )}
+              {candidatos.length > 0 && (
+                <ul style={{ margin: '0 0 .6rem', paddingLeft: '1.1rem' }}>
+                  {candidatos.map((c: any) => (
+                    <li key={c.id ?? c.idMedico}>
+                      {c.nomeMedico || c.medico || `médico ${c.idMedico}`}
+                      {c.situacao ? <small style={{ opacity: .7 }}> · {c.situacao}</small> : null}
+                      {c.valorRespondido ? <small style={{ opacity: .7 }}> · R$ {c.valorRespondido}</small> : null}
+                      {c.vencedor ? <strong> · vencedor</strong> : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <select
+                  className="fic__situacao-drop"
+                  value={convidando ?? ''}
+                  onChange={(e) => setConvidando(e.target.value ? Number(e.target.value) : null)}
+                >
+                  <option value="">Adicionar outro médico ao orçamento…</option>
+                  {medicosLista.map((m: any) => (
+                    <option key={m.id} value={m.id}>{m.nomeSistema || m.nomeCompleto}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="fic__situacao-novo"
+                  disabled={!convidando || !orderId}
+                  onClick={async () => {
+                    if (!convidando || !orderId) return;
+                    setErroMedico(null);
+                    try {
+                      await convidarCandidatoCotacao(orderId, convidando);
+                      setConvidando(null);
+                      await recarregarCandidatos();
+                    } catch (err: any) {
+                      setErroMedico(err?.response?.data?.error || 'Não consegui adicionar este médico.');
+                    }
+                  }}
+                >
+                  <i className="pi pi-user-plus" /> adicionar
+                </button>
+              </div>
+              {erroMedico && <p style={{ color: '#b91c1c', marginBottom: 0 }}>{erroMedico}</p>}
+            </section>
+
+          </SecaoFicha>
+          {(versoes.length > 0 || valorPedido != null) && (<>
+            <SecaoFicha n={prox('versoes')} titulo="Nosso orçamento" resumo={`atual ${brl(valorPedido)} · ${versoes.length} versão(ões)`} className="fic__sec fic__sec--dedup">
+              {(versoes.length > 0 || valorPedido != null) && (
+                <section className="fic__bloco fic__versoes">
+                  <header className="fic__fase">
+                    <strong>Versões do nosso orçamento ({versoes.length})</strong>
+                    <small>
+                      Orçamento atual do pedido: <b>{brl(valorPedido)}</b>
+                      {troca.anterior != null && (
+                        <> · <span style={{ color: '#7C2D12' }}>anterior {brl(troca.anterior)}, trocado {dataHora(troca.em)}{troca.por ? ` por ${troca.por}` : ''}</span></>
                       )}
-                    </span>
+                      <br />
+                      A versão refeita entra como <b>proposta</b>: o orçamento atual continua até alguém clicar em
+                      &quot;Trocar pelo atual&quot;. O reenvio ao solicitante é outro clique e diz que substitui a anterior. PDF antigo nunca some.
+                    </small>
+                    <button type="button" className="fic__btn fic__acao-hover" onClick={() => { setErroVersao(null); setNovaVersaoAberta(true); }}>
+                      Refazer orçamento (nova versão)
+                    </button>
+                  </header>
+                  {versoes.length === 0 && (
+                    <p className="fic__nota">Ainda sem versão registrada; o valor atual do pedido é {brl(valorPedido)}.</p>
+                  )}
+                  <ul className="fic__orcpeca-lista">
+                    {versoes.map((v) => (
+                      <li key={v.id} className="fic__orcpeca-item" style={{ opacity: v.vigente ? 1 : 0.75 }}>
+                        <span className="fic__orcpeca-valor">
+                          v{v.numeroVersao ?? '?'} · {brl(v.valorTotal)}
+                          {v.refeita && <b className="fic__badge-refeita" title={v.origemRefacao ?? ''}> REFEITA</b>}
+                        </span>
+                        {v.refeita && (
+                          <span className="fic__orcpeca-proc" style={{ color: '#7C2D12' }}>
+                            refeita{v.substituiNumero != null ? ` · substitui a v${v.substituiNumero}` : ''}{v.origemRefacao ? ` · ${v.origemRefacao}` : ''}
+                          </span>
+                        )}
+                        <span className="fic__orcpeca-quem">
+                          {v.vigente ? <b style={{ color: '#0F766E' }}>vigente</b> : (versoes.some((x) => x.vigente && (x.numeroVersao ?? 0) > (v.numeroVersao ?? 0)) ? 'substituída' : <b style={{ color: '#B45309' }}>proposta (não trocada)</b>)}
+                          {' · emitido '}{dataBr(v.dataEmissao ?? v.criadoEm)}
+                          {' · '}{v.semValidadeDeclarada ? <em style={{ color: '#B45309' }}>sem validade declarada</em> : `válido até ${dataBr(v.validade)}`}
+                        </span>
+                        {v.somaRubricas != null && (
+                          <span className="fic__orcpeca-proc">
+                            equipe {brl(v.equipeMedicaValor)} · anestesista {brl(v.anestesistaValor)} · taxas {brl(v.taxasHospitalaresValor)} · OPME {brl(v.opmeMateriaisValor)}
+                            {v.divergencia != null && Math.abs(v.divergencia) >= 0.01 && (
+                              <em style={{ color: '#B91C1C' }}> · soma das rubricas difere do total em {brl(v.divergencia)}</em>
+                            )}
+                          </span>
+                        )}
+                        {v.somaRubricas == null && <span className="fic__orcpeca-proc"><em>sem decomposição declarada</em></span>}
+                        <span className="fic__orcpeca-origem">
+                          {v.anexoUrl ? <a href={v.anexoUrl} target="_blank" rel="noreferrer">{v.anexoNome || 'PDF'}</a> : 'sem PDF anexado'}
+                          {v.criadoPor ? ` · por ${v.criadoPor}` : ''}
+                          {v.reenviadoEm ? ` · reenviado ${dataHora(v.reenviadoEm)}${v.reenviadoPor ? ` por ${v.reenviadoPor}` : ''}` : ''}
+                          {v.observacao ? ` · ${v.observacao}` : ''}
+                          {v.vigente && v.anexoUrl && (
+                            <>
+                              {' · '}
+                              <button type="button" className="fic__link" onClick={() => void reenviar(v)}>reenviar ao solicitante (substitui)</button>
+                            </>
+                          )}
+                          {!v.vigente && (
+                            <>
+                              {' · '}
+                              <button type="button" className="fic__link" onClick={() => void trocar(v)}>trocar o orçamento atual por esta versão</button>
+                            </>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Dialog header="Refazer orçamento — nova versão" visible={novaVersaoAberta} style={{ width: '46rem', maxWidth: '96vw' }} modal onHide={() => setNovaVersaoAberta(false)}>
+                    <div className="fic__form">
+                      <p className="fic__nota">A versão nova entra como PROPOSTA: o orçamento atual do pedido continua até a troca manual. Nada é enviado por e-mail agora.</p>
+                      <label style={{ flexDirection: 'row', alignItems: 'center', gap: '.5rem' }}>
+                        <input type="checkbox" checked={nv.jaTrocar} onChange={(e) => setNv({ ...nv, jaTrocar: e.target.checked })} />
+                        Já trocar o orçamento atual por esta versão agora (o valor do pedido muda; o anterior fica guardado)
+                      </label>
+                      <label>Por que está refazendo? (quem pediu, onde, quando) — fica registrado como REFAÇÃO
+                        <input value={nv.origemRefacao} onChange={(e) => setNv({ ...nv, origemRefacao: e.target.value })} placeholder="ex.: pedido do Dr. X no grupo Y em 18/09 · desconto sai da equipe" />
+                      </label>
+                      <label>Valor total (R$) *<input value={nv.valorTotal} onChange={(e) => setNv({ ...nv, valorTotal: e.target.value })} placeholder="0,00" /></label>
+                      <label>Data de emissão<input type="date" value={nv.dataEmissao} onChange={(e) => setNv({ ...nv, dataEmissao: e.target.value })} /></label>
+                      <label>Validade <small>(vazio = "sem validade declarada", fica visível)</small><input type="date" value={nv.validade} onChange={(e) => setNv({ ...nv, validade: e.target.value })} /></label>
+                      <label>Total impresso no PDF (R$) <small>(se diferente do valor)</small><input value={nv.totalImpresso} onChange={(e) => setNv({ ...nv, totalImpresso: e.target.value })} placeholder="0,00" /></label>
+                      <fieldset className="fic__rubricas">
+                        <legend>Decomposição (opcional — as 4 rubricas das petições)</legend>
+                        <label>Equipe médica<input value={nv.equipeMedicaValor} onChange={(e) => setNv({ ...nv, equipeMedicaValor: e.target.value })} /></label>
+                        <label>Anestesista<input value={nv.anestesistaValor} onChange={(e) => setNv({ ...nv, anestesistaValor: e.target.value })} /></label>
+                        <label>Taxas hospitalares<input value={nv.taxasHospitalaresValor} onChange={(e) => setNv({ ...nv, taxasHospitalaresValor: e.target.value })} /></label>
+                        <label>OPME / materiais<input value={nv.opmeMateriaisValor} onChange={(e) => setNv({ ...nv, opmeMateriaisValor: e.target.value })} /></label>
+                        {somaRubricasNv != null && totalRefNv != null && (
+                          <p className="fic__nota">
+                            Soma das rubricas: <b>{brl(somaRubricasNv)}</b>
+                            {Math.abs(somaRubricasNv - totalRefNv) >= 0.01
+                              ? <span style={{ color: '#B91C1C' }}> · difere do total em {brl(totalRefNv - somaRubricasNv)} (fica registrado, não some)</span>
+                              : <span style={{ color: '#0F766E' }}> · bate com o total</span>}
+                          </p>
+                        )}
+                      </fieldset>
+                      <label>PDF da nova versão<input type="file" accept="application/pdf" onChange={(e) => setNv({ ...nv, arquivo: e.target.files?.[0] ?? null })} /></label>
+                      <label>Observação<input value={nv.observacao} onChange={(e) => setNv({ ...nv, observacao: e.target.value })} placeholder="ex.: OPME renegociado com o Lauro" /></label>
+                      {erroVersao && <p className="fic__erro">{erroVersao}</p>}
+                      <div style={{ display: 'flex', gap: '.5rem', justifyContent: 'flex-end' }}>
+                        <button type="button" className="fic__btn" onClick={() => setNovaVersaoAberta(false)}>Cancelar</button>
+                        <button type="button" className="fic__btn fic__btn--primario" disabled={salvandoVersao} onClick={() => void salvarNovaVersao()}>
+                          {salvandoVersao ? 'Salvando…' : 'Salvar como versão vigente'}
+                        </button>
+                      </div>
+                    </div>
+                  </Dialog>
+                </section>
+              )}
+
+            </SecaoFicha>
+          </>)}
+          {((dados.orcamentosDaPeca?.length ?? 0) > 0) && (<>
+            <SecaoFicha n={prox('pecas')} titulo="Orçamentos lidos nas peças" resumo={`${dados.orcamentosDaPeca?.length ?? 0} encontrado(s)`} className="fic__sec fic__sec--dedup">
+              {/* ═══ O QUE AS PEÇAS DISSERAM SOBRE PREÇO (@R 18/09) ═══
+                  ⟦"processamento das peças para ganhar a área na ficha técnica e dos
+                  orçamentos, para termos os orçamentos para enviar corretamente"⟧
+
+                  A extração já rodava e já gravava — 683 orçamentos vindos de peça de inteiro
+                  teor na base (medido 18/09). O que faltava era exatamente isto: aparecer.
+                  Enquanto não aparecia, a equipe reabria o PDF de 300 páginas para procurar
+                  um número que o sistema já tinha lido e guardado.
+
+                  CADA LINHA CARREGA DE ONDE VEIO (documento + página). Valor sem origem é
+                  boato: quem for usá-lo para julgar uma cotação precisa poder abrir a página
+                  e ver com os próprios olhos. */}
+              {dados.orcamentosDaPeca && dados.orcamentosDaPeca.length > 0 && (
+                <section className="fic__bloco fic__orcpeca">
+                  <header className="fic__fase">
+                    <strong>Orçamentos encontrados nas peças ({dados.orcamentosDaPeca.length})</strong>
+                    <small>
+                      Lidos automaticamente da decisão de inteiro teor — são <em>proposta de
+                      leitura</em>, não valor conferido. Servem para julgar a cotação que chegar
+                      e montar o que vai à SES; não são enviados ao médico que vai cotar (o
+                      número ancoraria o preço dele).
+                    </small>
+                  </header>
+                  <ul className="fic__orcpeca-lista">
+                    {dados.orcamentosDaPeca.map((o) => (
+                      <li key={o.id} className="fic__orcpeca-item">
+                        <span className="fic__orcpeca-valor">
+                          {o.valorTotal != null
+                            ? o.valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                            : 'valor não lido'}
+                        </span>
+                        <span className="fic__orcpeca-quem"
+                          title={o.prestador && o.prestadorExibicao !== o.prestador
+                            ? `na peça está escrito: ${o.prestador}`
+                            : undefined}>
+                          {o.prestadorExibicao || o.prestador || 'prestador não identificado'}
+                        </span>
+                        {o.procedimento && <span className="fic__orcpeca-proc">{o.procedimento}</span>}
+                        <span className="fic__orcpeca-origem">
+                          {o.anexoOrigemNome || 'peça'}
+                          {o.paginaOrigem != null ? ` · pág. ${o.paginaOrigem}` : ''}
+                          {o.linkArquivo && (
+                            <>
+                              {' · '}
+                              <a href={o.linkArquivo} target="_blank" rel="noreferrer">abrir</a>
+                            </>
+                          )}
+                          {o.confirmado
+                            ? <em className="fic__orcpeca-ok"> · conferido por {o.confirmadoPor}</em>
+                            : <em className="fic__orcpeca-prop"> · não conferido</em>}
+                          {/* O GESTO DE CONFERIR (@R 18/09): ⟦"quem for usar o número abre a
+                              página do link, confere e marca. Sem mutirão"⟧. Fica aqui, ao
+                              lado do link, porque é aqui que a pessoa acabou de abrir a
+                              fonte — pedir que ela vá a outra tela marcar seria garantir
+                              que ninguém marca. */}
+                          {!o.confirmado && (
+                            <button type="button" className="fic__orcpeca-conferir"
+                              title="Abri a página do documento e confirmei que este valor está certo"
+                              onClick={async () => {
+                                try {
+                                  await conferirOrcamentoPeca(o.id);
+                                  // relê a ficha: a marca precisa aparecer no MESMO clique,
+                                  // senão a pessoa clica de novo achando que não funcionou
+                                  if (orderId) {
+                                    const r = await getFichaPedido(orderId);
+                                    setDados(r.data);
+                                  }
+                                } catch {
+                                  alert('Não foi possível registrar a conferência.');
+                                }
+                              }}>conferi</button>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  {/* A COBERTURA anda junto: "3 orçamentos" parece o total da peça quando
+                      pode ser o total das páginas que deu para ler. A frase honesta é a do
+                      processador, com os números dele. */}
+                  {dados.pecasLidas && dados.pecasLidas.length > 0 && (
+                    <ul className="fic__orcpeca-cobertura">
+                      {dados.pecasLidas.map((p) => (
+                        <li key={p.anexoId}>
+                          <strong>{p.nome}</strong> · {p.status || 'não processada'}
+                          {p.mensagem ? ` — ${p.mensagem}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )}
+
+            </SecaoFicha>
+          </>)}
+          <SecaoFicha n={prox('docs')} titulo="Documentos e inteiro teor" resumo="links enviados, peça de inteiro teor" className="fic__sec">
+            {orderId && <BlocoLinksDocumentos orderId={orderId} />}
+            {/* #684 (@R 24/09 00:02): trocar a peça de inteiro teor ou adicionar partes (processo em volumes) pela FICHA. */}
+            {orderId && <BlocoPecaInteiroTeor orderId={orderId} />}
+
+          </SecaoFicha>
+          {(!!dados.emails) && (<>
+            <SecaoFicha n={prox('emails')} titulo="E-mails deste pedido" resumo={resumoEmails} className="fic__sec fic__sec--dedup">
+              {dados.emails && (
+                <section className="fic__bloco fic__emails">
+                  <header className="fic__fase fic__fase--com-acao">
+                    <strong>E-mails deste pedido</strong>
+                    {/* @R 17/09: escrever ao solicitante "em qualquer fase, em ações em cada
+                        parte do pedido". O lugar natural é aqui, ao lado do que já foi dito
+                        a ele — quem vai escrever precisa ver o histórico antes, senão repete
+                        ou contradiz o que o sistema já mandou. */}
+                    {orderId && (
+                      <EscreverEmail
+                        orderId={orderId}
+                        destinatarioPadrao={dados.emails?.solicitante ?? null}
+                        aoEnviar={async () => {
+                          const r = await getFichaPedido(orderId);
+                          setDados(r.data);
+                        }}
+                      />
+                    )}
+                  </header>
+
+                  {/* AUSÊNCIA DECLARADA, e com o MOTIVO: medido 17/09, só 3,2% dos pedidos têm
+                      o e-mail original — não porque a captura falhe (ela pega 90% dos que vêm
+                      por e-mail), mas porque a maioria é cadastro manual. Sem dizer isso, a
+                      equipe leria branco e concluiria que a tela quebrou. */}
+                  {dados.emails.explicacao && <p className="fic__vazio-msg">{dados.emails.explicacao}</p>}
+
+                  {dados.emails.recebidos.length > 0 && (
+                    <ul className="fic__emails-lista">
+                      {dados.emails.recebidos.map((e) => (
+                        <li key={e.id}>
+                          <strong>{e.assunto || '(sem assunto)'}</strong>
+                          <span className="fic__de">{e.remetente || '(remetente desconhecido)'}</span>
+                          <span className="fic__quando">{dataHora(e.quando)}</span>
+                          <span className="fic__tipo">{e.status}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {dados.emails.originais.map((o) => (
+                    <details key={o.anexoId} className="fic__email" onToggle={(ev) => {
+                      if ((ev.target as HTMLDetailsElement).open) abrirEmail(o.anexoId);
+                    }}>
+                      <summary>{o.nome} · {dataHora(o.quando)} — abrir o conteúdo</summary>
+                      {corpos[o.anexoId]?.carregando && <p>Lendo o e-mail…</p>}
+                      {corpos[o.anexoId]?.erro && <p className="fic__erro">{corpos[o.anexoId].erro}</p>}
+                      {corpos[o.anexoId]?.vazio && (
+                        <p className="fic__vazio-msg">Este e-mail não tem texto — só anexos ou imagem.</p>
+                      )}
+                      {corpos[o.anexoId]?.texto && !corpos[o.anexoId]?.vazio && (
+                        <pre className="fic__corpo-email">{corpos[o.anexoId].texto}</pre>
+                      )}
+                      {/* #541 (@R 21/09): "se tem anexo na chegada temos que ter um botão para ver os anexos" —
+                          o servidor extrai do .eml guardado; cada nome vira um download. */}
+                      {(corpos[o.anexoId]?.anexos?.length ?? 0) > 0 && (
+                        <p className="fic__anexos-email"><i className="pi pi-paperclip" /> Anexos do e-mail:{' '}
+                          {corpos[o.anexoId]!.anexos!.map((nome, i) => (
+                            <button key={i} type="button" className="fic__baixar" onClick={async () => {
+                              try { const { data } = await baixarAnexoEmailOriginal(orderId as number, o.anexoId, i + 1); salvarBlob(data, nome); }
+                              catch { alert('Não consegui baixar este anexo agora.'); }
+                            }}>{nome}</button>
+                          ))}
+                        </p>
+                      )}
+                      <a href={o.link} target="_blank" rel="noreferrer" className="fic__baixar">
+                        baixar o e-mail original (.eml)
+                      </a>
+                    </details>
+                  ))}
+                </section>
+              )}
+
+            </SecaoFicha>
+          </>)}
+          <SecaoFicha n={prox('juridico')} titulo="Pedidos ao jurídico (1.1)" resumo="bilhete de ida e volta à advogada" className="fic__sec">
+            {/* Pedido do Fabrício (reunião 20/09): bilhete de ida e volta ao jurídico — o pedido vai para
+                a 1.1 com o que falta e volta sozinho para onde estava quando a Valéria responde. */}
+            {orderId && <BlocoPendenciaJuridica orderId={orderId} onMudou={aoMudarSituacao} />}
+            <DialogAbrirPendencia orderId={orderId ?? null} visible={pendenciaPelaSituacao}
+              onHide={() => setPendenciaPelaSituacao(false)}
+              onFeito={async () => { if (orderId) { const r = await getFichaPedido(orderId); setDados(r.data); } aoMudarSituacao?.(); }} />
+
+          </SecaoFicha>
+          <SecaoFicha n={prox('anotacoes')} titulo="Anotações internas" resumo="memória da equipe — não sai para fora" className="fic__sec fic__sec--dedup">
+            {/* Reunião 20/09 (Fase 5): anotações INTERNAS — memória da equipe sobre o caso; nas filas
+                o nome do paciente ganha "!" enquanto houver anotação. Nunca sai para fora. */}
+            {orderId && <BlocoAnotacoes orderId={orderId} />}
+          </SecaoFicha>
+          {(waGrupos.length > 0 || waEnvios.length > 0) && (<>
+            <SecaoFicha n={prox('wa')} titulo="Grupo WhatsApp do cliente" resumo={`${waEnvios.length} envio(s)`} className="fic__sec fic__sec--dedup">
+              {(waGrupos.length > 0 || waEnvios.length > 0) && (
+                <section className="fic__bloco fic__wa">
+                  <header className="fic__fase">
+                    <strong>Grupo WhatsApp do cliente</strong>
+                    <small>Manda a cotação no grupo (texto + link com login). Só grupos com envio ligado na ficha do cliente.</small>
+                  </header>
+                  <div style={{ display: 'flex', gap: '.4rem', flexWrap: 'wrap', marginBottom: '.4rem' }}>
+                    {waGrupos.map((g) => (
+                      <button key={g.id} type="button" className="fic__btn fic__btn--primario" disabled={waEnviando} onClick={() => void enviarWa(g)}>
+                        Enviar no grupo "{g.grupoNome}"{g.funcao === 'SOLICITACAO' ? '' : ` (${g.funcao.toLowerCase()})`}
+                      </button>
+                    ))}
+                    {waGrupos.length === 0 && waMotivo && <span className="fic__nota">{waMotivo}</span>}
+                  </div>
+                  {waEnvios.length > 0 && (
+                    <ul className="fic__orcpeca-lista">
+                      {waEnvios.map((e) => (
+                        <li key={e.id} className="fic__orcpeca-item">
+                          <span className="fic__orcpeca-valor">{e.grupoNome}</span>
+                          <span className="fic__orcpeca-quem">
+                            {e.status === 'ENVIADO' ? <b style={{ color: '#0F766E' }}>enviado {dataHora(e.enviadoEm)}</b>
+                              : e.status === 'ERRO' ? <b style={{ color: '#B91C1C' }}>erro: {e.erro}</b>
+                              : <em style={{ color: '#B45309' }}>na fila (o relay envia em até 5 min)</em>}
+                            {e.criadoPor ? ` · pedido por ${e.criadoPor} ${dataHora(e.criadoEm)}` : ''}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )}
+
+            </SecaoFicha>
+          </>)}
+          <SecaoFicha n={prox('trilha')} titulo="Histórico de mudanças" resumo={`${dados.trilha.length} mudança(s)`} className="fic__sec">
+            <div className="fic__trilha">
+              <ul>
+                {dados.trilha.map((t, i) => (
+                  <li key={i}>
+                    <span className="fic__campo">{t.campo}</span>: {t.de || '(vazio)'} → <strong>{t.para}</strong> · {t.por} ·{' '}
+                    {dataHora(t.em)}
                   </li>
                 ))}
               </ul>
-              {/* A COBERTURA anda junto: "3 orçamentos" parece o total da peça quando
-                  pode ser o total das páginas que deu para ler. A frase honesta é a do
-                  processador, com os números dele. */}
-              {dados.pecasLidas && dados.pecasLidas.length > 0 && (
-                <ul className="fic__orcpeca-cobertura">
-                  {dados.pecasLidas.map((p) => (
-                    <li key={p.anexoId}>
-                      <strong>{p.nome}</strong> · {p.status || 'não processada'}
-                      {p.mensagem ? ` — ${p.mensagem}` : ''}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
-
-          {dados.emails && (
-            <section className="fic__bloco fic__emails">
-              <header className="fic__fase fic__fase--com-acao">
-                <strong>E-mails deste pedido</strong>
-                {/* @R 17/09: escrever ao solicitante "em qualquer fase, em ações em cada
-                    parte do pedido". O lugar natural é aqui, ao lado do que já foi dito
-                    a ele — quem vai escrever precisa ver o histórico antes, senão repete
-                    ou contradiz o que o sistema já mandou. */}
-                {orderId && (
-                  <EscreverEmail
-                    orderId={orderId}
-                    destinatarioPadrao={dados.emails?.solicitante ?? null}
-                    aoEnviar={async () => {
-                      const r = await getFichaPedido(orderId);
-                      setDados(r.data);
-                    }}
-                  />
-                )}
-              </header>
-
-              {/* AUSÊNCIA DECLARADA, e com o MOTIVO: medido 17/09, só 3,2% dos pedidos têm
-                  o e-mail original — não porque a captura falhe (ela pega 90% dos que vêm
-                  por e-mail), mas porque a maioria é cadastro manual. Sem dizer isso, a
-                  equipe leria branco e concluiria que a tela quebrou. */}
-              {dados.emails.explicacao && <p className="fic__vazio-msg">{dados.emails.explicacao}</p>}
-
-              {dados.emails.recebidos.length > 0 && (
-                <ul className="fic__emails-lista">
-                  {dados.emails.recebidos.map((e) => (
-                    <li key={e.id}>
-                      <strong>{e.assunto || '(sem assunto)'}</strong>
-                      <span className="fic__de">{e.remetente || '(remetente desconhecido)'}</span>
-                      <span className="fic__quando">{dataHora(e.quando)}</span>
-                      <span className="fic__tipo">{e.status}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {dados.emails.originais.map((o) => (
-                <details key={o.anexoId} className="fic__email" onToggle={(ev) => {
-                  if ((ev.target as HTMLDetailsElement).open) abrirEmail(o.anexoId);
-                }}>
-                  <summary>{o.nome} · {dataHora(o.quando)} — abrir o conteúdo</summary>
-                  {corpos[o.anexoId]?.carregando && <p>Lendo o e-mail…</p>}
-                  {corpos[o.anexoId]?.erro && <p className="fic__erro">{corpos[o.anexoId].erro}</p>}
-                  {corpos[o.anexoId]?.vazio && (
-                    <p className="fic__vazio-msg">Este e-mail não tem texto — só anexos ou imagem.</p>
-                  )}
-                  {corpos[o.anexoId]?.texto && !corpos[o.anexoId]?.vazio && (
-                    <pre className="fic__corpo-email">{corpos[o.anexoId].texto}</pre>
-                  )}
-                  {/* #541 (@R 21/09): "se tem anexo na chegada temos que ter um botão para ver os anexos" —
-                      o servidor extrai do .eml guardado; cada nome vira um download. */}
-                  {(corpos[o.anexoId]?.anexos?.length ?? 0) > 0 && (
-                    <p className="fic__anexos-email"><i className="pi pi-paperclip" /> Anexos do e-mail:{' '}
-                      {corpos[o.anexoId]!.anexos!.map((nome, i) => (
-                        <button key={i} type="button" className="fic__baixar" onClick={async () => {
-                          try { const { data } = await baixarAnexoEmailOriginal(orderId as number, o.anexoId, i + 1); salvarBlob(data, nome); }
-                          catch { alert('Não consegui baixar este anexo agora.'); }
-                        }}>{nome}</button>
-                      ))}
-                    </p>
-                  )}
-                  <a href={o.link} target="_blank" rel="noreferrer" className="fic__baixar">
-                    baixar o e-mail original (.eml)
-                  </a>
-                </details>
-              ))}
-            </section>
-          )}
-
-          <details className="fic__trilha">
-            <summary>Trilha completa ({dados.trilha.length} mudanças)</summary>
-            <ul>
-              {dados.trilha.map((t, i) => (
-                <li key={i}>
-                  <span className="fic__campo">{t.campo}</span>: {t.de || '(vazio)'} → <strong>{t.para}</strong> · {t.por} ·{' '}
-                  {dataHora(t.em)}
-                </li>
-              ))}
-            </ul>
-          </details>
+            </div>
+          </SecaoFicha>
         </>
       )}
     </Dialog>

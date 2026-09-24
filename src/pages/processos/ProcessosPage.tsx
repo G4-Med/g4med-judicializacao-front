@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
+import { StatusClicavel } from '../../components/StatusClicavel/StatusClicavel';
 import type { Dispatch, SetStateAction } from 'react';
 import { DataTable } from 'primereact/datatable';
 import { excluirOrder, getOrders, getStatusOrders, atualizarOrder, getMedicosCompleto, getAnexosOrder, uploadAnexoOrder, criarOrderProcess, processarOrderProcess, salvarJuridico, uploadArquivoIntegracao, marcarSemProfissional, analisarEmpenho, extrairEmail, darPerdaNoOrcamento } from '../../services/api/orders';
@@ -977,7 +978,8 @@ ${linhasAnexos}
     const dono = field === 'status' ? STATUS_DONO[rowData[field]] : undefined;
     return (
       <span className="processos-status-cell">
-        <Tag value={rowData[field]} style={getStatusTagStyle(rowData[field])} className="status-tag-custom" />
+        <StatusClicavel valor={rowData[field]} orderId={rowData.id}
+          campo={field === 'status' ? 'statusProcesso' : field === 'statusJuridico' ? 'statusJuridico' : 'statusOrcamento'} />
         {dono && (
           <span
             className="processos-dono-dot"
