@@ -212,6 +212,9 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
     setEnviarPag(false); setPagFora(new Set());
     setRelatorio(null); setEnviarRel(true); setErroRel(null); geracao.current = null; setAddEsp('nao');
     setEnviarHist(false);
+    // @R 24/09 02:47 (#1251): o ajuste de valor e o aviso 'sem referência' ficavam do pedido ANTERIOR — o ajuste do
+    // orçamento 1563 (#536) ia junto no link do #1251 e o servidor recusava ('a referência 1563 não é deste pedido').
+    setAjustes({}); setAvisoSemRef(false);
     if (!pedido) return;
     previaLinkDocumentos(pedido.id)
       .then((r) => { setPrevia(r.data); setRelatorio(r.data?.relatorio ?? null); })
@@ -294,8 +297,9 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
           resumoId: enviarRel && rel ? rel.id : null,
           historicoIncluido: enviarHist && cotacoesAnt.length > 0,
           avisoSemReferencia: avisoSemRef && semValoresNoLink && !!previa?.temInteiroTeor,
+          // só ajuste de orçamento que ESTÁ na lista deste pedido (defesa: estado velho nunca vira 400 para quem copia)
           valoresAjustados: comValores ? Object.fromEntries(Object.entries(ajustes)
-            .filter(([id]) => !refsFora.has(Number(id)))) : {},
+            .filter(([id]) => !refsFora.has(Number(id)) && refs.some((x) => x.id === Number(id)))) : {},
         });
       } catch (e: any) {
         alert(`${e?.response?.data?.error || 'Não foi possível gerar o link seguro.'}\n\nNada foi copiado.`);
