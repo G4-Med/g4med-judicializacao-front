@@ -1,0 +1,18 @@
+/* Ao lado do selo de versão: a faixa onde o sistema fala de si mesmo. Vermelho porque é PARADA, não demora. */
+.mc-credito-ia {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(185, 28, 28, .10);
+  border: 1px solid rgba(185, 28, 28, .40);
+  color: #991b1b;
+  font-size: .74rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+  animation: mc-credito-pulso 2s ease-in-out infinite;
+}
+.mc-credito-ia:hover { background: rgba(185, 28, 28, .16); }
+@keyframes mc-credito-pulso { 0%, 100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, .0); } 50% { box-shadow: 0 0 0 3px rgba(185, 28, 28, .18); } }

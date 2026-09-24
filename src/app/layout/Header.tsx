@@ -20,6 +20,7 @@ import './Header.css'
 import { VersaoDoSistema } from './VersaoDoSistema';
 import { RelogioDoSite } from './RelogioDoSite';
 import { EstadoDaBusca } from './EstadoDaBusca';
+import { AvisoCreditoIA } from './AvisoCreditoIA';
 import { descreverLocalizacao, type LocalizacaoIP } from '../../services/api/rotinaAcessos';
 
 interface MinhaSessao {
@@ -203,6 +204,7 @@ export function Header({ onMenuClick }: Props) {
         <VersaoDoSistema />
         <RelogioDoSite />
         <EstadoDaBusca />
+        <AvisoCreditoIA />
 
         
         </div>
