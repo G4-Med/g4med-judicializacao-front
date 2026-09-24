@@ -27,6 +27,7 @@ import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
+import { colunaValorOportunidade, colunaPagoEstado, colunaQuemPrecisamos } from '../../components/QuemPrecisamos/colunasMatch';
 import { ModalMedico } from '../../components/TrocarMedico/CelulaMedico';
 import { DialogoCopiarPedido, prepararCopiaPedido, type PedidoParaCopiar } from '../orcamentoMedico/DialogoCopiarPedido';
 import './SelecionarMedicoPage.css';
@@ -661,6 +662,8 @@ export function SelecionarMedicoPage() {
             style={{ minWidth: '16rem' }}
             frozen alignFrozen="left"
           />
+          {/* @R 24/09 (tasks #7/#8): oportunidade e o que o Estado já pagou, logo no começo da linha */}
+          {colunaValorOportunidade()}{colunaPagoEstado()}
           {colunaOrigem(dataComCamposCalculados)}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
@@ -682,6 +685,7 @@ export function SelecionarMedicoPage() {
             filterElement={(options) => filterElement(options, 'Buscar')}
             style={{ minWidth: '22rem' }}
           />
+          {colunaQuemPrecisamos()}
           <Column
             field="area"
             header="Área"

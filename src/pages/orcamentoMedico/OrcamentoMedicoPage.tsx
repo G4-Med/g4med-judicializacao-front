@@ -11,6 +11,7 @@ import { FiltroInteligente, type FiltroAtivo } from '../../components/FiltroInte
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
+import { colunaValorOportunidade, colunaPagoEstado, colunaQuemPrecisamos } from '../../components/QuemPrecisamos/colunasMatch';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -793,6 +794,8 @@ ${blocos}
                 })()}
               </span>
             )}  frozen alignFrozen="left" />
+          {/* @R 24/09 (tasks #7/#8): oportunidade e o que o Estado já pagou, logo no começo da linha */}
+          {colunaValorOportunidade()}{colunaPagoEstado()}
           {colunaOrigem(dataComMedico)}
           {/* @R 22/09 00:16: "coluna do link e acessos... só para nós, com modal". Dado interno:
               nunca aparece na página que o médico abre. */}
@@ -951,6 +954,7 @@ ${blocos}
             filterElement={filtroOpcoesDosDados(dataComMedico, (l: any) => l?.tipoPaciente, 'Todos')} header={cabecalhoComHint('Grupo etário', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
             body={(r: any) => tagTipoPaciente(r.tipoPaciente)} />
           {colunaProcedimento()}
+          {colunaQuemPrecisamos()}
           <Column field="area" header="Área" sortable filter
             filterMatchMode="custom" showFilterMenu={false}
             filterFunction={casaOpcaoDosDados}

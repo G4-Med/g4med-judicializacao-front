@@ -5,6 +5,7 @@ import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgenci
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
+import { colunaValorOportunidade, colunaPagoEstado, colunaQuemPrecisamos } from '../../components/QuemPrecisamos/colunasMatch';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -582,6 +583,8 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
                 )}
               </span>
             )}  frozen alignFrozen="left" />
+          {/* @R 24/09 (tasks #7/#8): oportunidade e o que o Estado já pagou, logo no começo da linha */}
+          {colunaValorOportunidade()}{colunaPagoEstado()}
           {colunaOrigem(dataComSequencial)}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}
@@ -602,6 +605,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
             filterElement={filtroOpcoesDosDados(dataComSequencial, (l: any) => l?.tipoPaciente, 'Todos')} header={cabecalhoComHint('Grupo etário', 'Pediátrico (<18) · Adulto · Idoso (60+). Muda o médico certo e o risco de segredo.')} sortable style={{ minWidth: '7rem' }}
             body={(r: any) => tagTipoPaciente(r.tipoPaciente)} />
           {colunaProcedimento()}
+          {colunaQuemPrecisamos()}
           {/* @R 28/08: "a data que o pedido chegou e o horário e o tempo atual no funil" */}
 <Column field="chegouEm"
             filter showFilterMenu={false} filterMatchMode="custom"
