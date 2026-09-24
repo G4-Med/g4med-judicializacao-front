@@ -1,5 +1,5 @@
 import { Column } from 'primereact/column';
-import { filtroOpcoes } from '../ColunasIdentificacao/colunasIdentificacao';
+import { filtroOpcoes, cabecalhoComHint } from '../ColunasIdentificacao/colunasIdentificacao';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { Dropdown } from 'primereact/dropdown';
@@ -44,7 +44,14 @@ export const FILTRO_PAGAMENTO = {
 
 export function colunaEmpenhoEstado() {
   return (
-    <Column key="empenho548" field="classePagamento" header="Empenho Estado" sortable
+    /* #693 (@R 24/09 02:4x): "o pago pelo estado agora não indica se houve pagamento para aquele processo (…) precisamos a
+       coluna de pagamento para o processo igual tínhamos". Era 'Empenho Estado' e ficou atrás das colunas novas, com nome
+       parecido com 'Pago pelo Estado' (que é o MESMO PROCEDIMENTO em outros processos). Agora diz de quem é: deste processo. */
+    <Column key="empenho548" field="classePagamento" sortable
+      header={cabecalhoComHint('Pago neste processo',
+        'O que o Estado empenhou ou pagou NESTE processo (o CNJ do pedido), pela base de empenhos do Estado (548, atualizada a cada 15 min). ' +
+        'Diferente de "Pago pelo Estado", que mostra o que o Estado pagou em OUTROS processos do mesmo procedimento. ' +
+        'O favorecido do pagamento é o tribunal, não o prestador.')}
       style={{ minWidth: '11rem' }} filter showFilterMenu={false}
       filterElement={(o: any) => (
         <Dropdown value={o.value} options={OPCOES_CLASSE_PAGAMENTO}
@@ -100,7 +107,10 @@ export function colunaEmpenhoEstado() {
                 title={`O Estado PAGOU ${r.empenho548.nEmpenhos} empenho(s) neste CNJ (${r.empenho548.sinal === 'PAGO_APOS_O_PEDIDO' ? 'depois do pedido — candidato a baixa' : 'valor compatível com o orçado — conferir'}). Valor do EMPENHO, não do prestador.`} />)
           : <Tag value="Empenhado" severity="info" icon="pi pi-wallet"
               title="Há empenho no Estado para este CNJ, ainda sem pagamento registrado." />)
-        : <span title="Nenhum empenho localizado para este CNJ na base do Estado (548).">—</span>)} />
+        // vazio diz o MOTIVO na célula (@R 24/09: "quem está vazio sinalizar o motivo de estar vazio")
+        : String(r.nprocesso ?? r.cnj ?? '').trim()
+          ? <span className="ident-vazio" title="A base de empenhos do Estado (548) não tem nada para este CNJ: nem empenho, nem pagamento.">nada no 548 para este CNJ</span>
+          : <span className="ident-vazio" title="Sem o número do processo (CNJ) não dá para consultar a base de empenhos do Estado.">sem CNJ — não dá para consultar</span>)} />
   );
 }
 

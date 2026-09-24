@@ -40,7 +40,7 @@ export const DICIONARIO_COLUNAS: VerbeteColuna[] = [
   { id: 'solicitante', nome: 'Solicitante', grupo: 'Processo', oQueE: 'Quem pediu, do lado da SES (nome e e-mail).', deOndeVem: 'Remetente do e-mail do pedido.' },
   { id: 'refPreco', nome: 'Ref. Preço', grupo: 'Dinheiro', oQueE: 'Preço de referência do procedimento.', deOndeVem: 'Tabela de referência + histórico.', padraoOculta: true },
   { id: 'valorOrcamento', nome: 'Valor', grupo: 'Dinheiro', oQueE: 'Valor do orçamento enviado à SES.', deOndeVem: 'Orçamento do médico.' },
-  { id: 'classePagamento', nome: 'Empenho Estado', grupo: 'Dinheiro', oQueE: 'O que o Estado empenhou/pagou neste processo. "PAGO após o pedido · pode dar baixa" é o sinal forte. O favorecido é o tribunal, não o prestador.', deOndeVem: 'API do 548 (base de empenhos do Estado), a cada 15 min.' },
+  { id: 'classePagamento', nome: 'Pago neste processo', grupo: 'Dinheiro', oQueE: 'O que o Estado empenhou/pagou NESTE processo (o CNJ do pedido) — diferente de "Pago pelo Estado", que é o mesmo procedimento em outros processos. Vazio diz o motivo: sem CNJ ou nada no 548. "PAGO após o pedido · pode dar baixa" é o sinal forte. O favorecido é o tribunal, não o prestador.', deOndeVem: 'API do 548 (base de empenhos do Estado), a cada 15 min.' },
   { id: 'empenho548.ultimoPagamento', nome: 'Pago em', grupo: 'Dinheiro', oQueE: 'Data do último pagamento registrado no processo.', deOndeVem: 'API do 548.', padraoOculta: true },
   { id: 'empenho548.pago', nome: 'Diferença', grupo: 'Dinheiro', oQueE: 'Diferença entre o que orçamos e o que o Estado pagou.', deOndeVem: 'Calculada.', padraoOculta: true },
 ];
