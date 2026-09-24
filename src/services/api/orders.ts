@@ -601,6 +601,9 @@ export const criarAnotacao = (orderId: number, texto: string) => api.post<{ orde
 export const apagarAnotacao = (orderId: number, anotacaoId: number) => api.delete(`/orders/${orderId}/anotacoes/${anotacaoId}/`);
 /** ids dos pedidos com anotação → o "!" nas filas (1 chamada por tela) */
 export const getAnotacoesIds = () => api.get<{ ids: Record<string, number> }>('/orders/anotacoes/ids/');
+/** #710: pedidos que dividem o número de processo com outro pedido (não histórico) → selo nas filas */
+export interface MesmoProcessoInfo { nivel: 'andamento' | 'desfecho'; outros: { id: number; statusProcesso: string; nivel: string }[] }
+export const getMesmoProcessoIds = () => api.get<{ ids: Record<string, MesmoProcessoInfo> }>('/orders/mesmo-processo/ids/');
 
 /** Bilhete de ida e volta fase 3 → jurídico (1.1) → fase 3 (pedido do Fabrício, reunião 20/09). */
 export type TipoPendenciaJuridica = 'INTEIRO_TEOR' | 'ACHAR_MEDICO' | 'CONTATO_PACIENTE_ADVOGADO' | 'VERIFICACAO' | 'RECADO';

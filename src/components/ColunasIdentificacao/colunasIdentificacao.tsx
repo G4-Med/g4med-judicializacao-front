@@ -11,6 +11,7 @@ import { useFichaPedido } from '../FichaPedido/FichaPedidoContext';
 import { mudarSegredo, decidirCnjSugerido, extrairNumerosDosAnexos, baixarAnexoDoTipo, salvarBlob, reprocessarDocumentos } from '../../services/api/orders';
 import { MarcadorAnotacao } from '../Anotacoes/MarcadorAnotacao';
 import { MarcadorRecusa } from '../Recusas/MarcadorRecusa';
+import { MarcadorMesmoProcesso } from '../MesmoProcesso/MarcadorMesmoProcesso';
 import { SeloPendencia } from '../PendenciaJuridica/PendenciaJuridica';
 import { useAccess } from '../../access/AccessContext';
 import './colunasIdentificacao.css';
@@ -907,7 +908,7 @@ export function tagTipoPaciente(tipo?: string | null) {
 /** @R 20/09 (reunião Fabrício, Fase 5): "!" na frente do nome quando o pedido tem anotação
  *  interna. Ponto único: as 10 filas passam por aqui, então todas ganham o marcador de uma vez. */
 export function nomeComCopiar(nome: string | null | undefined, orderId?: number | null) {
-  return <>{orderId ? <SeloPendencia orderId={orderId} /> : null}{orderId ? <MarcadorAnotacao orderId={orderId} /> : null}{orderId ? <MarcadorRecusa orderId={orderId} /> : null}{nome}<BotaoCopiar valor={nome} rotulo="nome do paciente" /></>;
+  return <>{orderId ? <SeloPendencia orderId={orderId} /> : null}{orderId ? <MarcadorAnotacao orderId={orderId} /> : null}{orderId ? <MarcadorRecusa orderId={orderId} /> : null}{orderId ? <MarcadorMesmoProcesso orderId={orderId} /> : null}{nome}<BotaoCopiar valor={nome} rotulo="nome do paciente" /></>;
 }
 
 

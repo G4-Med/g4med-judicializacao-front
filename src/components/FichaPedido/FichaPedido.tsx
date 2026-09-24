@@ -7,6 +7,7 @@ import { criarStatusOrcamentoPersonalizado } from '../../services/api/client';
 import { EscreverEmail } from '../EscreverEmail/EscreverEmail';
 import { Dropdown } from 'primereact/dropdown';
 import './FichaPedido.css';
+import '../MesmoProcesso/MesmoProcesso.css';
 import { BlocoAnotacoes } from '../Anotacoes/BlocoAnotacoes';
 import { BlocoLinksDocumentos } from '../LinkDocumentos/BlocoLinksDocumentos';
 import { BlocoPecaInteiroTeor } from '../PecaInteiroTeor/PecaInteiroTeor';
@@ -130,6 +131,8 @@ export function FichaPedido({
     orcamentosDaPeca?: OrcamentoDaPeca[]; pecasLidas?: PecaLida[];
     situacao?: Situacao; situacaoOpcoes?: SituacaoOpcoes;
     medicoAtual?: { id: number; nome: string; categoria: string | null } | null;
+    // #710: outros pedidos com o mesmo número de processo (inclui a cópia histórica)
+    mesmoProcesso?: { id: number; statusProcesso: string; nprocesso: string | null; paciente: string; nivel: 'andamento' | 'desfecho' | 'historico' }[];
   } | null>(null);
   const [mudandoCampo, setMudandoCampo] = useState<string | null>(null);
   // conteúdo de e-mail carregado SOB DEMANDA: abrir a ficha não deve baixar .eml do R2
@@ -445,6 +448,10 @@ export function FichaPedido({
     ? [dados.situacao?.faseExibida ?? dados.statusAtual, dados.situacao?.statusOrcamento, dados.situacao?.statusPerda]
         .filter(Boolean).join(' · ') + ((dados.urgencia?.vezesPedido ?? 1) > 1 ? ` · urgência ${dados.urgencia!.vezesPedido}×` : '')
     : '';
+  const mesmoProc = dados?.mesmoProcesso ?? [];
+  const mesmoProcGrave = mesmoProc.some((o) => o.nivel === 'andamento');
+  const resumoSituacaoCompleto = resumoSituacao
+    + (mesmoProc.length ? ` · ⧉ mesmo processo que ${mesmoProc.map((o) => `#${o.id}`).join(', ')}` : '');
   const resumoMedicos = dados
     ? `${dados.medicoAtual?.nome ?? 'sem médico principal'}${candidatos.length ? ` · ${candidatos.length} convidado(s)` : ''}`
     : '';
@@ -469,7 +476,23 @@ export function FichaPedido({
               segue o caminho do pedido (situação → chegada → médicos → orçamento → documentos →
               e-mails → jurídico → anotações → histórico). O número é contado na hora, então some
               uma seção vazia e a numeração continua sem buraco. */}
-          <SecaoFicha n={prox('situacao')} titulo="Situação do pedido" resumo={resumoSituacao} className="fic__sec">
+          <SecaoFicha n={prox('situacao')} titulo="Situação do pedido" resumo={resumoSituacaoCompleto} className="fic__sec">
+            {/* #710: o MESMO número de processo em outro pedido. Não junta nada — só não deixa calado. */}
+            {mesmoProc.length > 0 && (
+              <div className={mesmoProcGrave ? 'fic__mesmo-proc fic__mesmo-proc--grave' : 'fic__mesmo-proc'} role="note">
+                <strong>⧉ Este número de processo também está em outro pedido.</strong>
+                {mesmoProcGrave && ' Há outro em andamento: cuidado para não mandar dois orçamentos à SES.'}
+                {' '}Nada foi juntado — qual pedido segue é decisão do Rapha.
+                <ul>
+                  {mesmoProc.map((o) => (
+                    <li key={o.id}>
+                      #{o.id} · {o.statusProcesso}{o.nivel === 'historico' ? ' (cópia da base antiga)' : ''}
+                      {o.nprocesso ? ` · nº digitado: ${o.nprocesso}` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {/* SITUAÇÃO COMPLETA (@R 17/09: "na ficha não mostra a fase e os status, é
                 importante também para podermos ver e alterar corretamente caso precise").
                 Os quatro juntos porque é a COMBINAÇÃO que conta a história: "Perda" com

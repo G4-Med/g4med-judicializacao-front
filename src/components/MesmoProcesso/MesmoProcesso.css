@@ -1,0 +1,9 @@
+/* #710 — selo "mesmo processo em outro pedido" ao lado do nome do paciente */
+.mc-mesmo-proc { display: inline-block; margin-right: .3rem; padding: 0 .35rem; border-radius: 999px; font-size: .72rem;
+  font-weight: 700; line-height: 1.35; cursor: pointer; border: 1px solid #F59E0B; background: #FEF3C7; color: #92400E; }
+.mc-mesmo-proc--grave { border-color: #DC2626; background: #FEE2E2; color: #991B1B; }
+.mc-mesmo-proc:hover, .mc-mesmo-proc:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
+.fic__mesmo-proc { margin: 0 0 .8rem; padding: .6rem .8rem; border-radius: 8px; border: 1px solid #F59E0B; background: #FFFBEB; color: #78350F; font-size: .9rem; }
+.fic__mesmo-proc--grave { border-color: #DC2626; background: #FEF2F2; color: #7F1D1D; }
+.fic__mesmo-proc ul { margin: .35rem 0 0; padding-left: 1.1rem; }
+.fic__mesmo-proc button { all: unset; cursor: pointer; text-decoration: underline; font-weight: 600; }
