@@ -5,7 +5,7 @@ import { KpisValorEUrgencia } from '../../components/PainelKpis/kpisValorUrgenci
 import type { DataTableFilterMeta, DataTablePageEvent, DataTableSortEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
-import { colunaPagoEstado, colunaQuemPrecisamos } from '../../components/QuemPrecisamos/colunasMatch';
+import { colunaOportunidade, colunaPagoEstado, colunaQuemPrecisamos } from '../../components/QuemPrecisamos/colunasMatch';
 import { Tag } from 'primereact/tag';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
@@ -584,7 +584,7 @@ const abrirEdicao = (rowData: ProcessoJuridicoRow) => {
               </span>
             )}  frozen alignFrozen="left" />
           {/* @R 24/09 (tasks #7/#8): oportunidade e o que o Estado já pagou, logo no começo da linha */}
-          {colunaPagoEstado()}{colunaQuemPrecisamos()}
+          {colunaOportunidade()}{colunaPagoEstado()}{colunaQuemPrecisamos()}
           {colunaOrigem(dataComSequencial)}
           {/* @R 17/09: a posicao de Segredo e a MESMA em todas as fases — logo depois de
               Origem. Coluna que muda de lugar obriga a procurar de novo em cada aba. */}

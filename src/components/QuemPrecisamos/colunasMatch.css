@@ -6,3 +6,6 @@
 .match-pago { display: flex; flex-direction: column; font-size: 0.8rem; line-height: 1.3; white-space: nowrap; }
 .match-pago-maior { color: #6b7280; }
 .match-pago-maior small { font-size: 0.7rem; }
+.match-motivo { font-size: 0.72rem; font-style: italic; white-space: normal; line-height: 1.25; }
+.match-origem { font-size: 0.68rem; color: #6b7280; }
+.match-origem-projetado { color: #b45309; }

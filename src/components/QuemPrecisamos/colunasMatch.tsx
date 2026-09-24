@@ -4,8 +4,8 @@ import { cabecalhoComHint } from '../ColunasIdentificacao/colunasIdentificacao';
 import './colunasMatch.css';
 
 /**
- * QUEM PRECISAMOS · PAGO PELO ESTADO (@R 24/09 01:13–01:30, tasks #7/#8). A coluna Oportunidade saiu
- * a pedido do @R (24/09 02:2x): ficam Pago pelo Estado e, ao lado, Quem precisamos, nas 2 primeiras.
+ * OPORTUNIDADE · PAGO PELO ESTADO · QUEM PRECISAMOS (@R 24/09, tasks #7/#8). A Oportunidade saiu às 02:2x
+ * e voltou às 02:4x com valor próprio: mediana do Estado, senão média da chegada, senão projetado.
  *
  * ⟦"quando um pedido chega nós já fazemos um match da sugestão ... para saber o que tenho que
  * priorizar para achar, com o que temos de ativo"⟧ + ⟦"o valor da oportunidade na primeira coluna
@@ -29,6 +29,36 @@ const ROTULO_TIPO: Record<string, string> = {
   ONCOLOGIA_TRATAMENTO: 'Oncologia (radio/quimio)', HOME_CARE: 'Home care', HOSPITAL_INTERNACAO: 'Hospital',
   MEDICAMENTO_INSUMO: 'Medicamento/insumo', OUTRO: 'Outro',
 };
+
+const ORIGEM_OPORTUNIDADE: Record<string, string> = {
+  estado: 'mediana do Estado', chegada: 'média na chegada', projetado: 'projetado',
+};
+
+/**
+ * OPORTUNIDADE (@R 24/09 02:4x): ⟦"se tem valor pago pelo estado vem a mediana, se não tem vem o valor
+ * projetado com base nos dados que temos"⟧. O servidor escolhe (ia/match_pedido._oportunidade) e diz a
+ * origem; a tela mostra o valor e, embaixo, de onde ele veio — projetado nunca se passa por pago.
+ */
+export function colunaOportunidade(largura = '9rem') {
+  return (
+    <Column key="col-oportunidade" field="oportunidade.valor" sortable style={{ minWidth: largura }}
+      header={cabecalhoComHint('Oportunidade',
+        'Quanto este pedido vale, para priorizar a busca. Ordem: (1) mediana do que o Estado pagou por ' +
+        'este procedimento; (2) sem isso, a média do Estado consultada quando o pedido chegou; (3) sem ' +
+        'isso, valor projetado pela mediana dos pedidos da mesma especialidade. Embaixo do valor aparece ' +
+        'de onde ele veio.')}
+      body={(r: any) => {
+        const o = r?.oportunidade;
+        if (!o || o.valor == null) return <span className="ident-vazio match-motivo" title={o?.detalhe || 'Sem base de valor.'}>{o?.detalhe || 'sem base de valor'}</span>;
+        return (
+          <div className="match-pago" title={o.detalhe}>
+            <span className="match-valor">{reais(o.valor)}</span>
+            <span className={`match-origem match-origem-${o.origem}`}>{ORIGEM_OPORTUNIDADE[o.origem] ?? o.origem}</span>
+          </div>
+        );
+      }} />
+  );
+}
 
 export function colunaQuemPrecisamos(largura = '15rem') {
   return (
@@ -69,8 +99,15 @@ export function colunaPagoEstado(largura = '12rem') {
         'um concorrente. Com menos de 4 casos não há faixa, só os valores.')}
       body={(r: any) => {
         const p = r?.pagoEstado;
-        if (!p) return <span className="ident-vazio" title="Ainda não calculado.">—</span>;
-        if (!p.n) return <span className="ident-vazio" title={p.motivo || 'Sem pagamentos públicos para este procedimento.'}>sem pagamentos</span>;
+        // Vazio SEMPRE diz o porquê na célula (@R 24/09 02:4x): não calculado · fonte fora · sem pagamentos.
+        if (!p) return <span className="ident-vazio match-motivo" title="Pedido ainda não passou pelo cálculo (anterior a ele ou fora das fases 1 a 3).">não calculado</span>;
+        if (p.n == null) {
+          const fora = /sem resposta/i.test(p.motivo || '');
+          return <span className="ident-vazio match-motivo" title={`${p.motivo || 'Ainda não consultado.'} O sistema tenta de novo sozinho a cada 10 minutos.`}>
+            {fora ? 'fonte do Estado sem resposta · tentando de novo' : 'ainda não consultado'}</span>;
+        }
+        if (!p.n) return <span className="ident-vazio match-motivo" title={p.motivo || 'Sem pagamentos públicos para este procedimento.'}>
+          {/oscila|descart/i.test(p.motivo || '') ? 'sem pagamentos estáveis na fonte' : 'o Estado não pagou este procedimento'}</span>;
         const janela = p.janelaDias ? `últimos ${p.janelaDias} dias` : 'todo o histórico';
         return (
           <div className="match-pago" title={`${p.n} pagamento(s) · ${janela}`}>
