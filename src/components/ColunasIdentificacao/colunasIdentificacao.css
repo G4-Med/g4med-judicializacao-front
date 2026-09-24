@@ -34,6 +34,8 @@ body.dark-theme .chip-cadastro--completo { background: rgba(28,122,72,0.16); bor
 
 /* botão de anexar a peça de inteiro teor direto na linha (qualquer fase) */
 .inteiro-teor-anexar {
+  background: transparent;   /* #684: virou <button> (abre o gerenciador da peça) */
+  font-family: inherit;
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;

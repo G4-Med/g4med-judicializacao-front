@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DialogGerenciadorPeca } from '../PecaInteiroTeor/PecaInteiroTeor';
 import { Column } from 'primereact/column';
 import { Dialog } from 'primereact/dialog';
 import { Tag } from 'primereact/tag';
@@ -6,7 +7,7 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputNumber } from 'primereact/inputnumber';
 import { BotaoCopiar } from '../BotaoCopiar/BotaoCopiar';
 import { useFichaPedido } from '../FichaPedido/FichaPedidoContext';
-import { mudarSegredo, uploadAnexoOrder, decidirCnjSugerido, extrairNumerosDosAnexos, baixarAnexoDoTipo, salvarBlob, reprocessarDocumentos } from '../../services/api/orders';
+import { mudarSegredo, decidirCnjSugerido, extrairNumerosDosAnexos, baixarAnexoDoTipo, salvarBlob, reprocessarDocumentos } from '../../services/api/orders';
 import { MarcadorAnotacao } from '../Anotacoes/MarcadorAnotacao';
 import { MarcadorRecusa } from '../Recusas/MarcadorRecusa';
 import { SeloPendencia } from '../PendenciaJuridica/PendenciaJuridica';
@@ -713,7 +714,13 @@ function BotaoReprocessar({ orderId }: { orderId: number }) {
 function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
   const [enviado, setEnviado] = useState(false);
   const [baixando, setBaixando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
+  // #684 (@R 24/09 00:02): "Anexar" e "Partes" abrem o GERENCIADOR da peça (várias partes, adicionar, trocar,
+  // baixar o processo inteiro) — a mesma interface da ficha do pedido. Antes "Anexar" aceitava 1 arquivo só.
+  const [gerenciando, setGerenciando] = useState(false);
+  const janela = linha.id ? (
+    <DialogGerenciadorPeca orderId={linha.id as number} visible={gerenciando} onHide={() => setGerenciando(false)}
+      onMudou={(n) => setEnviado(n > 0)} />
+  ) : null;
 
   if (linha.temInteiroTeor || enviado) {
     /* O BADGE BAIXA (@R 18/09: "não estamos conseguindo baixar a peça clicando na tabela").
@@ -762,6 +769,12 @@ function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
         {baixando ? <i className="pi pi-spin pi-spinner" /> : tag}
       </button>
       <BotaoReprocessar orderId={linha.id as number} />
+      <button type="button" className="ident-extrair inteiro-teor-partes" onClick={() => setGerenciando(true)}
+        aria-label="Partes da peça: adicionar ou trocar"
+        title="Partes da peça: ver as partes, adicionar outra parte (processo em volumes) ou trocar a peça">
+        <i className="pi pi-clone" /> Partes / trocar
+      </button>
+      {janela}
       </span>
     );
   }
@@ -771,26 +784,12 @@ function CelulaInteiroTeor({ linha }: { linha: LinhaIdentificada }) {
     <span className="inteiro-teor-wrap">
     {declarado && <Tag value="Sem peça (declarado)" severity="warning" icon="pi pi-info-circle"
       title={`O jurídico declarou que este processo não tem peça de inteiro teor. ${linha.semPecaDeclaracao ?? ''}`} />}
-    <label className="inteiro-teor-anexar" title={(declarado ? 'Apareceu a peça? Anexe aqui — a declaração deixa de valer.' : 'Falta a peça de inteiro teor — anexe o PDF aqui (pode ser feito em qualquer fase)')
-      + ' Se o processo veio em mais de um arquivo, selecione todas as partes de uma vez (a parte 1 primeiro).'}>
-      <i className={enviando ? 'pi pi-spin pi-spinner' : 'pi pi-upload'} />
-      {enviando ? ' Enviando…' : ' Anexar'}
-      <input type="file" accept="application/pdf" multiple style={{ display: 'none' }} disabled={enviando}
-        onChange={async (e) => {
-          // #684: várias partes (volumes do PJe) na ordem da seleção; o servidor não duplica a mesma parte.
-          const arquivos = Array.from(e.target.files ?? []);
-          if (!arquivos.length) return;
-          setEnviando(true);
-          try {
-            for (const f of arquivos) await uploadAnexoOrder(linha.id as number, f, 'DECISAO_INTEIRO_TEOR');
-            setEnviado(true);
-          } catch {
-            alert('Não foi possível anexar a peça. Tente novamente.');
-          } finally {
-            setEnviando(false);
-          }
-        }} />
-    </label>
+    <button type="button" className="inteiro-teor-anexar" onClick={() => setGerenciando(true)}
+      title={(declarado ? 'Apareceu a peça? Anexe aqui — a declaração deixa de valer.' : 'Falta a peça de inteiro teor — anexe o PDF aqui (pode ser feito em qualquer fase)')
+        + ' Se o processo veio em mais de um arquivo, anexe todas as partes.'}>
+      <i className="pi pi-upload" /> Anexar
+    </button>
+    {janela}
     </span>
   );
 }

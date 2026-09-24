@@ -1,0 +1,9 @@
+/* #684 — gerenciador da peça de inteiro teor (ficha do pedido e janela da tabela). Informa, não bloqueia. */
+.pit { display: flex; flex-direction: column; gap: .5rem; }
+.pit__estado { margin: 0; font-size: .9rem; }
+.pit__estado .pi-check-circle { color: #16a34a; }
+.pit__estado .pi-exclamation-circle { color: #b45309; }
+.pit__dica { padding: .5rem .7rem; border-left: 3px solid #2563eb; background: #eff6ff; color: #1e3a8a; font-size: .85rem; line-height: 1.4; border-radius: 4px; }
+.pit__linha { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.pit__aviso { display: block; color: #1e3a8a; }
+.pit__carregando { margin: 0; color: var(--mc-ink-2, #6b7280); }
