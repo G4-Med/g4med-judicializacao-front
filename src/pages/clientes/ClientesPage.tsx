@@ -568,7 +568,8 @@ export function ClientesPage() {
       header: inativo ? 'Reativar cliente' : 'Inativar cliente',
       message: inativo
         ? `Reativar "${r.nomeSistema ?? r.nomeMedico ?? r.id}"? Ele volta a aparecer na seleção de médicos e nas cotações.`
-        : `Inativar "${r.nomeSistema ?? r.nomeMedico ?? r.id}"? Ele some da seleção de médicos, das cotações e das listagens. Os pedidos e o histórico dele continuam como estão. Dá para reativar depois nesta tela (filtro Inativos).`,
+        // #695 (@R 24/09 03:1x): inativar LIBERA os pedidos das fases 1-3 e encerra os links dele (servidor 021ff39)
+        : `Inativar "${r.nomeSistema ?? r.nomeMedico ?? r.id}"? Ele some da seleção de médicos, das cotações e das listagens. Nos pedidos das fases 1 a 3 em que ele é o médico ou convidado, ele sai: o pedido fica livre para outro médico (volta para Selecionar Médico, ou segue com outro convidado). Os links de documentos dele são encerrados. Da fase 4 em diante nada muda. Dá para reativar depois nesta tela (filtro Inativos), mas os pedidos liberados não voltam para ele.`,
       icon: inativo ? 'pi pi-replay' : 'pi pi-ban',
       acceptLabel: inativo ? 'Reativar' : 'Inativar',
       rejectLabel: 'Cancelar',
@@ -581,9 +582,17 @@ export function ClientesPage() {
           const resp = await updateMedico(r.id, { status: inativo });
           const gravado = resp?.data?.status;
           if (gravado !== inativo) throw new Error(`O servidor devolveu status=${String(gravado)}; nada mudou.`);
+          const lib = resp?.data?.liberacao;
+          const erroLib = resp?.data?.liberacaoErro;
+          const resumo = lib
+            ? `\n\n${lib.pedidosDevolvidos?.length ?? 0} pedido(s) das fases 1-3 voltaram para Selecionar Médico`
+              + `${lib.pedidosComOutro?.length ? `, ${lib.pedidosComOutro.length} seguiram com outro convidado` : ''}`
+              + `; ${lib.convitesCancelados ?? 0} convite(s) cancelado(s); ${lib.linksEncerrados ?? 0} link(s) de documentos encerrado(s).`
+            : '';
           alert(inativo
             ? `"${r.nomeSistema ?? r.nomeMedico ?? r.id}" reativado.`
-            : `"${r.nomeSistema ?? r.nomeMedico ?? r.id}" inativado — aparece só no filtro Inativos.`);
+            : `"${r.nomeSistema ?? r.nomeMedico ?? r.id}" inativado — aparece só no filtro Inativos.${resumo}`
+              + (erroLib ? `\n\nATENÇÃO: a liberação dos pedidos falhou (${erroLib}). Avise o suporte.` : ''));
           await carregarClientes();
         } catch (e: any) {
           alert(e?.response?.data?.error ?? e?.response?.data?.detail ?? e?.message ?? 'Não foi possível alterar o status.');
@@ -1908,7 +1917,7 @@ const handleSalvarEdicao = async () => {
                     rounded outlined
                     severity={r.status === false ? 'success' : 'danger'}
                     aria-label={r.status === false ? `Reativar ${r.nomeSistema ?? r.id}` : `Inativar ${r.nomeSistema ?? r.id}`}
-                    tooltip={r.status === false ? 'Reativar: volta a aparecer nas listagens' : 'Inativar: some das listagens (seleção de médico, cotação); o histórico dos pedidos fica'}
+                    tooltip={r.status === false ? 'Reativar: volta a aparecer nas listagens' : 'Inativar: some das listagens e sai dos pedidos das fases 1-3 (ficam livres para outro médico; links dele encerrados). O histórico fica'}
                     onClick={() => confirmarInativar(r)}
                   />
                 )}
