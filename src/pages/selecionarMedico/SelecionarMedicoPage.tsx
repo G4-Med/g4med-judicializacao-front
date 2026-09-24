@@ -27,7 +27,7 @@ import { useAccess } from '../../access/AccessContext';
 import { ReadOnlyBanner } from '../../components/access/ReadOnlyBanner';
 import { tagTipoPaciente, colunaOrigem, filtroMaiorQue, filtroOpcoes, casaOpcaoDosDados, filtroOpcoesDosDados } from '../../components/ColunasIdentificacao/colunasIdentificacao';
 import { colunaAcoesFase } from '../../components/AcoesFase/acoesFase';
-import { colunaOportunidade, colunaPagoEstado, colunaQuemPrecisamos, FILTROS_MATCH } from '../../components/QuemPrecisamos/colunasMatch';
+import { colunaOportunidade, colunaMenorOrcamento, colunaPagoEstado, colunaQuemPrecisamos, FILTROS_MATCH } from '../../components/QuemPrecisamos/colunasMatch';
 import { ModalMedico } from '../../components/TrocarMedico/CelulaMedico';
 import { DialogoCopiarPedido, prepararCopiaPedido, type PedidoParaCopiar } from '../orcamentoMedico/DialogoCopiarPedido';
 import './SelecionarMedicoPage.css';
@@ -664,7 +664,7 @@ export function SelecionarMedicoPage() {
             frozen alignFrozen="left"
           />
           {/* @R 24/09 (tasks #7/#8): oportunidade e o que o Estado já pagou, logo no começo da linha */}
-          {colunaOportunidade()}{colunaPagoEstado()}{colunaQuemPrecisamos(undefined, dataComCamposCalculados)}
+          {colunaOportunidade()}{colunaMenorOrcamento()}{colunaPagoEstado()}{colunaQuemPrecisamos(undefined, dataComCamposCalculados)}
           <Column
             field="medico"
             header={cabecalhoComHint('Médico', 'Profissional da rede que cotou (ou vai cotar) este procedimento.')}

@@ -94,6 +94,31 @@ export function colunaOportunidade(largura = '9rem') {
   );
 }
 
+/**
+ * MENOR ORÇ. PROC. (@R 24/09 03:20): o menor orçamento do procedimento INTEIRO que está válido e APROVADO
+ * pela IA para ir no pedido — o mesmo "valor de referência" da mensagem do Copiar (servidor:
+ * ia/match_pedido._menores_orcamentos). Valor com o nome do orçamento; vazio diz o porquê.
+ */
+export function colunaMenorOrcamento(largura = '10rem') {
+  return (
+    <Column key="col-menor-orcamento" field="menorOrcamento.valor" sortable style={{ minWidth: largura, maxWidth: '14rem' }}
+      header={cabecalhoComHint('Menor orç. proc.',
+        'Menor orçamento do procedimento inteiro lido da peça, conferido e aprovado pela IA para ir no pedido ' +
+        '(o mesmo valor de referência da mensagem do Copiar, já com o desconto do link). Embaixo, de quem é o ' +
+        'orçamento. OPME, honorários, internação e taxas sozinhos não contam.')}
+      body={(r: any) => {
+        const m = r?.menorOrcamento;
+        if (!m || m.valor == null) return <span className="ident-vazio match-motivo" title={m?.motivo || 'Não calculado.'}>{m?.motivo || 'não calculado'}</span>;
+        return (
+          <div className="match-pago" title={`${m.local || 'prestador não identificado'} · original ${reais(m.original)} · menor entre ${m.n} aprovado(s) pela IA${m.ressalva ? ' · a IA aprovou COM RESSALVA' : ''}`}>
+            <span className="match-valor">{reais(m.valor)}</span>
+            <span className="match-origem" style={{ whiteSpace: 'normal' }}>{m.local || 'prestador não identificado'}{m.ressalva ? ' · com ressalva' : ''}</span>
+          </div>
+        );
+      }} />
+  );
+}
+
 export function colunaQuemPrecisamos(largura = '15rem', dados?: any[]) {
   const filtro = dados ? {
     filter: true, filterField: 'match', filterMatchMode: 'custom' as const, showFilterMenu: false,
