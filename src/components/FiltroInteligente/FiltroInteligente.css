@@ -46,3 +46,15 @@
   .filtro-ia__sub { display: none; }
   .filtro-ia__linha .p-button { flex: 1 1 auto; }
 }
+/* #692/#680 — onde procurar + o que casou fora da tabela */
+.filtro-ia__onde { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .75rem; margin-top: .45rem; font-size: .85rem; }
+.filtro-ia__onde-rotulo { color: var(--mc-ink-2, #4b5563); font-weight: 600; }
+.filtro-ia__onde-op { display: inline-flex; align-items: center; gap: .3rem; cursor: pointer; }
+.filtro-ia__onde-op--on { font-weight: 600; }
+.filtro-ia__periodo { display: inline-flex; align-items: center; gap: .3rem; }
+.filtro-ia__periodo input[type='date'] { font: inherit; padding: 1px 4px; }
+.filtro-ia__onde-nota { color: var(--mc-ink-2, #6b7280); font-size: .78rem; flex-basis: 100%; }
+.filtro-ia__fora { margin-top: .4rem; }
+.filtro-ia__fora-cab { font-weight: 600; font-size: .85rem; }
+.filtro-ia__fora ul { margin: .2rem 0 0; padding-left: 1.1rem; max-height: 14rem; overflow-y: auto; font-size: .82rem; }
+.filtro-ia__fora-fase { color: var(--mc-ink-2, #6b7280); }

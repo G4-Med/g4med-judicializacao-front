@@ -650,9 +650,16 @@ export const revogarLinkDocumentos = (linkId: number) =>
 export interface FiltroTextoResposta {
   entendi: string; colunasUsadas: string[]; ids: number[]; porque: Record<string, string>;
   analisados: number; descartadosInvalidos: number;
+  /** #692/#680: só quando a busca foi em TODOS os pedidos ou num PERÍODO (o servidor escolheu os pedidos). */
+  escopo?: { tipo: 'todos' | 'periodo'; descricao: string; total: number; analisados: number; cortado: boolean };
+  /** o mínimo de cada pedido que casou, para listar (e abrir) o que está FORA da tabela */
+  detalhes?: Record<string, { paciente: string; procedimento: string; fase: string | null; status: string | null }>;
 }
-export const filtrarTextoIA = (texto: string, ids: number[]) =>
-  api.post<FiltroTextoResposta>('/ia/filtrar-texto/', { texto, ids });
+export type EscopoFiltro = { tipo: 'todos' } | { tipo: 'periodo'; de: string; ate: string };
+/** Sem escopo: a IA lê os pedidos da tela (ids). Com escopo (@R 24/09 01:23): o servidor escolhe — todos os pedidos
+ *  ou os que chegaram no período — e a IA lê em lotes (até 2.000; ~1 min na base inteira). */
+export const filtrarTextoIA = (texto: string, ids: number[], escopo?: EscopoFiltro) =>
+  api.post<FiltroTextoResposta>('/ia/filtrar-texto/', escopo ? { texto, escopo } : { texto, ids }, { timeout: 170000 });
 
 /** @R 23/09 12:54: a IA confere se cada orçamento listado no Copiar COBRE a cirurgia pedida.
  *  Reusa o parecer guardado para o mesmo procedimento; forcar refaz. Só aponta, não muda o link. */
