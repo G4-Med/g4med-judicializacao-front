@@ -3,6 +3,8 @@ import { Dialog } from 'primereact/dialog';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 import { InputNumber } from 'primereact/inputnumber';
+import { Dropdown } from 'primereact/dropdown';
+import { getMedicosCompleto } from '../../services/api/client';
 import { FichaPrestadorDialog } from '../../components/FichaPrestador/FichaPrestadorDialog';
 import { adicionarEspecialidadeDestino, previaLinkDocumentos, gerarLinkDocumentos, gerarRelatorioMedico, registrarCotacaoPedida, montarCotacaoMedico, conferirCompatibilidade, type ParecerCompat } from '../../services/api/orders';
 
@@ -37,6 +39,8 @@ export interface PedidoParaCopiar {
   // Menor orç. proc. da tabela (ia/match_pedido, @R 24/09): automático ou escolhido à mão
   menorOrcamento?: { id?: number | null; valor?: number | null; original?: number | null; local?: string | null;
     escolhido?: { por?: string; em?: string } | null } | null;
+  // os convidados ativos do pedido (cotação concorrente) — atalhos do "Para quem está enviando?" (@R 24/09 10:22)
+  convidados?: { idMedico: number; nome: string }[] | null;
 }
 
 // singular → plural, para a frase "3 laudos médicos, 1 exame…" (chaves = rótulos do servidor)
@@ -226,6 +230,12 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
   const [erroRel, setErroRel] = useState<string | null>(null);
   const [addEsp, setAddEsp] = useState<'nao' | 'enviando' | 'feito' | string>('nao');
   const pedidoAberto = useRef<number | null>(null);   // a resposta da prévia só vale para o pedido que está ABERTO
+  /* PARA QUEM ESTÁ ENVIANDO (@R 24/09 10:22: ⟦"ao clicar em copiar temos que marcar para quem está sendo enviado"⟧).
+     O link saía sempre em nome do médico do pedido — mesmo quando a mensagem ia ao grupo de um concorrente. Agora
+     quem copia MARCA o destinatário (nasce vazio de propósito: marcar é o ato pedido), e o link sai em nome dele:
+     é esse registro que a listagem por médico lê como "enviado em" (backend/envio_medico.py). */
+  const [destinatario, setDestinatario] = useState<{ id: number; nome: string } | null>(null);
+  const [outrosMedicos, setOutrosMedicos] = useState<{ label: string; value: number }[]>([]);
   const alternar = (set: Set<number>, id: number, fn: (s: Set<number>) => void) => {
     const n = new Set(set); if (n.has(id)) n.delete(id); else n.add(id); fn(n);
   };
@@ -242,6 +252,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
     // @R 24/09 02:47 (#1251): o ajuste de valor e o aviso 'sem referência' ficavam do pedido ANTERIOR — o ajuste do
     // orçamento 1563 (#536) ia junto no link do #1251 e o servidor recusava ('a referência 1563 não é deste pedido').
     setAjustes({}); setAvisoSemRef(false);
+    setDestinatario(null);
     pedidoAberto.current = pedido?.id ?? null;
     if (!pedido) return;
     const idPedido = pedido.id;
@@ -256,6 +267,30 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
       })
       .catch((e) => { if (pedidoAberto.current === idPedido) setErro(e?.response?.data?.error || 'Não foi possível montar a prévia do link.'); });
   }, [pedido]);
+
+  // médicos ativos para o "Outro médico…" (1 vez por abertura do diálogo)
+  useEffect(() => {
+    if (!pedido || outrosMedicos.length) return;
+    getMedicosCompleto().then((r) => {
+      const lista = Array.isArray(r.data) ? r.data : [];
+      setOutrosMedicos(lista.filter((m: any) => m.id > 1 && m.status !== false)
+        .map((m: any) => ({ value: m.id, label: m.nomeSistema || m.nomeMedico || `Médico ${m.id}` })));
+    }).catch(() => { /* sem a lista, os atalhos do pedido continuam */ });
+  }, [pedido]);   // eslint-disable-line react-hooks/exhaustive-deps
+  // trocou o destinatário → a prévia é a DELE (cotações anteriores são do prestador do link)
+  useEffect(() => {
+    if (!pedido || !destinatario) return;
+    const idPedido = pedido.id, idDest = destinatario.id;
+    previaLinkDocumentos(idPedido, idDest)
+      .then((r) => { if (pedidoAberto.current === idPedido) setPrevia((p: any) => (p ? { ...p, cotacoesAnteriores: r.data?.cotacoesAnteriores, especialidadeDestino: r.data?.especialidadeDestino, outrosParticipantes: r.data?.outrosParticipantes } : r.data)); })
+      .catch(() => { /* a prévia do pedido segue valendo */ });
+  }, [destinatario]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const atalhosDestino: { id: number; nome: string; papel: string }[] = (() => {
+    const out: { id: number; nome: string; papel: string }[] = [];
+    if (pedido?.idMedico && Number(pedido.idMedico) > 1) out.push({ id: Number(pedido.idMedico), nome: pedido.medico || `Médico ${pedido.idMedico}`, papel: 'médico do pedido' });
+    for (const c of pedido?.convidados || []) if (c.idMedico > 1 && !out.some((o) => o.id === c.idMedico)) out.push({ id: c.idMedico, nome: c.nome, papel: 'convidado' });
+    return out;
+  })();
 
   const refs: any[] = previa?.referencias || [];
   // COBRE A CIRURGIA? (@R 23/09 12:54): a IA lê a folha de cada orçamento e compara com o procedimento
@@ -322,6 +357,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
 
   const gerarECopiar = async () => {
     if (!pedido) return;
+    if (!destinatario) { alert('Marque para quem está enviando antes de gerar o link.'); return; }
     setCopiando(true);
     try {
       // relatório marcado: garante o que corresponde aos documentos marcados AGORA (espera se está gerando)
@@ -330,7 +366,7 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
       let r: any;
       try {
         r = await gerarLinkDocumentos(pedido.id, {
-          medicoId: pedido.idMedico ?? null, destino: pedido.medico || undefined, mostrarValores: comValores,
+          medicoId: destinatario.id, destino: destinatario.nome || undefined, mostrarValores: comValores,
           anexosExcluidos: [...docsFora], referenciasExcluidas: comValores ? [...refsFora] : [],
           pagamentosIncluidos: enviarPag ? pagVao.map((p) => p.id) : [],
           resumoId: enviarRel && rel ? rel.id : null,
@@ -371,13 +407,32 @@ export function DialogoCopiarPedido({ pedido, onClose, onCopiado }: Props) {
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <Button label="Cancelar" text onClick={onClose} disabled={copiando} />
           <Button label={copiando ? (gerandoRel ? 'IA lendo os documentos…' : 'Gerando…') : 'Gerar link e copiar'} icon="pi pi-lock"
-            onClick={gerarECopiar} disabled={!previa || copiando} />
+            onClick={gerarECopiar} disabled={!previa || copiando || !destinatario}
+            tooltip={!destinatario ? 'Marque para quem está enviando' : undefined} tooltipOptions={{ position: 'top', showOnDisabled: true }} />
         </div>
       )}>
       {erro && <div style={{ color: '#b91c1c' }}>{erro}<br />Nada será copiado.</div>}
       {!erro && !previa && <div>Montando a prévia…</div>}
       {previa && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontSize: 14 }}>
+          <section className="copiar-destino" style={{ border: `1px solid ${destinatario ? '#abefc6' : '#fdba74'}`,
+            background: destinatario ? '#f6fef9' : '#fff7ed', borderRadius: 8, padding: '8px 10px' }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>
+              Para quem está enviando?{!destinatario && <span style={{ color: '#b45309', fontWeight: 400 }}> — marque antes de gerar o link</span>}
+            </div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              {atalhosDestino.map((o) => (
+                <Button key={o.id} size="small" outlined={destinatario?.id !== o.id} icon={destinatario?.id === o.id ? 'pi pi-check' : undefined}
+                  label={`${o.nome} (${o.papel})`} onClick={() => setDestinatario({ id: o.id, nome: o.nome })} />
+              ))}
+              <Dropdown value={destinatario && !atalhosDestino.some((o) => o.id === destinatario.id) ? destinatario.id : null}
+                options={outrosMedicos.filter((m) => !atalhosDestino.some((o) => o.id === m.value))} filter
+                placeholder="Outro médico…" style={{ minWidth: 200 }}
+                onChange={(e) => { const m = outrosMedicos.find((x) => x.value === e.value); if (m) setDestinatario({ id: m.value, nome: m.label }); }} />
+            </div>
+            {destinatario && <div style={{ fontSize: 12, color: '#067647', marginTop: 6 }}>
+              O link sai em nome de <b>{destinatario.nome}</b> e fica registrado como enviado a ele.</div>}
+          </section>
           {!!pedido?.idMedico && Number(pedido.idMedico) > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f5f8ff', border: '1px solid #d1e0ff', borderRadius: 8, padding: '8px 10px' }}>
               <i className="pi pi-id-card" style={{ color: '#1d4ed8' }} />
@@ -751,5 +806,8 @@ export const prepararCopiaPedido = async (
     idMedico: m.idMedico ?? m.medicoId ?? m.medico_id ?? null, medico: m.nomeMedico ?? m.medico ?? null,
     // o Menor orç. proc. da linha (@R 24/09 10:05) — sem ele aqui o diálogo nunca pré-marca (achado no teste de tela)
     menorOrcamento: m.menorOrcamento ?? null,
+    // atalhos do "Para quem está enviando?" — convidados que ainda contam (cancelado e recusou não recebem pedido)
+    convidados: (m.cotacaoConcorrente || []).filter((c: any) => c && !['CANCELADO', 'RECUSOU'].includes(c.situacao))
+      .map((c: any) => ({ idMedico: Number(c.idMedico), nome: c.nomeMedico || `Médico ${c.idMedico}` })),
   }, recarregar)
 }

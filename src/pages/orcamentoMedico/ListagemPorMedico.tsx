@@ -114,6 +114,8 @@ export default function ListagemPorMedico({ visible, onHide, onMudou }: Props) {
     if (c.respostaCotacao === 'ACEITOU') return <Tag severity="success" value="quer cotar" title={`${c.respostaCotacaoPor || ''} · ${c.respostaCotacaoOrigem || ''}`} />
     if (c.respostaCotacao === 'RECUSOU') return <Tag severity="danger" value="não quer" title={`${c.respostaCotacaoPor || ''} · ${c.respostaCotacaoOrigem || ''}`} />
     if (c.respostaCotacao === 'CONDICIONADO') return <Tag severity="warning" icon="pi pi-hourglass" value={`aguarda: ${c.respostaCotacaoObs || 'exame'}`} title={`quer cotar, mas antes precisa de: ${c.respostaCotacaoObs || ''} · ${c.respostaCotacaoPor || ''} · ${c.respostaCotacaoOrigem || ''}`} />
+    // sem prova de envio ao médico não há "sem resposta há N d": ele nunca recebeu (@R 24/09 10:22)
+    if (c.semEnvio) return <Tag severity="danger" value="não enviado" title="Nenhum envio ao grupo dele e nenhum link gerado para ele" />
     const atrasado = (c.diasEsperando ?? 0) >= 2
     return <Tag severity={atrasado ? 'warning' : 'info'} value={atrasado ? `sem resposta há ${c.diasEsperando} d` : 'aguardando'} />
   }
@@ -191,7 +193,15 @@ export default function ListagemPorMedico({ visible, onHide, onMudou }: Props) {
                   <td style={{ padding: '.35rem .25rem' }}>#{c.id}</td>
                   <td style={{ padding: '.35rem .25rem' }}>{c.paciente}</td>
                   <td style={{ padding: '.35rem .25rem' }}>{c.procedimento || c.area || '—'}</td>
-                  <td style={{ padding: '.35rem .25rem', whiteSpace: 'nowrap' }}>{c.enviadoEm || '—'}{c.diasEsperando != null && <span style={{ color: 'var(--text-color-secondary)' }}> ({c.diasEsperando} d)</span>}</td>
+                  {/* @R 24/09 10:22: a data é a do ENVIO AO MÉDICO, não a do vínculo — o #594 dizia 29/07 (57 d) e foi enviado em 20/09 */}
+                  <td style={{ padding: '.35rem .25rem', whiteSpace: 'nowrap' }}
+                    title={c.semEnvio ? `Vinculado em ${c.vinculadoEm || '—'}; nenhum envio a ele registrado`
+                      : `Enviado a ele ${(c.envioFonte || []).map((f) => ({ grupo: 'no grupo dele', link: 'por link gerado para ele', relay: 'pelo envio automático' } as Record<string, string>)[f] || f).join(' e ')}`
+                        + (c.vinculadoEm ? ` · vinculado em ${c.vinculadoEm}` : '')}>
+                    {c.semEnvio ? <span style={{ color: '#b45309' }}>não enviado</span> : c.enviadoEm || '—'}
+                    {c.diasEsperando != null && <span style={{ color: 'var(--text-color-secondary)' }}> ({c.diasEsperando} d)</span>}
+                    {c.reenviadoEm && <div style={{ fontSize: 11, color: 'var(--text-color-secondary)' }}>reenviado {c.reenviadoEm}</div>}
+                  </td>
                   <td style={{ padding: '.35rem .25rem' }}>{tagResposta(c)}</td>
                   <td style={{ padding: '.35rem .25rem', whiteSpace: 'nowrap' }}>
                     <Button icon="pi pi-check" size="small" text severity="success" title="Médico QUER cotar"

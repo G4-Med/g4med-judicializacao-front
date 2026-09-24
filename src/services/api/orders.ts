@@ -543,6 +543,9 @@ export const getCnjAConfirmar = () => api.get('/cnj-a-confirmar/');
 export interface CasoPorMedico {
   id: number; paciente: string; procedimento: string; area: string; subarea: string;
   enviadoEm: string | null; diasEsperando: number | null;
+  /** @R 24/09 10:22: enviadoEm/diasEsperando contam do ENVIO AO MÉDICO (grupo dele, link para ele ou relay); sem
+   *  prova de envio → semEnvio=true e os dois vêm null. vinculadoEm = o dia em que ele foi ligado ao pedido. */
+  semEnvio?: boolean; reenviadoEm?: string | null; envioFonte?: string[]; vinculadoEm?: string | null;
   respostaCotacao: RespostaCotacao | null; respostaCotacaoEm: string | null;
   respostaCotacaoPor: string | null; respostaCotacaoOrigem: string | null;
   /** #509: com CONDICIONADO, o que o médico precisa antes de cotar (ex.: "ressonância de joelho"). */
@@ -624,8 +627,9 @@ export const marcarPendenciaLida = (orderId: number, pendenciaId: number) =>
 
 /* LINK RASTREÁVEL DOS DOCUMENTOS (@R 21/09 18:27) — 1 link seguro da G4MED no lugar dos links
    públicos: registra cada abertura, só visualiza (imagem com marca d'água), revogável. */
-export const previaLinkDocumentos = (orderId: number) =>
-  api.get(`/orders/${orderId}/link-documentos/previa/`);
+// `medico` (@R 24/09 10:22): a prévia do DESTINATÁRIO marcado no Copiar — as cotações anteriores são as dele
+export const previaLinkDocumentos = (orderId: number, medico?: number | null) =>
+  api.get(`/orders/${orderId}/link-documentos/previa/`, { params: medico ? { medico } : {} });
 export const gerarLinkDocumentos = (orderId: number, dados: {
   destino?: string; medicoId?: number | null; mostrarValores: boolean;
   anexosExcluidos?: number[]; referenciasExcluidas?: number[];
