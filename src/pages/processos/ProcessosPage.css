@@ -699,3 +699,13 @@ body.dark-theme .processos-table .p-datatable-tbody > tr > td {
   border-color: #1e2d42;
   color: #c6d2df;
 }
+
+/* #681 — seletor de mês + linha da soma dos indicadores */
+.processos-mes{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin:0 0 .8rem}
+.processos-mes label{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:#475569}
+.processos-mes select{padding:.35rem .6rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff}
+.processos-mes small{color:#64748b}
+.processos-soma{margin:.6rem 0 0;font-size:.86rem;color:#475569}
+.processos-soma[data-soma-ok="nao"]{color:#b91c1c}
+/* fora do painel de indicadores (que abre fechado): filtro de mês ativo nunca fica escondido */
+.processos-mes[data-ativo="sim"]{background:#FEF3C7;border:1px solid #F59E0B;border-radius:8px;padding:.45rem .7rem}

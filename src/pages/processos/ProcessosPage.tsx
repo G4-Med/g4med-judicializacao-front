@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
+import { estaEmAberto, ehHistorico } from '../../services/reguaFases';
 import { StatusClicavel } from '../../components/StatusClicavel/StatusClicavel';
 import type { Dispatch, SetStateAction } from 'react';
 import { DataTable } from 'primereact/datatable';
@@ -74,13 +75,9 @@ const STATUS_PERDA_FALLBACK = [
   'Perda pelo Orçamento',
 ];
 
-const STATUS_PROCESSOS_ATIVOS = [
-  'Aguardando Juridico',
-  'Aguardando Orçamento',
-  'Aguardando Protocolar',
-  'Aguardando Resposta',
-  'Aguardando Resposta - Segredo de Justiça',
-];
+const MESES_PT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+/** '2026-09' → 'set/2026' */
+const rotuloMes = (m: string) => `${MESES_PT[Number(m.slice(5, 7)) - 1] ?? m.slice(5, 7)}/${m.slice(0, 4)}`;
 
 const STATUS_PROCESSOS_BAIXADOS = [
   'Ganho',
@@ -870,10 +867,16 @@ ${linhasAnexos}
 
   // filtro por texto inteligente (@R 23/09 13:43): a IA escolhe os ids; os filtros da tabela seguem valendo
   const [filtroIA, setFiltroIA] = useState<FiltroAtivo | null>(null);
+  // #681: mês de chegada (dataPedido) — filtra a TABELA e os INDICADORES juntos; '' = todos.
+  const [mesFiltro, setMesFiltro] = useState<string>('');
+  const mesesDisponiveis = useMemo(
+    () => Array.from(new Set(processos.map((p) => (p.dataSolicitacao || '').slice(0, 7)).filter((m) => /^\d{4}-\d{2}$/.test(m)))).sort().reverse(),
+    [processos],
+  );
   const dataComCamposCalculados = useMemo<ProcessoTableRow[]>(() => {
     const hoje = new Date();
 
-    return processos.map((item, index) => {
+    return processos.filter((item) => !mesFiltro || (item.dataSolicitacao || '').startsWith(mesFiltro)).map((item, index) => {
       const dataSolicitacao = new Date(`${item.dataSolicitacao}T00:00:00`);
       const diferencaMs = hoje.getTime() - dataSolicitacao.getTime();
       const dias = Math.max(0, Math.floor(diferencaMs / (1000 * 60 * 60 * 24)));
@@ -884,7 +887,7 @@ ${linhasAnexos}
         dias
       };
     });
-  }, [processos]);
+  }, [processos, mesFiltro]);
 
   useEffect(() => {
     setVisibleProcessos(dataComCamposCalculados);
@@ -892,12 +895,19 @@ ${linhasAnexos}
 
   const calcularKpis = (items: ProcessoTableRow[]) => {
     const totalProcessos = items.length;
-    const processosAtivos = items.filter((item) =>
-      STATUS_PROCESSOS_ATIVOS.includes(item.status)
-    ).length;
+    // #681 (@R 23/09 16:57: "os indicadores não batem... coerentes e em ordem até com /home para
+    // totalizarmos corretamente"). Medido 24/09: Ativos 167 + Baixados 386 = 553 de 1.179 — a lista
+    // local de "ativos" deixava de fora os 60 "Enviado à SES - Sem Protocolo" (que a /home conta)
+    // e nenhum cartão contava os 566 do Histórico. Agora é PARTIÇÃO: em aberto (a MESMA régua da
+    // /home, services/reguaFases) + baixados (Ganho + Perda) + histórico + outros = total.
+    const processosAtivos = items.filter((item) => estaEmAberto(item.status)).length;
+    const ganho = items.filter((item) => item.status === 'Ganho').length;
+    const perda = items.filter((item) => item.status === 'Perda').length;
     const processosBaixados = items.filter((item) =>
       STATUS_PROCESSOS_BAIXADOS.includes(item.status)
     ).length;
+    const historico = items.filter((item) => ehHistorico(item.status)).length;
+    const outros = totalProcessos - processosAtivos - processosBaixados - historico;
     const qtdeOrcamentoEnviado = items.filter(
       (item) => item.statusOrcamento === 'Orçamento Enviado'
     ).length;
@@ -923,6 +933,11 @@ ${linhasAnexos}
       totalProcessos,
       processosAtivos,
       processosBaixados,
+      ganho,
+      perda,
+      historico,
+      outros,
+      enviadoSes: items.filter((item) => item.status === 'Enviado à SES - Sem Protocolo').length,
       percentualRespostas,
       valorRecebido,
       semCotacaoQtd: semCotacao.length,
@@ -1911,8 +1926,8 @@ ${linhasAnexos}
       </div>
       <div class="processos-export-kpis">
         <div class="processos-export-kpi"><span>Total de Processos</span><strong>${kpisExportacao.totalProcessos}</strong></div>
-        <div class="processos-export-kpi"><span>Processos Ativos</span><strong>${kpisExportacao.processosAtivos}</strong></div>
-        <div class="processos-export-kpi"><span>Processos Baixados</span><strong>${kpisExportacao.processosBaixados}</strong></div>
+        <div class="processos-export-kpi"><span>Em aberto</span><strong>${kpisExportacao.processosAtivos}</strong></div>
+        <div class="processos-export-kpi"><span>Baixados (ganho + perda)</span><strong>${kpisExportacao.processosBaixados}</strong></div>
         <div class="processos-export-kpi"><span>% de Respostas</span><strong>${kpisExportacao.percentualRespostas.toFixed(1)}%</strong></div>
         <div class="processos-export-kpi"><span>Aguardando Jurídico</span><strong>${kpisExportacao.aguardandoJuridico}</strong></div>
         <div class="processos-export-kpi"><span>Aguardando Orçamento</span><strong>${kpisExportacao.aguardandoOrcamento}</strong></div>
@@ -2064,6 +2079,14 @@ ${linhasAnexos}
         </div>
       </div>
 
+      <div className="processos-mes" data-ativo={mesFiltro ? 'sim' : 'nao'}>
+        <label htmlFor="processos-mes-sel">Mês de chegada do pedido</label>
+        <select id="processos-mes-sel" value={mesFiltro} onChange={(e) => { setMesFiltro(e.target.value); setFirst(0); }}>
+          <option value="">Todos os meses</option>
+          {mesesDisponiveis.map((m) => <option key={m} value={m}>{rotuloMes(m)}</option>)}
+        </select>
+        {mesFiltro && <small>a tabela e os indicadores mostram só os pedidos que chegaram em {rotuloMes(mesFiltro)}</small>}
+      </div>
       <PainelKpis titulo="Indicadores">
       <div className="kpi-grid">
         <div className="kpi-card">
@@ -2101,21 +2124,42 @@ ${linhasAnexos}
           <div className="kpi-value">{formatarMoeda(kpis.valorEnviado)}</div>
         </div>
 
-        <div className="kpi-card">
+        <div className="kpi-card" title="Pedidos com trabalho a fazer — a mesma régua da tela Início (fases 1 a 5,1, incluindo Enviado à SES sem protocolo)">
           <div className="kpi-header">
-            <span>Processos Ativos</span>
+            <span>Em aberto</span>
             <i className="pi pi-sync"></i>
           </div>
           <div className="kpi-value">{kpis.processosAtivos}</div>
         </div>
 
-        <div className="kpi-card">
+        <div className="kpi-card" title="Pedidos com desfecho: Ganho ou Perda">
           <div className="kpi-header">
-            <span>Processos Baixados</span>
+            <span>Baixados</span>
             <i className="pi pi-check-circle"></i>
           </div>
-          <div className="kpi-value">{kpis.processosBaixados}</div>
+          <div className="kpi-value">
+            {kpis.processosBaixados}
+            <span className="kpi-sub"> · ganho {kpis.ganho} · perda {kpis.perda}</span>
+          </div>
         </div>
+
+        <div className="kpi-card" title="Carga anterior ao sistema (Histórico - Base Antiga e Sem Rastro): tem data e valor, mas ninguém trabalha nela">
+          <div className="kpi-header">
+            <span>Histórico (carga antiga)</span>
+            <i className="pi pi-history"></i>
+          </div>
+          <div className="kpi-value">{kpis.historico}</div>
+        </div>
+
+        {kpis.outros !== 0 && (
+          <div className="kpi-card" title="Pedidos com fase fora da régua (nem em aberto, nem baixado, nem histórico) — não deveria existir; se aparecer, é cadastro a corrigir">
+            <div className="kpi-header">
+              <span>Outra fase</span>
+              <i className="pi pi-exclamation-triangle"></i>
+            </div>
+            <div className="kpi-value">{kpis.outros}</div>
+          </div>
+        )}
 
         <div className="kpi-card">
           <div className="kpi-header">
@@ -2156,7 +2200,21 @@ ${linhasAnexos}
           </div>
           <div className="kpi-value">{kpis.aguardandoRespostas}</div>
         </div>
+
+        <div className="kpi-card" title="Fase 5,1: orçamento enviado à SES e ainda sem protocolo">
+          <div className="kpi-header">
+            <span>Qtde Enviado à SES sem protocolo</span>
+            <i className="pi pi-envelope"></i>
+          </div>
+          <div className="kpi-value">{kpis.enviadoSes}</div>
+        </div>
       </div>
+      <p className="processos-soma" data-soma-ok={kpis.outros === 0 ? 'sim' : 'nao'}>
+        {mesFiltro ? `${rotuloMes(mesFiltro)}: ` : ''}
+        Em aberto {kpis.processosAtivos} + Baixados {kpis.processosBaixados} + Histórico {kpis.historico}
+        {kpis.outros !== 0 ? ` + Outra fase ${kpis.outros}` : ''} = <b>{kpis.totalProcessos}</b> pedidos
+        {' '}· as 5 filas (Jurídico {kpis.aguardandoJuridico} + Orçamento {kpis.aguardandoOrcamento} + Protocolar {kpis.aguardandoProtocolar} + Respostas {kpis.aguardandoRespostas} + Enviado à SES {kpis.enviadoSes}) = <b>{kpis.aguardandoJuridico + kpis.aguardandoOrcamento + kpis.aguardandoProtocolar + kpis.aguardandoRespostas + kpis.enviadoSes}</b> em aberto
+      </p>
       </PainelKpis>
 
 
