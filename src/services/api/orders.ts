@@ -366,6 +366,8 @@ export const getSlaIndices = (params: {
 export const getSlaPorMedico = () => api.get('/sla/por-medico/');
 
 export const getSlaEstourados = () => api.get('/sla/estourados/');
+// SLA por responsabilidade (@R 23/09): os estouros da SUA parte — o sino leva para cá.
+export const getSlaResponsabilidade = () => api.get('/sla/responsabilidade/');
 
 export const getNotificacoesCentral = () => api.get('/notificacoes/central/');
 

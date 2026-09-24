@@ -30,6 +30,7 @@ import { OrcamentosTerceirosPage } from '../../pages/orcamentosTerceiros/Orcamen
 import { CentralEmailsPage } from '../../pages/centralEmails/CentralEmailsPage';
 import { FunilPage } from '../../pages/funil/FunilPage';
 import { SlaPage } from '../../pages/sla/SlaPage';
+import { SlaResponsabilidadePage } from '../../pages/sla/SlaResponsabilidadePage';
 import { NotificacoesHistoricoPage } from '../../pages/notificacoesHistorico/NotificacoesHistoricoPage';
 import { ProcessoOperacionalPage } from '../../pages/processoOperacional/ProcessoOperacionalPage';
 import { JuridicoPage } from '../../pages/juridico/JuridicoPage';
@@ -85,6 +86,7 @@ export function AppRoutes() {
         <Route path="/segredo-justica" element={<ProtectedScreen screen="segredoJustica"><SegredoJusticaPage /></ProtectedScreen>} />
         <Route path="/funil" element={<ProtectedScreen screen="funil"><FunilPage /></ProtectedScreen>} />
         <Route path="/sla" element={<ProtectedScreen screen="sla"><SlaPage /></ProtectedScreen>} />
+        <Route path="/sla/responsabilidade" element={<ProtectedScreen screen="sla"><SlaResponsabilidadePage /></ProtectedScreen>} />
         <Route path="/notificacoes-historico" element={<ProtectedScreen screen="notificacoesHistorico"><NotificacoesHistoricoPage /></ProtectedScreen>} />
         {/* Documentos (@R 23/09 16:53): o antigo /manuais leva para cá; os links públicos /manuais/medico e /manuais/hospital não mudam */}
         <Route path="/documentos" element={<ProtectedScreen screen="processoOperacional"><ManuaisPage /></ProtectedScreen>} />

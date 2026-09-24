@@ -40,7 +40,8 @@ interface MinhaSessao {
 
 interface NotificacaoCentral {
   aguardandoJuridico: { quantidade: number; nota: string };
-  slaEstourado: { quantidade: number; itens: { order_id: number; paciente: string; fase: string; atraso_dias: number }[]; nota: string };
+  slaEstourado: { quantidade: number; itens: { order_id: number; paciente: string; fase: string; atraso_dias: number }[]; nota: string;
+    doMes?: number; carregados?: number; link?: string };
 }
 
 const GRUPOS_COM_CENTRAL = new Set(['ADMIN', 'GERENTE', 'JURIDICO', 'SUPERVISOR']);
@@ -262,9 +263,9 @@ export function Header({ onMenuClick }: Props) {
                   <button
                     type="button"
                     className="mc-notif__item mc-notif__item--grave"
-                    onClick={() => { setNotificacoesAbertas(false); navigate('/sla') }}
+                    onClick={() => { setNotificacoesAbertas(false); navigate(central.slaEstourado.link || '/sla/responsabilidade') }}
                   >
-                    <strong>⚠ SLA estourado</strong>
+                    <strong>⚠ Prazos estourados da sua parte</strong>
                     <span>
                       {central.slaEstourado.quantidade} pedido{central.slaEstourado.quantidade > 1 ? 's' : ''} fora do prazo
                       {central.slaEstourado.itens[0] && ` — o mais atrasado: ${central.slaEstourado.itens[0].paciente} (${central.slaEstourado.itens[0].atraso_dias}d)`}
